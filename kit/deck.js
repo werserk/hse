@@ -22,7 +22,7 @@
     if (d.type === 'widget-height') {
       for (const f of document.querySelectorAll('iframe.widget')) if (f.contentWindow === e.source) f.style.height = `${d.h}px`;
     } else if (d.type === 'widget-key') { key(d.key); }
-    else if (d.type === 'deck') { if (!peer || peer.closed) peer = e.source; if (e.source === peer) go(d.i, d.step, false); }
+    else if (d.type === 'deck') { if (!peer || peer.closed) peer = e.source; if (e.source === peer && (d.i !== cur || d.step !== step)) go(d.i, d.step, false); }
     else if (d.type === 'deck-hello') { peer = e.source; send(); }
   });
 
@@ -90,7 +90,9 @@
       const s = Math.floor((Date.now() - t0) / 1000);
       clockEl.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     }, 500);
-    if (window.opener) { peer = window.opener; peer.postMessage({ type: 'deck-hello' }, '*'); }
+    // Say hello now and every 1.5 s, so the main window re-attaches after a reload (it answers with its slide).
+    const hello = () => { try { if (window.opener && !window.opener.closed) { peer = window.opener; peer.postMessage({ type: 'deck-hello' }, '*'); } } catch (e) {} };
+    hello(); setInterval(hello, 1500);
   }
 
   function renderSpeaker() {

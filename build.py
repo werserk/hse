@@ -32,7 +32,7 @@ body{{margin:0;background:transparent;color:var(--foreground);font:14px/1.45 var
 WIDGET_TAIL = """<script>(()=>{const r=()=>parent.postMessage({type:'widget-height',h:Math.ceil(document.documentElement.scrollHeight)},'*');
 new ResizeObserver(r).observe(document.documentElement);addEventListener('load',r);r();
 const nav=['PageDown','PageUp','ArrowRight','ArrowLeft','ArrowDown','ArrowUp',' ','Home','End','f','F','а','А','s','S','ы','Ы'];
-addEventListener('keydown',e=>{const t=e.target,typing=t.isContentEditable||/^(TEXTAREA|SELECT)$/.test(t.tagName)||(t.tagName==='INPUT'&&!/^(range|checkbox|radio|button)$/.test(t.type));
+addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target,typing=t.isContentEditable||/^(TEXTAREA|SELECT)$/.test(t.tagName)||(t.tagName==='INPUT'&&!/^(range|checkbox|radio|button)$/.test(t.type));
 if(!nav.includes(e.key)||(typing&&!e.key.startsWith('Page')))return;e.preventDefault();parent.postMessage({type:'widget-key',key:e.key},'*');},true);})();</script></body></html>"""
 
 
@@ -47,45 +47,67 @@ class _Q:
     def group(self, i): return self.m.group(0) if i == 0 else self.m.group(1) if i == 1 else (self.m.group(2) or self.m.group(3))
 
 
+MARK = ".hse-build"  # written into every output folder; only such folders (or empty ones) get replaced
+
+
 def safe_out(src, out):
-    """Refuse an output folder that would delete the source or the repo."""
+    """Refuse an output folder that overlaps the source or the repo, or holds files this tool did not write."""
     s, o = Path(src).resolve(), Path(out).resolve()
     if o == s or o in s.parents or s in o.parents or o == ROOT or o in ROOT.parents:
         sys.exit(f"refusing to write into {o}: it overlaps the source {s}")
+    if o.exists() and (not o.is_dir() or (any(o.iterdir()) and not (o / MARK).exists())):
+        sys.exit(f"refusing to replace {o}: not an earlier build output (no {MARK}); remove it yourself")
+
+
+def fresh_out(out):
+    if out.exists(): shutil.rmtree(out)
 
 
 def pack_deck(src, out, style, pdf=False, home=None, name=None, has_pdf=False):
     src, out = Path(src), Path(out)
     doc = read(src / "deck.html")
     name = name or src.name
-    m = re.search(r'<html[^>]*data-style="([^"]+)"', doc)
+    m = re.search(r'<html\b[^>]*\bdata-style=["\']([^"\']+)', doc)
     style = m.group(1) if m else style
-    safe_out(src, out)
-    if out.exists(): shutil.rmtree(out)
+    if not m:  # before any inlining, so the <html> found is the page's own
+        doc = re.sub(r"(?i)<html\b", f'<html data-style="{style}"', doc, count=1) if re.search(r"(?i)<html\b", doc) \
+            else f'<!doctype html><html data-style="{style}">' + re.sub(r"(?is)^\s*<!doctype[^>]*>", "", doc)
+    parts = re.split(r"(<!--.*?-->)", doc, flags=re.S)  # HTML comments stay untouched
+    live = [p for p in parts if not p.startswith("<!--")]
+    widget = re.compile(r'<iframe\b[^>]*?\b(data-src=(?:"([^"]+)"|\'([^\']+)\'))[^>]*>')
+    link = re.compile(r'<link rel="stylesheet" href="(?!https?:|//)([^"]+)">')
+    script = re.compile(r'<script src="(?!https?:|//)([^"]+)"></script>')
+    refs = [_Q(w).group(2) for p in live for w in widget.finditer(p)] + [r for p in live for r in link.findall(p) + script.findall(p)]
+    missing = [r for r in refs if not (src / r).is_file()]
+    if missing: sys.exit(f"{src / 'deck.html'}: file not found: {', '.join(missing)}")
+    safe_out(src, out); fresh_out(out)
     shutil.copytree(src, out, ignore=shutil.ignore_patterns("deck.html", "*.pdf", ".*"))
+    (out / MARK).write_text("")
 
     def inline_widget(m):
         tag = m.group(0)
-        ref = m.group(2)
-        if not (src / ref).is_file(): sys.exit(f"{src / 'deck.html'}: widget not found: {ref}")
         zm = re.search(r'data-zoom=["\']([^"\']+)', tag)
-        srcdoc = esc(pack_widget(src / ref, style, zm.group(1) if zm else "1.6"))
+        srcdoc = esc(pack_widget(src / m.group(2), style, zm.group(1) if zm else "1.6"))
         return tag.replace(m.group(1), f'srcdoc="{srcdoc}"', 1)
 
-    parts = re.split(r"(<!--.*?-->)", doc, flags=re.S)  # leave HTML comments untouched
-    widget = re.compile(r'<iframe\b[^>]*?\b(data-src=(?:"([^"]+)"|\'([^\']+)\'))[^>]*>')
-    doc = "".join(p if p.startswith("<!--") else widget.sub(lambda m: inline_widget(_Q(m)), p) for p in parts)
-    doc = re.sub(r'<link rel="stylesheet" href="(?!https?:)([^"]+)">', lambda m: f"<style>{read(src / m.group(1))}</style>", doc)
-    doc = re.sub(r'<script src="(?!https?:)([^"]+)"></script>', lambda m: f"<script>{read(src / m.group(1))}</script>", doc)
+    def inline(p):
+        if p.startswith("<!--"): return p
+        p = widget.sub(lambda m: inline_widget(_Q(m)), p)
+        p = link.sub(lambda m: f"<style>{read(src / m.group(1))}</style>", p)
+        return script.sub(lambda m: f"<script>{read(src / m.group(1))}</script>", p)
+
+    doc = "".join(inline(p) for p in parts)
     metas = [f'<meta name="deck:file" content="{esc(name)}.html">']
     if pdf or has_pdf: metas.append(f'<meta name="deck:pdf" content="{esc(name)}.pdf">')
     if home: metas.append(f'<meta name="deck:home" content="{esc(home)}">')
     head = "\n".join(metas) + f"\n<style>{read(KIT / 'theme.css')}\n{read(KIT / 'deck.css')}</style>\n"
-    doc = re.sub(r"(?i)</head>", lambda _: head + "</head>", doc, count=1) if re.search(r"(?i)</head>", doc) else head + doc
+    if re.search(r"(?i)</head>", doc):
+        doc = re.sub(r"(?i)</head>", lambda _: head + "</head>", doc, count=1)
+    else:  # no </head>: keep doctype first and the charset inside the first 1024 bytes
+        at = re.match(r"(?is)\s*(<!doctype[^>]*>)?\s*(<html\b[^>]*>)?\s*(<head\b[^>]*>)?", doc).end()
+        doc = doc[:at] + '<meta charset="utf-8">\n' + head + doc[at:]
     js = f"<script>{read(KIT / 'deck.js')}</script>\n"
     doc = re.sub(r"(?i)</body>", lambda _: js + "</body>", doc, count=1) if re.search(r"(?i)</body>", doc) else doc + js
-    if 'data-style=' not in doc.split("<head", 1)[0]:
-        doc = re.sub(r"<html\b", f'<html data-style="{style}"', doc, count=1)
     (out / "index.html").write_text(doc, encoding="utf-8")
     if pdf: print_pdf(out / "index.html", out / f"{name}.pdf")
     return out / "index.html"
@@ -192,9 +214,8 @@ def build_entry(cfg, c, e, out, style, pdf):
 def build_site(out, style=None, pdf=False):
     cfg = site_cfg(); style = style or cfg.get("style", "paper")
     out = Path(out)
-    safe_out(CONTENT, out)
-    if out.exists(): shutil.rmtree(out)
-    (out / "assets").mkdir(parents=True)
+    safe_out(CONTENT, out); fresh_out(out)
+    (out / "assets").mkdir(parents=True); (out / MARK).write_text("")
     shutil.copy(ROOT / "assets" / "site.css", out / "assets" / "site.css")
     shutil.copy(KIT / "theme.css", out / "assets" / "theme.css")
     courses = load_content()
