@@ -20,21 +20,24 @@ URL of an entry: `https://hse.werserk.dev/<course>/<entry>/`.
 
 ## entry.json
 
+The home page shows one section per subject (`course.json`) with a card per material; a card opens
+the material page `/<course>/<entry>/`.
+
 ```json
 {"title": "…", "type": "deck", "date": "2026-11-19", "event": "НИС АДНЖ",
- "summary": "One sentence.", "tags": ["LAI"], "status": "planned"}
+ "summary": "One sentence.", "status": "planned"}
 ```
 
-| type | folder holds | published as |
+| type | folder holds | material page |
 |---|---|---|
-| `deck` | `deck.html`, `widgets/`, media, optional `<entry>.pdf` | packed offline deck + PDF + HTML download |
-| `site` | `site/` (prebuilt, has `index.html`), optional `*.pdf` | copied as is |
-| `pdf` | the file named in `"file"` | viewer page + download |
-| `notes` | `index.md` (+ images) | rendered page |
-| `link` | — (`"url"` in entry.json) | external link |
+| `deck` | `deck.html`, `widgets/`, media, optional `<entry>.pdf` | the packed deck itself (menu: PDF, offline HTML, speaker view) |
+| `site` | `site/` (prebuilt, has `index.html`), optional `*.pdf` | the site itself, copied as is |
+| `pdf` | the file named in `"file"` | viewer with a download button |
+| `pptx` | the file named in `"file"` | Office Online viewer + download (public URL needed) |
+| `notes` | `index.md` (or `"file"`) + images | rendered Markdown + download |
+| `link` | — (`"url"` in entry.json) | the external URL, new tab |
 
-`"status": "planned"` lists the entry as «скоро» without building it. Remove it to publish.
-`"downloads": {"PDF": "talk.pdf"}` adds download links (paths relative to the entry URL).
+`"status": "planned"` shows a dashed «скоро» card and builds nothing. Remove it to publish.
 
 ## Decks
 
@@ -63,4 +66,4 @@ Commit `<entry>.pdf` next to `deck.html` when the CI print (different fonts) is 
 python3 build.py site --out _site && python3 -m http.server -d _site 8000
 ```
 
-Preview another style: `http://localhost:8000/?style=hse`.
+Notes need `markdown` (`uv run --with markdown python build.py site`); CI installs it.

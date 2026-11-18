@@ -7,13 +7,13 @@
 Stdlib only; `markdown` is used for notes entries when installed. PDF needs Chrome/Chromium
 (CHROME env var, PATH, or the Playwright cache).
 """
-import argparse, glob, html, json, os, re, shutil, subprocess, sys
+import argparse, glob, html, json, os, re, shutil, subprocess, sys, urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 KIT = ROOT / "kit"
 CONTENT = ROOT / "content"
-TYPE_LABEL = {"deck": "доклад", "site": "доклад", "pdf": "слайды", "notes": "конспект", "link": "ссылка"}
+TYPE_LABEL = {"deck": "доклад", "site": "доклад", "pdf": "PDF", "pptx": "презентация", "notes": "конспект", "link": "ссылка"}
 
 
 def read(p): return Path(p).read_text(encoding="utf-8")
@@ -86,16 +86,17 @@ def print_pdf(page, pdf):
     print("pdf", pdf)
 
 
-# ---------- catalogue ----------
+# ---------- catalogue: subject sections → material cards → material page ----------
 
 def load_content():
     courses = []
     for cdir in sorted(p for p in CONTENT.iterdir() if (p / "course.json").exists()):
-        c = json.loads(read(cdir / "course.json")); c["slug"] = cdir.name; c["dir"] = cdir
+        c = json.loads(read(cdir / "course.json")); c["slug"] = cdir.name
         c["entries"] = []
         for edir in sorted(p for p in cdir.iterdir() if (p / "entry.json").exists()):
-            e = json.loads(read(edir / "entry.json")); e["slug"] = edir.name; e["dir"] = edir
-            e["course"] = c["slug"]; e["url"] = e.get("url") or (f"/{c['slug']}/{edir.name}/" if e.get("status") != "planned" else None)
+            e = json.loads(read(edir / "entry.json")); e["slug"] = edir.name; e["dir"] = edir; e["course"] = c["slug"]
+            if e.get("status") != "planned":
+                e["href"] = e["url"] if e["type"] == "link" else f"/{c['slug']}/{edir.name}/"
             c["entries"].append(e)
         c["entries"].sort(key=lambda e: e.get("date", ""), reverse=True)
         courses.append(c)
@@ -103,77 +104,68 @@ def load_content():
     return courses
 
 
-def page(cfg, title, body, style, crumbs=()):
-    nav = " / ".join([f'<a href="/">{esc(cfg["title"])}</a>'] + [f'<a href="{u}">{esc(t)}</a>' for t, u in crumbs])
+def page(cfg, title, body, style, cls=""):
     return f"""<!doctype html><html lang="ru" data-style="{style}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title>
 <link rel="stylesheet" href="/assets/theme.css"><link rel="stylesheet" href="/assets/site.css"></head>
-<body><header class="top"><nav class="crumbs">{nav}</nav></header><main>{body}</main>
-<footer class="foot">{esc(cfg.get("footer", ""))}</footer><script src="/assets/site.js"></script></body></html>"""
+<body class="{cls}">{body}</body></html>"""
 
 
-def entry_links(e):
-    if not e.get("url"): return '<span class="soon">скоро</span>'
-    out = [f'<a href="{esc(e["url"])}">открыть</a>']
-    for label, f in (e.get("downloads") or {}).items():
-        dl = f"{e['slug']}.html" if f == "index.html" else f
-        out.append(f'<a href="{esc(e["url"] + f)}" download="{esc(dl)}">{esc(label)}</a>')
-    return " · ".join(out)
+def card(e):
+    meta = " · ".join(x for x in [e.get("date", ""), e.get("event", "")] if x)
+    inner = (f'<span class="k">{esc(TYPE_LABEL.get(e["type"], e["type"]))}</span><span class="t">{esc(e["title"])}</span>'
+             f'<span class="m">{esc(meta)}</span><span class="s">{esc(e.get("summary", ""))}</span>')
+    if not e.get("href"): return f'<div class="card soon">{inner}<span class="m">скоро</span></div>'
+    ext = ' target="_blank" rel="noopener"' if e["type"] == "link" else ""
+    return f'<a class="card" href="{esc(e["href"])}"{ext}>{inner}</a>'
 
 
-def entry_row(e, course=None):
-    meta = " · ".join(x for x in [e.get("date", ""), e.get("event", ""), course or ""] if x)
-    tags = " ".join(e.get("tags", []))
-    title = f'<a href="{esc(e["url"])}">{esc(e["title"])}</a>' if e.get("url") else esc(e["title"])
-    return f"""<li class="entry" data-search="{esc((e['title'] + ' ' + e.get('summary', '') + ' ' + tags + ' ' + (course or '')).lower())}">
-<span class="badge t-{esc(e['type'])}">{esc(TYPE_LABEL.get(e['type'], e['type']))}</span>
-<div><div class="e-title">{title}</div><div class="e-meta">{esc(meta)}</div>
-<p class="e-sum">{esc(e.get('summary', ''))}</p><div class="e-links">{entry_links(e)}</div></div></li>"""
+def section(c, heading="h2"):
+    cards = "".join(card(e) for e in c["entries"]) or '<p class="empty">Пока пусто.</p>'
+    return (f'<section class="subject" id="{esc(c["slug"])}"><{heading}><a href="/{esc(c["slug"])}/">{esc(c["title"])}</a></{heading}>'
+            f'<p class="sub">{esc(c.get("subtitle", ""))}</p><div class="cards">{cards}</div></section>')
 
 
-def build_entry(e, out, style, pdf):
-    d, dest = e["dir"], out / e["course"] / e["slug"]
-    t = e["type"]
-    if e.get("status") == "planned" or t == "link": return
+def viewer(cfg, c, e, inner, style, downloads=()):
+    dl = "".join(f'<a href="{esc(f)}" download>{esc(label)}</a>' for label, f in downloads)
+    bar = (f'<header class="bar"><a href="/{esc(c["slug"])}/" title="{esc(c["title"])}">← {esc(c["title"])}</a>'
+           f'<span class="bt">{esc(e["title"])}</span><span class="dl">{dl}</span></header>')
+    return page(cfg, e["title"], bar + f'<div class="view">{inner}</div>', style, "viewer")
+
+
+def build_entry(cfg, c, e, out, style, pdf):
+    """Every material gets /<course>/<slug>/: decks and sites are that page; pdf/md/pptx get a viewer page."""
+    if not e.get("href") or e["type"] == "link": return
+    d, dest, t = e["dir"], out / e["course"] / e["slug"], e["type"]
     if t == "deck":
         committed = (d / f"{e['slug']}.pdf").exists()  # a locally printed PDF wins over a CI print
-        pack_deck(d, dest, style, pdf=pdf and not committed, home=f"/{e['course']}/", name=e["slug"], has_pdf=committed)
+        pack_deck(d, dest, style, pdf=pdf and not committed, home="/", name=e["slug"], has_pdf=committed)
         for p in d.glob("*.pdf"): shutil.copy(p, dest)
-        e.setdefault("downloads", {})["HTML"] = "index.html"
-        if pdf or committed: e["downloads"]["PDF"] = f"{e['slug']}.pdf"
-    elif t == "site":
+        return
+    if t == "site":
         shutil.copytree(d / "site", dest, dirs_exist_ok=True)
         for p in d.glob("*.pdf"): shutil.copy(p, dest)
-    elif t == "pdf":
-        dest.mkdir(parents=True, exist_ok=True)
-        f = e["file"]; shutil.copy(d / f, dest / f)
-        e.setdefault("downloads", {})["PDF"] = f
-    elif t == "notes":
-        dest.mkdir(parents=True, exist_ok=True)
-        for p in d.iterdir():
-            if p.name not in ("entry.json", "index.md"):
-                (shutil.copytree if p.is_dir() else shutil.copy)(p, dest / p.name)
-
-
-def render_entry_page(cfg, c, e, out, style):
-    """Pages for types that have no own index.html: pdf viewer, notes."""
-    t, dest = e["type"], out / e["course"] / e["slug"]
-    if e.get("status") == "planned": return
-    crumbs = [(c["title"], f"/{c['slug']}/")]
-    head = f'<h1>{esc(e["title"])}</h1><p class="lead">{esc(e.get("summary", ""))}</p><p class="e-links">{entry_links(e)}</p>'
+        return
+    shutil.copytree(d, dest, ignore=shutil.ignore_patterns("entry.json", ".*"), dirs_exist_ok=True)
     if t == "pdf":
-        body = head + f'<object class="pdf" data="{esc(e["file"])}" type="application/pdf"><a href="{esc(e["file"])}">PDF</a></object>'
+        f = e["file"]
+        html_ = viewer(cfg, c, e, f'<iframe class="doc" src="{esc(f)}" title="{esc(e["title"])}"></iframe>', style, [("Скачать PDF", f)])
+    elif t == "pptx":
+        f = e["file"]
+        src = urllib.parse.quote(f"https://{cfg['domain']}/{e['course']}/{e['slug']}/{f}", safe="")
+        html_ = viewer(cfg, c, e, f'<iframe class="doc" src="https://view.officeapps.live.com/op/embed.aspx?src={src}" title="{esc(e["title"])}"></iframe>',
+                       style, [("Скачать PPTX", f)])
     elif t == "notes":
-        md = read(e["dir"] / "index.md")
+        md = read(d / e.get("file", "index.md"))
         try:
             import markdown
             inner = markdown.markdown(md, extensions=["tables", "fenced_code", "toc"])
         except ImportError:
             inner = f"<pre>{esc(md)}</pre>"
-        body = f'<article class="prose">{inner}</article>'
+        html_ = viewer(cfg, c, e, f'<article class="prose">{inner}</article>', style, [("Скачать .md", e.get("file", "index.md"))])
     else:
-        return
-    (dest / "index.html").write_text(page(cfg, e["title"], body, style, crumbs), encoding="utf-8")
+        sys.exit(f"{d}: unknown type {t}")
+    (dest / "index.html").write_text(html_, encoding="utf-8")
 
 
 def build_site(out, style=None, pdf=False):
@@ -181,27 +173,18 @@ def build_site(out, style=None, pdf=False):
     out = Path(out)
     if out.exists(): shutil.rmtree(out)
     (out / "assets").mkdir(parents=True)
-    for f in ("site.css", "site.js"): shutil.copy(ROOT / "assets" / f, out / "assets" / f)
+    shutil.copy(ROOT / "assets" / "site.css", out / "assets" / "site.css")
     shutil.copy(KIT / "theme.css", out / "assets" / "theme.css")
     courses = load_content()
+    head = f'<header class="hero"><h1><a href="/">{esc(cfg["title"])}</a></h1><p>{esc(cfg.get("intro", ""))}</p></header>'
+    foot = f'<footer class="foot">{esc(cfg.get("footer", ""))}</footer>'
     for c in courses:
-        for e in c["entries"]:
-            build_entry(e, out, style, pdf)
-            render_entry_page(cfg, c, e, out, style)
-    sections = []
-    for c in courses:
-        rows = "".join(entry_row(e) for e in c["entries"]) or '<li class="empty">Пока пусто.</li>'
-        sections.append(f'<section class="course" id="{esc(c["slug"])}"><h2><a href="/{esc(c["slug"])}/">{esc(c["title"])}</a></h2>'
-                        f'<p class="c-sub">{esc(c.get("subtitle", ""))}</p><ul class="entries">{rows}</ul></section>')
+        for e in c["entries"]: build_entry(cfg, c, e, out, style, pdf)
         (out / c["slug"]).mkdir(exist_ok=True)
-        cbody = f'<h1>{esc(c["title"])}</h1><p class="lead">{esc(c.get("description", c.get("subtitle", "")))}</p><ul class="entries">{rows}</ul>'
-        (out / c["slug"] / "index.html").write_text(page(cfg, c["title"], cbody, style), encoding="utf-8")
-    toc = "".join(f'<a href="#{esc(c["slug"])}">{esc(c["title"])}</a>' for c in courses)
-    body = (f'<h1>{esc(cfg["title"])}</h1><p class="lead">{esc(cfg.get("intro", ""))}</p>'
-            f'<div class="tools"><input id="q" type="search" placeholder="Поиск по материалам" autocomplete="off"><nav class="toc">{toc}</nav></div>'
-            + "".join(sections))
+        (out / c["slug"] / "index.html").write_text(page(cfg, c["title"], head + f"<main>{section(c, 'h1')}</main>" + foot, style), encoding="utf-8")
+    body = head + "<main>" + "".join(section(c) for c in courses) + "</main>" + foot
     (out / "index.html").write_text(page(cfg, cfg["title"], body, style), encoding="utf-8")
-    (out / "404.html").write_text(page(cfg, "Не найдено", '<h1>Не найдено</h1><p><a href="/">В каталог</a></p>', style), encoding="utf-8")
+    (out / "404.html").write_text(page(cfg, "Не найдено", head + '<main><p>Такой страницы нет. <a href="/">На главную</a></p></main>', style), encoding="utf-8")
     if cfg.get("domain"): (out / "CNAME").write_text(cfg["domain"] + "\n")
     (out / ".nojekyll").write_text("")
     print("site", out, sum(len(c["entries"]) for c in courses), "entries")
