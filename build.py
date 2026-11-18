@@ -145,7 +145,7 @@ def pack_notes(src, out, style, md_name, title, meta="", back=None, slides=None,
                   for lvl, hid, txt in re.findall(r'<h([23]) id="([^"]+)">(.*?)</h\1>', body))
     acts = (f'<a class="go" href="{esc(slides)}">▶ Презентация</a>' if slides else "") + \
            (f'<a href="{esc(pdf)}" download>PDF</a>' if pdf else "") + \
-           f'<a href="./" download="{esc(name or src.name)}.html">HTML</a>'
+           f'<a href="index.html" download="{esc(name or src.name)}.html">HTML</a>'
     side = ((f'<a class="nt-back" href="{esc(back[0])}">← {esc(back[1])}</a>' if back else "") +
             f'<div class="nt-title">{esc(title)}</div><div class="nt-act">{acts}</div><ol class="nt-toc">{toc}</ol>')
     head = f'<header class="nt-head"><h1>{esc(title)}</h1>' + (f'<p class="nt-meta">{esc(meta)}</p>' if meta else "") + "</header>"
@@ -272,16 +272,16 @@ def build_entry(cfg, c, e, dest, style, pdf):
         if not (md or has_deck): sys.exit(f"{d}: needs notes.md (konspekt) or deck.html (slides)")
         pdf_name = f"{e['slug']}.pdf"
         committed = (d / pdf_name).exists()  # a locally printed PDF wins over a CI print
-        course = (f"/{c['slug']}/", c["title"])
+        course = (f"/{c['slug']}/" if c["slug"] else "/", c["title"])
         if md:
             meta = " · ".join(x for x in [e.get("date", ""), e.get("event", "")] if x)
             has_pdf = has_deck and (pdf or committed)
-            pack_notes(d, dest, style, md, e["title"], meta, course, slides="slides/" if has_deck else None,
+            pack_notes(d, dest, style, md, e["title"], meta, course, slides="slides/index.html" if has_deck else None,
                        pdf=f"slides/{pdf_name}" if has_pdf else None, name=e["slug"])
         if has_deck:
             ddest = dest / "slides" if md else dest
             pack_deck(d, ddest, style, pdf=pdf and not committed, name=e["slug"], has_pdf=committed,
-                      title=e["title"], back=course, notes="../" if md else None)
+                      title=e["title"], back=course, notes="../index.html" if md else None)
             for p in d.glob("*.pdf"): shutil.copy(p, ddest)
         return
     if t == "site":

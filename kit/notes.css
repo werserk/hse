@@ -28,7 +28,7 @@ body.nt { margin: 0; background: var(--background); color: var(--foreground); fo
 .nt-body figure.right { float: right; width: 46%; margin: 4px 0 16px 28px; }
 .nt-body h2, .nt-body h3, .nt-body hr { clear: both; }
 .nt-body iframe.widget { display: block; width: 100%; min-height: 120px; border: 0; background: transparent; }
-.nt-body blockquote { margin: 20px 0; padding: 12px 18px; border-left: 3px solid var(--brand); background: var(--surface-recessed); border-radius: 0 var(--radius) var(--radius) 0; }
+.nt-body blockquote { display: flow-root; margin: 20px 0; padding: 12px 18px; border-left: 3px solid var(--brand); background: var(--surface-recessed); border-radius: 0 var(--radius) var(--radius) 0; }
 .nt-body blockquote p:last-child { margin: 0; }
 .nt-body code { font-family: var(--font-mono); font-size: .85em; background: var(--surface-recessed); padding: 1px 4px; border-radius: 3px; }
 .nt-body pre { background: var(--surface-recessed); padding: 12px 16px; border-radius: var(--radius); overflow: auto; font-size: 14px; line-height: 1.5; }
@@ -36,7 +36,7 @@ body.nt { margin: 0; background: var(--background); color: var(--foreground); fo
 .nt-body table { border-collapse: collapse; margin: 0 0 16px; font: 15px/1.45 var(--font-sans); }
 .nt-body td, .nt-body th { border-bottom: 1px solid var(--border); padding: 6px 14px 6px 0; text-align: left; }
 .nt-body th { color: var(--muted-foreground); font-weight: 500; }
-details.answer { margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: .95em; }
+details.answer { display: flow-root; margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: .95em; }
 details.answer summary { cursor: pointer; font: 600 14px var(--font-sans); color: var(--muted-foreground); }
 @media (max-width: 900px) {
   .nt-side { position: static; width: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: 16px; }

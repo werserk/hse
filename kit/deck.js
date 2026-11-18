@@ -39,6 +39,7 @@
   function go(i, s = 0, notify = true) {
     cur = Math.max(0, Math.min(slides.length - 1, i));
     step = Math.max(0, Math.min(steps(cur).length, s));
+    body.classList.remove('toc-on');
     render(); if (notify) send();
   }
   const next = () => (step < steps(cur).length ? go(cur, step + 1) : cur < slides.length - 1 && go(cur + 1, 0));
@@ -74,18 +75,18 @@
       if (!b) { if (!e.target.closest('.deck-toc')) body.classList.remove('toc-on'); return; }
       const a = b.dataset.a;
       if (a === 'prev') prev(); else if (a === 'next') next(); else if (a === 'toc') toggleToc();
-      else if (a === 'go') { go(+b.dataset.i); toggleToc(false); }
-      else if (a === 'speaker') openSpeaker(); else if (a === 'full') full();
+      else if (a === 'go') go(+b.dataset.i);
+      else if (a === 'speaker') { toggleToc(false); openSpeaker(); } else if (a === 'full') { toggleToc(false); full(); }
       b.blur();
     });
     const doFit = () => {
-      const fs = !!document.fullscreenElement || bare;  // ?bare: no header (card previews, embedding)
+      const fs = !!document.fullscreenElement || bare || (innerHeight >= screen.height - 1 && innerWidth >= screen.width - 1);  // ?bare: no header (card previews, embedding)
       body.classList.toggle('fs', fs);
       const th = fs ? 0 : top.offsetHeight, k = Math.min(innerWidth / 1280, (innerHeight - th) / 720);
       stage.style.top = `${th + (innerHeight - th) / 2}px`;
       stage.style.transform = `translate(-50%,-50%) scale(${k})`;
     };
-    addEventListener('resize', doFit); addEventListener('fullscreenchange', doFit); doFit();
+    addEventListener('resize', doFit); addEventListener('fullscreenchange', () => { body.classList.remove('top-on', 'toc-on'); doFit(); }); doFit();
     addEventListener('mousemove', (e) => body.classList.toggle('top-on', e.clientY < 56 || !!e.target.closest?.('.deck-top, .deck-toc')));
   } else {
     body.classList.add('speaker');
@@ -142,6 +143,7 @@
 
   // Navigation keys; widgets forward theirs (PageUp/PageDown always, so a clicker keeps working after a click in a widget).
   function key(k) {
+    if (k !== 'o' && k !== 'O' && k !== 'щ' && k !== 'Щ') body.classList.remove('top-on');  // a clicker press hides the hover header
     if (['ArrowRight', 'ArrowDown', ' ', 'PageDown', 'Enter'].includes(k)) next();
     else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) prev();
     else if (k === 'Home') go(0); else if (k === 'End') go(slides.length - 1);
