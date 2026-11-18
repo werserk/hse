@@ -1,0 +1,28 @@
+<style>
+.w{font-family:var(--font-sans);display:flex;flex-direction:column;gap:10px}
+.row{display:flex;align-items:center;gap:10px}
+.lab{width:150px;color:var(--muted-foreground);font-size:12px;text-align:right}
+.s{display:flex;gap:2px;font-family:var(--font-mono);font-size:13px}
+.s span{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.A span{background:color-mix(in srgb,var(--chart-1) 30%,transparent)}
+.B span{background:color-mix(in srgb,var(--chart-2) 30%,transparent)}
+.T span{background:var(--muted)}
+.o span.a{background:var(--chart-1);color:var(--background)}
+.o span.b{background:var(--chart-2);color:var(--background)}
+.box{display:flex;gap:6px;align-items:center;margin-left:160px}
+.box div{border:1px solid var(--border);border-radius:var(--radius);padding:4px 10px;font-size:12px}
+.task{font-weight:600;border-color:var(--brand)!important}
+.h{margin-left:160px;font-size:12px;color:var(--subtle-foreground)}
+</style>
+<div class="w">
+<div class="h">ВХОД 1 · референсная панель (известно, кто откуда)</div>
+<div class="row"><div class="lab">популяция A · A1</div><div class="s A"><span>0</span><span>0</span><span>1</span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span><span>0</span><span>0</span></div></div>
+<div class="row"><div class="lab">популяция A · A2</div><div class="s A"><span>0</span><span>1</span><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></div></div>
+<div class="row"><div class="lab">популяция B · B1</div><div class="s B"><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>0</span><span>1</span><span>1</span><span>1</span><span>1</span></div></div>
+<div class="row"><div class="lab">популяция B · B2</div><div class="s B"><span>1</span><span>0</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>0</span><span>1</span></div></div>
+<div class="h">ВХОД 2 · гаплотип смешанного человека (происхождение неизвестно)</div>
+<div class="row"><div class="lab">цель h</div><div class="s T"><span>0</span><span>0</span><span>1</span><span>1</span><span>1</span><span>0</span><span>1</span><span>0</span><span>1</span><span>0</span></div></div>
+<div class="box"><div class="task">задача LAI</div><span>← решают:</span><div>RFMix</div><div>Loter</div><div>ELAI</div><div>…</div></div>
+<div class="h">ВЫХОД · метка популяции на каждом SNP</div>
+<div class="row"><div class="lab">происхождение</div><div class="s o"><span class="a">A</span><span class="a">A</span><span class="a">A</span><span class="b">B</span><span class="b">B</span><span class="b">B</span><span class="b">B</span><span class="a">A</span><span class="a">A</span><span class="a">A</span></div></div>
+</div>

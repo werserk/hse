@@ -1,0 +1,38 @@
+<style>
+.w{display:grid;grid-template-columns:1fr 230px;gap:22px;font-family:var(--font-sans);align-items:start}
+.rows{display:flex;flex-direction:column;gap:7px}
+.r{display:flex;align-items:center;gap:10px;transition:opacity .4s}
+.l{width:105px;text-align:right;font-size:12px;color:var(--muted-foreground)}
+.bar{position:relative;flex:1;height:22px;border-radius:4px;overflow:hidden;background:var(--muted)}
+.bar div{position:absolute;top:0;bottom:0}
+.bar i{position:absolute;top:0;bottom:0;width:1px;background:var(--background)}
+.bar i.new{width:3px;margin-left:-1px;background:var(--foreground)}
+.lg{display:flex;gap:14px;font-size:12px;margin-left:115px;color:var(--muted-foreground);margin-bottom:4px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.side{font-size:13px;line-height:1.5;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px;min-height:150px}
+.side b{display:block;font-size:20px;color:var(--foreground);margin-bottom:4px}
+</style>
+<div class="w">
+<div>
+<div class="lg"><span><i class="sw" style="background:var(--chart-1)"></i>популяция A</span><span><i class="sw" style="background:var(--chart-2)"></i>популяция B</span><span>хромосома 100 cM</span></div>
+<div class="rows" id="rows"></div>
+</div>
+<div class="side" id="side"></div>
+</div>
+<script>
+let s=11;const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647};
+const cuts=[0.55,0.22,0.8,0.38,...[...Array(96)].map(rnd)];
+const T=[1,2,5,20,100];
+const txt={1:'Первое поколение: хромосома целиком от одной популяции.',2:'Один кроссинговер — один разрез.',5:'Каждое поколение добавляет ≈ 1 разрез на 100 cM, старые остаются. Куски ≈ 20 cM.',20:'Куски ≈ 5 cM.',100:'Куски ≈ 1 cM. Часть разрезов соединяет куски одного цвета: смену происхождения они не дают.'};
+// apply cuts in order; the part right of a new cut flips population, so the picture stays stable between steps
+function segs(n){let S=[[0,1,1]];for(const c of cuts.slice(0,n)){const k=S.findIndex(x=>x[0]<c&&c<x[1]);const [a,b,p]=S[k];S.splice(k,1,[a,c,p],[c,b,3-p])}return S}
+const R=document.getElementById('rows'),side=document.getElementById('side');
+function row(t,shown,prev){const S=segs(t-1);let h=S.map(([a,b,p])=>`<div style="left:${a*100}%;width:${(b-a)*100}%;background:var(--chart-${p})"></div>`).join('');
+ const few=t-prev<=20;h+=cuts.slice(0,t-1).map((c,i)=>`<i class="${i>=prev-1&&shown&&few?'new':''}" style="left:${c*100}%"></i>`).join('');
+ return `<div class="r" style="opacity:${shown?1:.12}"><div class="l">${t} ${t==1?'поколение':t<5?'поколения':'поколений'}</div><div class="bar">${shown?h:''}</div></div>`}
+let k=0;
+function step(){R.innerHTML=T.map((t,i)=>row(t,i<=k,i==k&&k>0?T[k-1]:t)).join('');
+ const t=T[k];side.innerHTML=`<b>t = ${t}</b>разрезов: ${t-1}<br><br>${txt[t]}`;
+ k=(k+1)%T.length;setTimeout(step,k==0?4200:2200)}
+step();
+</script>

@@ -1,0 +1,37 @@
+<style>
+.w{display:grid;grid-template-columns:auto 1fr;gap:22px;font-family:var(--font-sans);align-items:start}
+.rows{display:flex;flex-direction:column;gap:8px}
+.r{display:flex;align-items:center;gap:10px}
+.l{width:110px;text-align:right;font-size:12px;color:var(--muted-foreground)}
+.s{display:flex;gap:3px;font-family:var(--font-mono);font-size:14px}
+.s span{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all .3s}
+.m span{background:color-mix(in srgb,var(--chart-1) 25%,transparent)}
+.p span{background:color-mix(in srgb,var(--chart-2) 25%,transparent)}
+.g span{background:var(--muted);font-weight:600}
+.s span.q{background:transparent;outline:1.5px dashed var(--warning);outline-offset:-2px;color:var(--warning)}
+.g span.het{outline:1.5px solid var(--warning);outline-offset:-2px}
+.sep{margin-left:120px;border-top:1px solid var(--border)}
+.side{font-size:13px;line-height:1.5;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px;min-height:130px}
+.side b{display:block;font-size:15px;color:var(--foreground);margin-bottom:4px}
+</style>
+<div class="w">
+<div class="rows">
+<div class="r"><div class="l">копия от матери</div><div class="s m" id="hm"></div></div>
+<div class="r"><div class="l">копия от отца</div><div class="s p" id="hp"></div></div>
+<div class="sep"></div>
+<div class="r"><div class="l">генотип</div><div class="s g" id="g"></div></div>
+</div>
+<div class="side" id="n"></div>
+</div>
+<script>
+const M=[0,1,1,0,1,0,0,1],P=[0,0,1,1,1,0,1,0],G=M.map((x,i)=>x+P[i]);
+const het=G.filter(x=>x==1).length;let raw=true;
+const $=id=>document.getElementById(id);
+function row(id,H){$(id).innerHTML=H.map((x,i)=>raw||G[i]!=1?`<span>${x}</span>`:`<span class="q">?</span>`).join('')}
+function draw(){row('hm',M);row('hp',P);
+ $('g').innerHTML=G.map(x=>`<span class="${!raw&&x==1?'het':''}">${x}</span>`).join('');
+ $('n').innerHTML=raw?'<b>Что есть в клетке</b>Два гаплотипа, по одному на каждую копию хромосомы. Генотип на каждом SNP — их сумма: 0, 1 или 2.'
+ :`<b>Что видит генотипирование</b>Только сумму. Где 0 или 2, обе копии восстанавливаются однозначно. Где 1 (здесь ${het} места), единица может стоять в любой копии: ${2**(het-1)} вариантов.`}
+function loop(){draw();raw=!raw;setTimeout(loop,3500)}
+loop();
+</script>
