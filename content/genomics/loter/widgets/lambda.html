@@ -1,0 +1,61 @@
+<style>
+.w{display:grid;grid-template-columns:auto 1fr;gap:28px;font-family:var(--font-sans);align-items:start}
+.r{display:flex;align-items:center;gap:10px;margin:4px 0}
+.l{width:92px;text-align:right;font-size:12px;color:var(--muted-foreground)}
+.s{display:flex;gap:3px;font-family:var(--font-mono);font-size:13px}
+.s span{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:3px}
+.a{background:color-mix(in srgb,var(--chart-1) 25%,transparent)}
+.b{background:color-mix(in srgb,var(--chart-2) 25%,transparent)}
+.h{background:var(--muted);font-weight:600}
+.A{background:var(--chart-1);color:var(--background)}
+.B{background:var(--chart-2);color:var(--background)}
+.x{outline:2px solid var(--destructive);outline-offset:-2px}
+.bar{height:18px;border-radius:3px;background:var(--muted-foreground);transition:width .15s}
+.win .bar{background:var(--brand)}
+.win .l{color:var(--foreground);font-weight:600}
+.v{font-size:12px;color:var(--muted-foreground);width:76px;font-family:var(--font-mono)}
+.ctl{display:flex;align-items:center;gap:8px;font-size:13px}
+.ctl button{font:12px var(--font-sans);width:26px;height:24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.ctl button.on{background:var(--brand);border-color:var(--brand);color:var(--background)}
+input{width:180px}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+</style>
+<div class="w">
+<div>
+<div class="r"><div class="l">длина куска d</div><div class="ctl" id="dd"></div></div>
+<div class="r"><div class="l">λ = <b id="lv"></b></div><div class="ctl"><input id="lam" type="range" min="0" max="4" step="0.1" value="1"></div></div>
+<div style="height:6px"></div>
+<div class="r"><div class="l">ref A</div><div class="s" id="ra"></div></div>
+<div class="r"><div class="l">ref B</div><div class="s" id="rb"></div></div>
+<div class="r"><div class="l">цель h</div><div class="s" id="rh"></div></div>
+<div style="height:6px"></div>
+<div class="r" id="r1"><div class="l">кусок B</div><div class="s" id="g1"></div><div class="v" id="v1"></div></div>
+<div class="r" id="r2"><div class="l">всё A</div><div class="s" id="g2"></div><div class="v" id="v2"></div></div>
+</div>
+<div class="side">
+Внутри A есть <b>d</b> SNP, где цель совпадает с B.<br><br>
+<b>Кусок B</b>: 0 несовпадений, 2 переключения, цена <b>2λ</b>.<br>
+<b>Всё A</b>: d несовпадений, 0 переключений, цена <b>d</b>.<br><br>
+Побеждает меньшая цена (выделена). Кусок остаётся, если <b>d &gt; 2λ</b>.<br><br>
+<span id="verdict"></span>
+</div>
+</div>
+<script>
+const P=12,$=id=>document.getElementById(id);let d=3;
+$('dd').innerHTML=[1,2,3,4,5,6].map(x=>`<button data-d="${x}">${x}</button>`).join('');
+$('dd').onclick=e=>{if(e.target.dataset.d){d=+e.target.dataset.d;upd()}};
+const cells=(s,f)=>[...s].map((c,i)=>f(c,i)).join('');
+function upd(){const L=+$('lam').value;$('lv').textContent=L.toFixed(1);
+ [...$('dd').children].forEach(b=>b.className=+b.dataset.d==d?'on':'');
+ const st=Math.floor((P-d)/2),h=[...Array(P)].map((_,i)=>i>=st&&i<st+d?'1':'0').join('');
+ $('ra').innerHTML=cells('0'.repeat(P),c=>`<span class="a">${c}</span>`);
+ $('rb').innerHTML=cells('1'.repeat(P),c=>`<span class="b">${c}</span>`);
+ $('rh').innerHTML=cells(h,c=>`<span class="h">${c}</span>`);
+ $('g1').innerHTML=cells(h,c=>`<span class="${c=='1'?'B':'A'}">${c=='1'?'B':'A'}</span>`);
+ $('g2').innerHTML=cells(h,c=>`<span class="A ${c=='1'?'x':''}">A</span>`);
+ const c1=2*L,c2=d;$('v1').textContent=`2λ = ${c1.toFixed(1)}`;$('v2').textContent=`d = ${c2}`;
+ $('r1').className='r'+(c1<c2?' win':'');$('r2').className='r'+(c2<c1?' win':'');
+ $('verdict').innerHTML=c1<c2?`Сейчас 2λ = ${c1.toFixed(1)} &lt; ${d}: кусок B найден.`:c1>c2?`Сейчас 2λ = ${c1.toFixed(1)} &gt; ${d}: кусок стёрт, его SNP считаются шумом.`:`Сейчас 2λ = ${d}: цены равны.`}
+$('lam').oninput=upd;upd();
+</script>

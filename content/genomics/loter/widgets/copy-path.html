@@ -1,0 +1,47 @@
+<style>
+.w{display:grid;grid-template-columns:auto 1fr;gap:28px;font-family:var(--font-sans);align-items:start}
+.r{display:flex;align-items:center;gap:10px;margin:3px 0}
+.l{width:120px;text-align:right;font-size:12px;color:var(--muted-foreground)}
+.s{display:flex;gap:3px;font-family:var(--font-mono);font-size:13px}
+.s span{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px;color:var(--subtle-foreground)}
+.a span{background:color-mix(in srgb,var(--chart-1) 12%,transparent)}
+.b span{background:color-mix(in srgb,var(--chart-2) 12%,transparent)}
+.a span.on{background:var(--chart-1);color:var(--background);font-weight:600}
+.b span.on{background:var(--chart-2);color:var(--background);font-weight:600}
+.h span{background:var(--muted);color:var(--foreground);font-weight:600}
+.o span{color:var(--background);font-weight:600}
+.sep{margin:8px 0 8px 130px;border-top:1px solid var(--border)}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+.sw{display:inline-block;width:3px;height:14px;background:var(--warning);vertical-align:-2px;margin:0 3px}
+.s i{width:0;position:relative}
+.s i::after{content:'';position:absolute;left:-2.5px;top:-4px;bottom:-4px;width:2px;background:var(--warning)}
+</style>
+<div class="w">
+<div>
+<div id="refs"></div>
+<div class="sep"></div>
+<div class="r"><div class="l">цель h</div><div class="s h" id="h"></div></div>
+<div class="r"><div class="l">путь s</div><div class="s" id="sp" style="font-size:11px"></div></div>
+<div class="r"><div class="l">происхождение a</div><div class="s o" id="anc"></div></div>
+</div>
+<div class="side">
+<b>Путь s</b> — какой референс копируется на каждом SNP (закрашенные клетки).<br><br>
+Несовпадений с h: <b id="mm"></b><br>
+Переключений (<span class="sw"></span>): <b id="sw"></b><br><br>
+<b>C(s) = <span id="c"></span></b><br><br>
+Происхождение a<sub>j</sub> — популяция того референса, который копируется на SNP j.
+</div>
+</div>
+<script>
+const H={A1:'0010001000',A2:'0100000010',B1:'1111101111',B2:'1011111101'},h='0011101010';
+const path=['A1','A1','B1','B1','B1','B1','B1','A2','A2','A2'];
+const $=id=>document.getElementById(id);
+const sw=j=>j>0&&path[j]!=path[j-1];
+$('refs').innerHTML=Object.entries(H).map(([n,r])=>`<div class="r"><div class="l">${n[0]=='A'?'популяция A':'популяция B'} · ${n}</div><div class="s ${n[0].toLowerCase()}">${[...r].map((c,j)=>(sw(j)?'<i></i>':'')+`<span class="${path[j]==n?'on':''}">${c}</span>`).join('')}</div></div>`).join('');
+$('h').innerHTML=[...h].map((c,j)=>(sw(j)?'<i></i>':'')+`<span>${c}</span>`).join('');
+$('sp').innerHTML=path.map((p,j)=>(sw(j)?'<i></i>':'')+`<span>${p}</span>`).join('');
+$('anc').innerHTML=path.map((p,j)=>(sw(j)?'<i></i>':'')+`<span style="background:var(--chart-${p[0]=='A'?1:2})">${p[0]}</span>`).join('');
+const mm=path.filter((p,j)=>H[p][j]!=h[j]).length,ns=path.filter((p,j)=>sw(j)).length;
+$('mm').textContent=mm;$('sw').textContent=ns;$('c').textContent=`${mm} + ${ns}λ`;
+</script>
