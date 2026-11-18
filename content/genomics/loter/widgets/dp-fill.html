@@ -1,0 +1,100 @@
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.bt{margin:12px 0 6px 34px;font-size:14px;font-weight:600;color:var(--foreground)}
+.bt:first-child{margin-top:0}
+.r{display:flex;align-items:center;gap:10px;margin:3px 0}
+.l{width:24px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
+.s{display:flex;gap:3px;font-family:var(--font-mono);font-size:13px}
+.s span{box-sizing:border-box;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.idx span{height:14px;font-size:10px;color:var(--subtle-foreground)}
+.A span{background:color-mix(in srgb,var(--chart-1) 22%,transparent)}
+.B span{background:color-mix(in srgb,var(--chart-2) 22%,transparent)}
+.h span{background:var(--muted);font-weight:600}
+.s span.mm{color:var(--destructive);font-weight:700;text-decoration:underline 2px;text-underline-offset:3px}
+.q span{background:var(--muted);color:var(--foreground)}
+.q span:empty,.m span:empty{background:transparent;border:1px dashed var(--border)}
+.q span.jmp{box-shadow:inset 4px 0 0 var(--warning)}
+.m span{border:1px solid var(--border);font-weight:600}
+.s span.cur{outline:2px solid var(--foreground);outline-offset:-2px}
+.s span.src{outline:2px dashed var(--muted-foreground);outline-offset:-2px}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt .d strong{font-weight:600;color:var(--foreground)}
+.txt .d .cell{display:block;margin-top:8px}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+.jk{display:inline-block;width:12px;height:12px;border-radius:2px;background:var(--muted);box-shadow:inset 4px 0 0 var(--warning);vertical-align:-1px}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+const N=['A1','A2','B1','B2'],H=['0010001000','0100000010','1111101111','1011111101'],h='0011101010',L=1,R=4,P=10;
+// Loter DP, computed here so the figure and the text cannot disagree; ties keep the reference (as in Loter's code)
+const mis=(i,j)=>+(H[i][j]!=h[j]),Q=[],J=[],M=[];
+for(let i=0;i<R;i++){Q.push([mis(i,0)]);J.push([false])}
+M.push(Math.min(...Q.map(r=>r[0])));
+for(let j=1;j<P;j++){for(let i=0;i<R;i++){const st=Q[i][j-1],sw=M[j-1]+L;Q[i][j]=mis(i,j)+Math.min(st,sw);J[i][j]=sw<st}M.push(Math.min(...Q.map(r=>r[j])))}
+const best=Q.map(r=>r[P-1]).indexOf(M[P-1]);
+// explanation of one cell, worded from the computed numbers
+const why=(i,j)=>{const st=Q[i][j-1],sw=M[j-1]+L,m=mis(i,j);
+ return `<span class="cell"><strong>Клетка ${N[i]}, SNP ${j+1}.</strong> Остаться на ${N[i]}: ${st}. Переключиться: минимум столбца ${j} + λ = ${M[j-1]} + ${L} = ${sw}. `+
+  `Берём ${st<=sw?'«остаться»':'«переключиться»'} (${Math.min(st,sw)}). На SNP ${j+1} у ${N[i]} ${H[i][j]}, у h ${h[j]}: ${m?'несовпадение, +1':'совпадение, +0'}. Итого ${Q[i][j]}.</span>`};
+// fill = cells filled in column order; focus = cell explained once the step is static
+const S=[
+ {t:'Данные и пустая таблица',fill:0,d:'Сверху референсы и цель h из главы 2. Внизу таблица Q: строка на каждый референс, столбец на каждый SNP. <strong>Q(i, j)</strong> — цена самого дешёвого пути по SNP 1…j, который на SNP j копирует референс i. Таблицу заполняем по столбцам слева направо.'},
+ {t:'SNP 1: только несовпадения',fill:4,ms:900,d:`До SNP 1 путь ни разу не переключался, поэтому цена — только несовпадение на SNP 1: 1, если референс не совпал с h (красная цифра сверху), иначе 0. Строка min — минимум столбца: ${M[0]}.`},
+ {t:'SNP 2: остаться или переключиться',fill:8,ms:900,focus:[1,1],d:`Путь, который на SNP 2 копирует референс i, пришёл одним из двух способов. Либо он и на SNP 1 копировал i, тогда цена Q(i, 1). Либо он переключился с другого референса, тогда цена — цена лучшего пути на SNP 1 плюс λ. Переключение стоит λ откуда угодно, поэтому переключаться выгодно только с самой дешёвой клетки, то есть с минимума столбца. К меньшему из двух вариантов прибавляем несовпадение на SNP 2.`+why(1,1)},
+ {t:'SNP 3: переключение выгоднее',fill:12,ms:900,focus:[2,2],d:`Здесь «переключиться» дешевле, чем «остаться». Такую клетку отмечаем <span class="jk"></span>: метка понадобится, чтобы восстановить путь.`+why(2,2)+' Это то самое переключение A1 → B1 из рис. 2.1.'},
+ {t:'SNP 4',fill:16,ms:600,focus:[2,3],d:`То же правило для каждой клетки. Если оба варианта стоят одинаково, годится любой: цена клетки та же. Договоримся оставаться на референсе (так делает и Loter), тогда метки нет.`+why(2,3)},
+ {t:'SNP 5–10',fill:R*P,ms:250,d:'Каждый столбец считается только по предыдущему: по своей клетке слева и по минимуму столбца. Поэтому хватает одного прохода слева направо.'},
+ {t:'Ответ: минимум последнего столбца',fill:R*P,focus:[best,P-1],last:true,d:`Минимум последнего столбца — ${M[P-1]}, в строке ${N[best]}. Это цена самого дешёвого пути по всем SNP, столько же, сколько у пути 1 на рис. 2.2 (2λ при λ = 1). Какой это путь, покажет рис. 3.2.`}];
+let k=0,fill=0,cur=null,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+const row=(lab,cls,f)=>`<div class="r"><div class="l">${lab}</div><div class="s ${cls}">${Array.from({length:P},(_,j)=>f(j)).join('')}</div></div>`;
+const done=(i,j)=>j*R+i<fill,colDone=j=>(j+1)*R<=fill;
+function fig(){
+ // the cell being computed: itself, its two sources (left cell and previous minimum), and the data it compares
+ const c=cur||(!window.stepperBusy&&S[k].focus)||null,ci=c?c[0]:-1,cj=c?c[1]:-1,fin=S[k].last;
+ const ref=(i,j)=>(j==cj&&(i==ci||i<0))?'cur':'';
+ const q=(i,j)=>i==ci&&j==cj?'cur':(!fin&&j==cj-1&&i==ci)?'src':'';
+ return `<div class="bt">Данные</div>`+row('','idx',j=>`<span>${j+1}</span>`)+
+  N.map((n,i)=>row(n,n[0],j=>`<span class="${colDone(j)||done(i,j)?(mis(i,j)?'mm':''):''} ${!fin?ref(i,j):''}">${H[i][j]}</span>`)).join('')+
+  row('h','h',j=>`<span class="${!fin?ref(-1,j):''}">${h[j]}</span>`)+
+  `<div class="bt">Таблица Q, λ = ${L}</div>`+
+  N.map((n,i)=>row(n,'q',j=>done(i,j)?`<span class="${J[i][j]?'jmp':''} ${q(i,j)}">${Q[i][j]}</span>`:`<span class="${q(i,j)}"></span>`)).join('')+
+  row('min','m',j=>`<span class="${!fin&&j==cj-1?'src':''}">${colDone(j)?M[j]:''}</span>`);
+}
+function draw(){
+ $('fig').innerHTML=fig();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;cur=null;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ if(fwd&&s.ms&&s.fill>fill){ // animate only one step forward; end in the full static state
+  window.stepperBusy=true;
+  const t=timer=setInterval(()=>{cur=[fill%R,Math.floor(fill/R)];fill++;draw();if(fill>=s.fill){clearInterval(t);setTimeout(()=>{if(timer===t){cur=null;window.stepperBusy=false;draw()}},s.ms)}},s.ms);
+  draw();return;
+ }
+ fill=s.fill;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+// reserve the tallest step-list height, so the frame does not resize between steps
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>
