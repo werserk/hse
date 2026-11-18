@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Starter deck</title>
+<style>/* deck-specific CSS goes here; use theme tokens (var(--brand), var(--muted-foreground), …) */</style>
+</head>
+<body>
+
+<section class="slide title">
+  <h1>Название доклада</h1>
+  <h3>Подзаголовок</h3>
+  <div class="meta">Максим Кирилюк · НИС · 2026-11-19</div>
+  <aside class="notes">Speaker notes: visible only in speaker view (S).</aside>
+</section>
+
+<section class="slide">
+  <h2>Пункты по шагам</h2>
+  <ul>
+    <li>Первый пункт виден сразу</li>
+    <li class="step">Второй появляется по →</li>
+    <li class="step">Третий — по следующему →</li>
+  </ul>
+  <aside class="notes">Each .step is one press of → / clicker.</aside>
+</section>
+
+<section class="slide">
+  <h2>Виджет</h2>
+  <iframe class="widget grow" data-src="widgets/example.html" data-zoom="1.6"></iframe>
+  <aside class="notes">Widgets are single HTML files written with bb inline-vis tokens; the packer inlines them.</aside>
+</section>
+
+<section class="slide">
+  <h2>Формула и две колонки</h2>
+  <div class="cols">
+    <div><p>Стоимость пути:</p><p><code>cost = mismatches + λ · switches</code></p></div>
+    <div class="muted"><p>Правая колонка: пояснение.</p></div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,55 @@
+/* Design tokens shared by the catalogue, decks and widgets.
+   Names follow bb inline-vis, so a widget written in bb chat renders unchanged here.
+   Three candidate styles; the site picks one via <html data-style="…">. */
+:root, [data-style="paper"] {
+  --background: #fbfaf7; --foreground: #1c1b19;
+  --card: #ffffff; --card-foreground: #1c1b19;
+  --muted: #efece5; --muted-foreground: #5d5a53; --subtle-foreground: #8a867d;
+  --surface-recessed: #f3f1ec; --surface-raised: #ffffff;
+  --secondary: #efece5; --secondary-foreground: #1c1b19;
+  --primary: #1c1b19; --primary-foreground: #fbfaf7;
+  --accent: #ebe7de; --accent-foreground: #1c1b19;
+  --border: #dcd8ce; --input: #dcd8ce; --ring: #8c2f2b;
+  --brand: #8c2f2b; --warning: #b07a1a; --success: #2f7a4b; --destructive: #b3261e;
+  --chart-1: #8c2f2b; --chart-2: #2b5b8c; --chart-3: #2f7a4b; --chart-4: #b07a1a; --chart-5: #6b4c9a; --chart-6: #4a4a4a;
+  --radius: 4px;
+  --font-sans: "PT Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "PT Serif", "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", "PT Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-heading: var(--font-serif);
+}
+[data-style="hse"] {
+  --background: #ffffff; --foreground: #0f1b2d;
+  --card: #ffffff; --card-foreground: #0f1b2d;
+  --muted: #eef2f8; --muted-foreground: #4a5a72; --subtle-foreground: #7b8aa1;
+  --surface-recessed: #f4f7fb; --surface-raised: #ffffff;
+  --secondary: #eef2f8; --secondary-foreground: #0f1b2d;
+  --primary: #0f2d69; --primary-foreground: #ffffff;
+  --accent: #e4ebf5; --accent-foreground: #0f1b2d;
+  --border: #d6deea; --input: #d6deea; --ring: #1e5bd8;
+  --brand: #0f2d69; --warning: #c77700; --success: #1f8a5b; --destructive: #c62828;
+  --chart-1: #1e5bd8; --chart-2: #e0592a; --chart-3: #1f8a5b; --chart-4: #c77700; --chart-5: #7b4fc9; --chart-6: #5b6b82;
+  --radius: 8px;
+  --font-sans: "Inter", "PT Sans", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "PT Serif", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-heading: var(--font-sans);
+}
+[data-style="coal"] {
+  --background: #0f0f10; --foreground: #ececec;
+  --card: #151516; --card-foreground: #ececec;
+  --muted: #1c1c1e; --muted-foreground: #a1a1a4; --subtle-foreground: #7d7d80;
+  --surface-recessed: #151516; --surface-raised: #1c1c1e;
+  --secondary: #1c1c1e; --secondary-foreground: #ececec;
+  --primary: #ececec; --primary-foreground: #0f0f10;
+  --accent: #232325; --accent-foreground: #ececec;
+  --border: #2a2a2d; --input: #2a2a2d; --ring: #ff5f2e;
+  --brand: #ff5f2e; --warning: #d4a24c; --success: #4cc38a; --destructive: #ef5350;
+  --chart-1: #ff5f2e; --chart-2: #8b95ff; --chart-3: #4cc38a; --chart-4: #d4a24c; --chart-5: #d17bd8; --chart-6: #9a9a9d;
+  --radius: 6px;
+  --font-sans: "Geist", "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-serif: "PT Serif", Georgia, serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --font-heading: var(--font-sans);
+}
+html { background: var(--background); color: var(--foreground); font-family: var(--font-sans); }

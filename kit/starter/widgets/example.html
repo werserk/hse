@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8">
+<style>
+.w{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:4px}
+.row span{width:28px;height:28px;border-radius:4px;background:var(--muted)}
+.row span.on{background:var(--brand)}
+label{font-size:13px;color:var(--muted-foreground)}
+</style>
+<div class="w">
+  <label>λ = <b id="v">2</b> <input id="l" type="range" min="0" max="8" value="2"></label>
+  <div class="row" id="r"></div>
+  <div style="font-size:13px;color:var(--muted-foreground)">Больше λ — меньше переключений.</div>
+</div>
+<script>
+const r=document.getElementById('r'),l=document.getElementById('l'),v=document.getElementById('v');
+function draw(){v.textContent=l.value;r.innerHTML='';for(let i=0;i<16;i++){const s=document.createElement('span');if(Math.floor(i/(+l.value+1))%2)s.className='on';r.appendChild(s)}}
+l.oninput=draw;draw();
+</script>
