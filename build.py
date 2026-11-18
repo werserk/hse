@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Build hse.werserk.dev.
 
-  python3 build.py site [--out _site] [--pdf] [--style paper]   catalogue + every entry
+  python3 build.py new <course>/<entry> "Title"                 start a material from kit/starter
+  python3 build.py entry SRC_DIR OUT_DIR [--pdf]                 one material as on the site (konspekt + resources)
+  python3 build.py site [--out _site] [--pdf] [--style paper]   catalogue + every material
   python3 build.py deck SRC_DIR OUT_DIR [--pdf] [--style paper]  one deck → offline HTML (+ PDF)
 
 Stdlib only; `markdown` is used for notes entries when installed. PDF needs Chrome/Chromium
@@ -94,7 +96,7 @@ def inline_local(doc, src, style, where, keys=True):
 def copy_media(src, out):
     """Fresh output folder with the entry's media (sources and PDFs are handled separately)."""
     safe_out(src, out); fresh_out(out)
-    shutil.copytree(src, out, ignore=shutil.ignore_patterns("deck.html", "*.md", "entry.json", "*.pdf", ".*"))
+    shutil.copytree(src, out, ignore=shutil.ignore_patterns("deck.html", "*.md", "entry.json", "*.pdf", "site", ".*"))
     (out / MARK).write_text("")
 
 
@@ -136,18 +138,27 @@ def md_to_html(md):
                              extension_configs={"toc": {"slugify": slugify_unicode}})
 
 
-def pack_notes(src, out, style, md_name, title, meta="", back=None, slides=None, pdf=None, name=None):
-    """Konspekt: Markdown (+ HTML, widgets) → one self-contained page, contents on the left like a lecture blog."""
+def link(label, href, dl=False, attrs=""):
+    """dl: False, True (keep the file name) or the name to save as."""
+    d = "" if not dl else " download" if dl is True else f' download="{esc(dl)}"'
+    return f'<a{attrs} href="{esc(href)}"{d}>{esc(label)}</a>'
+
+
+def pack_notes(src, out, style, md_name, title, meta="", back=None, acts=(), name=None, lead=""):
+    """Konspekt, the material's own page: Markdown (+ HTML, widgets) → one self-contained page with contents on the left.
+    acts = [(label, href, download)] resource buttons; without notes.md the page shows `lead` and says the text is pending."""
     src, out = Path(src), Path(out)
-    body = inline_local(md_to_html(read(src / md_name)), src, style, src / md_name, keys=False)
+    if md_name:
+        body = inline_local(md_to_html(read(src / md_name)), src, style, src / md_name, keys=False)
+    else:
+        body = (f'<p class="nt-lead">{esc(lead)}</p>' if lead else "") + '<p class="nt-pending">Текстовый конспект готовится.</p>'
     copy_media(src, out)
     toc = "".join(f'<li class="l{lvl}"><a href="#{hid}">{re.sub(r"<[^>]+>", "", txt)}</a></li>'
                   for lvl, hid, txt in re.findall(r'<h([23]) id="([^"]+)">(.*?)</h\1>', body))
-    acts = (f'<a class="go" href="{esc(slides)}">▶ Презентация</a>' if slides else "") + \
-           (f'<a href="{esc(pdf)}" download>PDF</a>' if pdf else "") + \
-           f'<a href="index.html" download="{esc(name or src.name)}.html">HTML</a>'
+    acts = list(acts) + [("HTML", "index.html", f"{name or src.name}.html")]
+    buttons = "".join(link(label, href, dl, ' class="go"' if label.startswith("▶") else "") for label, href, dl in acts)
     side = ((f'<a class="nt-back" href="{esc(back[0])}">← {esc(back[1])}</a>' if back else "") +
-            f'<div class="nt-title">{esc(title)}</div><div class="nt-act">{acts}</div><ol class="nt-toc">{toc}</ol>')
+            f'<div class="nt-title">{esc(title)}</div><div class="nt-act">{buttons}</div><ol class="nt-toc">{toc}</ol>')
     head = f'<header class="nt-head"><h1>{esc(title)}</h1>' + (f'<p class="nt-meta">{esc(meta)}</p>' if meta else "") + "</header>"
     page_ = f"""<!doctype html><html lang="ru" data-style="{style}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title>
@@ -157,6 +168,27 @@ def pack_notes(src, out, style, md_name, title, meta="", back=None, slides=None,
 <script>{read(KIT / 'notes.js')}</script></body></html>"""
     (out / "index.html").write_text(page_, encoding="utf-8")
     return out / "index.html"
+
+
+FULL_SVG = ('<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6">'
+            '<path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>')
+
+
+def pack_frame(out, style, title, src, back=None, notes=None, links=()):
+    """A resource that is not our deck (a prebuilt site, a PDF/PPTX viewer) under the same header as the decks:
+    back to the course, title, Конспект, fullscreen, downloads. links = [(label, href, download)]."""
+    acts = (f'<a class="dt-notes" href="{esc(notes)}">Конспект</a>' if notes else "") + \
+           f'<button type="button" data-a="full" title="Полный экран">{FULL_SVG}</button>' + \
+           "".join(link(*x) for x in links)
+    top = ((f'<a class="dt-back" href="{esc(back[0])}">← {esc(back[1])}</a>' if back else "") +
+           f'<span class="dt-title">{esc(title)}</span><span class="dt-act">{acts}</span>')
+    (out / "index.html").write_text(f"""<!doctype html><html lang="ru" data-style="{style}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title>
+<style>{read(KIT / 'theme.css')}
+{read(KIT / 'deck.css')}</style></head>
+<body class="deck-body frame"><header class="deck-top">{top}</header>
+<iframe class="fr-view" data-src="{esc(src)}" title="{esc(title)}" allow="fullscreen" allowfullscreen></iframe>
+<script>{read(KIT / 'frame.js')}</script></body></html>""", encoding="utf-8")
 
 
 def find_chrome():
@@ -192,22 +224,20 @@ def figure_slide(page):
 
 
 def make_cover(e, dest):
-    """Card preview: "cover" in entry.json (a file, or a slide number), else the first figure slide / first PDF page."""
-    d, t, cov = e["dir"], e["type"], e.get("cover")
+    """Card preview: "cover" in entry.json (a file, or a slide number), else the presentation's first figure slide,
+    the first page of the document, or the konspekt's first screen."""
+    d, cov = e["dir"], e.get("cover")
     dest.mkdir(parents=True, exist_ok=True)
     if isinstance(cov, str):
         name = "cover" + Path(cov).suffix
         shutil.copy(d / cov, dest / name); return name
-    png = dest / "cover.png"
-    slides = next((p for p in (dest / "slides" / "index.html", dest / "index.html") if p.exists()), None)
-    if t in ("deck", "site", "talk", "notes") and slides:
-        if re.search(r'<section\b[^>]*class="[^"]*\bslide\b', read(slides)):
-            shoot(f"{slides.resolve().as_uri()}?bare#{cov or figure_slide(slides)}", png)
-        else:  # a konspekt without slides: its first screen
-            shoot(slides.resolve().as_uri(), png)
-    elif t == "pdf" and shutil.which("pdftoppm"):
+    png, deck, site, doc = dest / "cover.png", dest / "slides" / "index.html", dest / "slides" / "site" / "index.html", e.get("file")
+    if site.exists(): shoot(f"{site.resolve().as_uri()}#{cov or figure_slide(site)}", png)
+    elif deck.exists(): shoot(f"{deck.resolve().as_uri()}?bare#{cov or figure_slide(deck)}", png)
+    elif doc and doc.lower().endswith(".pdf") and shutil.which("pdftoppm"):
         subprocess.run(["pdftoppm", "-png", "-singlefile", "-f", "1", "-l", "1", "-scale-to-x", "640", "-scale-to-y", "-1",
-                        str(d / e["file"]), str(dest / "cover")], check=False)
+                        str(d / doc), str(dest / "cover")], check=False)
+    elif (dest / "index.html").exists(): shoot((dest / "index.html").resolve().as_uri(), png)
     return png.name if png.exists() else None
 
 
@@ -221,7 +251,7 @@ def load_content():
         for edir in sorted(p for p in cdir.iterdir() if (p / "entry.json").exists()):
             e = json.loads(read(edir / "entry.json")); e["slug"] = edir.name; e["dir"] = edir; e["course"] = c["slug"]
             if e.get("status") != "planned":
-                e["href"] = e["url"] if e["type"] == "link" else f"/{c['slug']}/{edir.name}/"
+                e["href"] = e["url"] if e.get("type") == "link" else f"/{c['slug']}/{edir.name}/"
             c["entries"].append(e)
         c["entries"].sort(key=lambda e: e.get("date", ""), reverse=True)
         courses.append(c)
@@ -241,7 +271,7 @@ def card(e):
     cov = f'<img src="/{esc(e["course"])}/{esc(e["slug"])}/{esc(e["cover"])}" alt="" loading="lazy">' if e.get("cover_file") else ""
     inner = f'<span class="cv">{cov}</span><span class="t">{esc(e["title"])}</span>'
     if not e.get("href"): return f'<div class="card soon" title="Скоро">{inner}</div>'
-    ext = ' target="_blank" rel="noopener"' if e["type"] == "link" else ""
+    ext = ' target="_blank" rel="noopener"' if e.get("type") == "link" else ""
     return f'<a class="card" href="{esc(e["href"])}"{ext}>{inner}</a>'
 
 
@@ -255,51 +285,46 @@ def section(c, heading="h2"):
             f'{info(c.get("full", ""))}</{heading}><div class="cards">{cards}</div></section>')
 
 
-def viewer(cfg, c, e, inner, style, downloads=()):
-    dl = "".join(f'<a href="{esc(f)}" download>{esc(label)}</a>' for label, f in downloads)
-    bar = (f'<header class="bar"><a href="/{esc(c["slug"])}/" title="{esc(c["title"])}">← {esc(c["title"])}</a>'
-           f'<span class="bt">{esc(e["title"])}</span><span class="dl">{dl}</span></header>')
-    return page(cfg, e["title"], bar + f'<div class="view">{inner}</div>', style, "viewer")
-
-
 def build_entry(cfg, c, e, dest, style, pdf):
-    """Every material gets /<course>/<slug>/: the konspekt (or the slides when there is none), a site, or a PDF/PPTX viewer."""
-    if not e.get("href") or e["type"] == "link": return
-    d, t = e["dir"], e["type"]
-    if t in ("deck", "notes", "talk"):  # konspekt (notes.md) and/or slides (deck.html); the konspekt comes first
-        md = next((n for n in (e.get("file"), "notes.md", "index.md") if n and n.endswith(".md") and (d / n).is_file()), None)
-        has_deck = (d / "deck.html").is_file()
-        if not (md or has_deck): sys.exit(f"{d}: needs notes.md (konspekt) or deck.html (slides)")
-        pdf_name = f"{e['slug']}.pdf"
-        committed = (d / pdf_name).exists()  # a locally printed PDF wins over a CI print
-        course = (f"/{c['slug']}/" if c["slug"] else "/", c["title"])
-        if md:
-            meta = " · ".join(x for x in [e.get("date", ""), e.get("event", "")] if x)
-            has_pdf = has_deck and (pdf or committed)
-            pack_notes(d, dest, style, md, e["title"], meta, course, slides="slides/index.html" if has_deck else None,
-                       pdf=f"slides/{pdf_name}" if has_pdf else None, name=e["slug"])
-        if has_deck:
-            ddest = dest / "slides" if md else dest
-            pack_deck(d, ddest, style, pdf=pdf and not committed, name=e["slug"], has_pdf=committed,
-                      title=e["title"], back=course, notes="../index.html" if md else None)
-            for p in d.glob("*.pdf"): shutil.copy(p, ddest)
-        return
-    if t == "site":
-        shutil.copytree(d / "site", dest, dirs_exist_ok=True)
-        for p in d.glob("*.pdf"): shutil.copy(p, dest)
-        return
-    shutil.copytree(d, dest, ignore=shutil.ignore_patterns("entry.json", ".*"), dirs_exist_ok=True)
-    if t == "pdf":
-        f = e["file"]
-        html_ = viewer(cfg, c, e, f'<iframe class="doc" src="{esc(f)}" title="{esc(e["title"])}"></iframe>', style, [("Скачать PDF", f)])
-    elif t == "pptx":
-        f = e["file"]
-        src = urllib.parse.quote(f"https://{cfg['domain']}/{e['course']}/{e['slug']}/{f}", safe="")
-        html_ = viewer(cfg, c, e, f'<iframe class="doc" src="https://view.officeapps.live.com/op/embed.aspx?src={src}" title="{esc(e["title"])}"></iframe>',
-                       style, [("Скачать PPTX", f)])
-    else:
-        sys.exit(f"{d}: unknown type {t}")
-    (dest / "index.html").write_text(html_, encoding="utf-8")
+    """Every material: the konspekt at /<course>/<slug>/ (its own page, written first) plus resources, each under
+    the shared header with «Конспект»: the presentation at slides/ (deck.html, or a prebuilt site/), a PDF/PPTX
+    viewer at doc/ ("file" in entry.json), downloads ("downloads" in entry.json, and committed *.pdf)."""
+    if not e.get("href") or e.get("type") == "link": return
+    d, slug = e["dir"], e["slug"]
+    md = next((n for n in (e.get("notes"), "notes.md") if n and (d / n).is_file()), None)
+    deck, site, doc = (d / "deck.html").is_file(), (d / "site" / "index.html").is_file(), e.get("file")
+    if deck and site: sys.exit(f"{d}: one presentation per material: deck.html or site/, not both")
+    if doc and not (d / doc).is_file(): sys.exit(f"{d}: file not found: {doc}")
+    if not md: print(f"warning: {d.relative_to(ROOT) if d.is_relative_to(ROOT) else d}: no notes.md, the konspekt page shows a placeholder")
+    course = (f"/{c['slug']}/" if c["slug"] else "/", c["title"])
+    dpdf = f"{slug}.pdf"
+    deck_pdf = deck and (pdf or (d / dpdf).exists())
+    files = dict((e.get("downloads") or {}).items())  # label → file in the entry folder
+    files.update({p.name: p.name for p in sorted(d.glob("*.pdf")) if p.name not in files.values() and p.name != doc
+                  and not (deck_pdf and p.name == dpdf)})
+    for f in files.values():
+        if not (d / f).is_file(): sys.exit(f"{d}: download not found: {f}")
+    acts = [("▶ Презентация", "slides/index.html", False)] if deck or site else []
+    if doc: acts.append(("Документ", "doc/index.html", False))
+    if deck_pdf: acts.append(("PDF", f"slides/{dpdf}", True))
+    acts += [(label, f, True) for label, f in files.items()]
+    meta = " · ".join(x for x in [e.get("date", ""), e.get("event", "")] if x)
+    pack_notes(d, dest, style, md, e["title"], meta, course, acts, slug, lead=e.get("summary", ""))
+    for f in set(files.values()) | ({doc} if doc else set()): shutil.copy(d / f, dest)
+    up = [(label, f"../{f}", True) for label, f in files.items()]
+    if deck:
+        committed = (d / dpdf).exists()  # a locally printed PDF wins over a CI print
+        pack_deck(d, dest / "slides", style, pdf=pdf and not committed, name=slug, has_pdf=committed,
+                  title=e["title"], back=course, notes="../index.html")
+        if committed: shutil.copy(d / dpdf, dest / "slides")
+    if site:
+        shutil.copytree(d / "site", dest / "slides" / "site")
+        pack_frame(dest / "slides", style, e["title"], "site/index.html", course, "../index.html", up)
+    if doc:
+        (dest / "doc").mkdir()
+        if doc.lower().endswith(".pdf"): src = f"../{doc}"
+        else: src = "https://view.officeapps.live.com/op/embed.aspx?src=" + urllib.parse.quote(f"https://{cfg['domain']}/{e['course']}/{slug}/{doc}", safe="")
+        pack_frame(dest / "doc", style, e["title"], src, course, "../index.html", [("Скачать", f"../{doc}", True)])
 
 
 def build_site(out, style=None, pdf=False):
@@ -327,6 +352,18 @@ def build_site(out, style=None, pdf=False):
     print("site", out, sum(len(c["entries"]) for c in courses), "entries")
 
 
+def new_entry(path, title, date="", event=""):
+    """content/<course>/<entry>/ from kit/starter: konspekt, deck and a widget to replace, entry.json with the title."""
+    dest = CONTENT / path
+    if len(Path(path).parts) != 2: sys.exit("path must be <course>/<entry>, e.g. genomics/loter")
+    if not (dest.parent / "course.json").exists(): sys.exit(f"{dest.parent}: no course.json; create the course first")
+    if dest.exists(): sys.exit(f"{dest} exists")
+    shutil.copytree(KIT / "starter", dest)
+    e = {"title": title, "date": date, "event": event, "summary": ""}
+    (dest / "entry.json").write_text(json.dumps({k: v for k, v in e.items() if v or k == "summary"}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(dest, "\nnext: write notes.md (konspekt), then deck.html; check with: uv run --with markdown python build.py entry", dest, "/tmp/" + dest.name)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -334,12 +371,15 @@ def main():
     d = sub.add_parser("deck"); d.add_argument("src"); d.add_argument("out"); d.add_argument("--pdf", action="store_true"); d.add_argument("--style", default="paper")
     m = sub.add_parser("entry", help="konspekt + slides of one folder, as on the site"); m.add_argument("src"); m.add_argument("out")
     m.add_argument("--pdf", action="store_true"); m.add_argument("--style", default="paper")
+    n = sub.add_parser("new", help="start a material from kit/starter"); n.add_argument("path", help="<course>/<entry>"); n.add_argument("title")
+    n.add_argument("--date", default=""); n.add_argument("--event", default="")
     a = ap.parse_args()
-    if a.cmd == "site": build_site(a.out, a.style, a.pdf)
+    if a.cmd == "new": new_entry(a.path, a.title, a.date, a.event)
+    elif a.cmd == "site": build_site(a.out, a.style, a.pdf)
     elif a.cmd == "deck": print(pack_deck(a.src, a.out, a.style, a.pdf, home="/"))
     else:
         src = Path(a.src); e = json.loads(read(src / "entry.json")) if (src / "entry.json").exists() else {}
-        e = {"title": src.name, "type": "talk", **e, "dir": src, "slug": src.name, "course": "", "href": "."}
+        e = {"title": src.name, "type": "", **e, "dir": src, "slug": src.name, "course": "", "href": "."}
         build_entry(site_cfg(), {"slug": "", "title": "Материалы"}, e, Path(a.out), a.style, a.pdf); print(Path(a.out) / "index.html")
 
 

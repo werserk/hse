@@ -12,45 +12,41 @@ site.json                          site title, domain, style (paper | hse | coal
 content/<course>/course.json       {"title", "full" (shown in the ? badge), "order"}
 content/<course>/<entry>/entry.json
 build.py                           site + deck builder (stdlib; Chrome for PDF)
-kit/                               theme.css (tokens), deck.css/js (slides), notes.css/js (konspekt), starter/
+kit/                               theme.css (tokens), deck.css/js (slides), frame.js (header over a site/document),
+                                   notes.css/js (konspekt), starter/ (template for `build.py new`)
+AGENTS.md                          how to make a material (workflow for agents)
 assets/                            catalogue CSS/JS
 ```
 
 URL of an entry: `https://hse.werserk.dev/<course>/<entry>/`.
 
-## entry.json
+## Materials
 
-The home page shows one section per subject (`course.json`) with a card per material: a preview and
-the title, nothing else. A card opens the material page `/<course>/<entry>/`.
+How to make one, the folder layout and the workflow: `AGENTS.md`. In short, every material is a konspekt
+(`notes.md`, its page) plus resources under one header with «Конспект»: the presentation at `slides/`
+(`deck.html`, or a prebuilt `site/` in a frame), a document at `doc/` (`"file"`), and downloads.
+
+The home page shows one section per subject (`course.json`) with a card per material: a preview and the
+title, nothing else.
 
 ```json
-{"title": "…", "type": "talk", "date": "2026-11-19", "event": "НИС АДНЖ", "status": "planned"}
+{"title": "…", "date": "2026-11-19", "event": "НИС АДНЖ", "summary": "One sentence.",
+ "downloads": {"Заметки докладчика (PDF)": "talk-notes.pdf"}, "cover": 3}
 ```
 
-| type | folder holds | material page |
-|---|---|---|
-| `talk`, `deck`, `notes` | `notes.md` (konspekt) and/or `deck.html` (slides), `widgets/`, media, optional `<entry>.pdf` | the konspekt; slides at `slides/` (button «▶ Презентация»). Without a konspekt the slides are the page |
-| `site` | `site/` (prebuilt, has `index.html`), optional `*.pdf` | the site itself, copied as is |
-| `pdf` | the file named in `"file"` | viewer with a download button |
-| `pptx` | the file named in `"file"` | Office Online viewer + download (public URL needed) |
-| `link` | — (`"url"` in entry.json) | the external URL, new tab |
+Card preview: the build screenshots the presentation's first slide with a figure, the document's first page, or
+the konspekt's first screen (needs Chrome and `pdftoppm`). Override it with `"cover": "cover.png"` (a file in the
+entry folder) or `"cover": 3` (slide number).
 
-`"status": "planned"` shows a dashed card and builds nothing. Remove it to publish.
+## Konspekt
 
-Card preview: the build screenshots the first slide with a figure, the konspekt's first screen, or the
-first PDF page (needs Chrome and `pdftoppm`). Override with `"cover": "cover.png"` (a file in the entry
-folder) or `"cover": 3` (slide number).
+`notes.md` is Markdown with HTML allowed:
+- `##`/`###` build the contents on the left;
+- `<iframe class="widget" data-src="widgets/x.html">` embeds a widget (arrow keys stay in the widget);
+- `<figure class="right" markdown>` floats a figure beside the text;
+- `<details class="answer" markdown>` hides an answer.
 
-## Konspekt first, slides second
-
-The konspekt is the primary text: its own sections, prose, figures and widgets, written first. The
-slides are a separate, shorter `deck.html` made from it afterwards; neither is generated from the other.
-They share `widgets/`. See `kit/starter/` (`notes.md` + `deck.html`).
-
-`notes.md` is Markdown with HTML allowed: `##`/`###` build the contents on the left;
-`<iframe class="widget" data-src="widgets/x.html">` embeds a widget (arrow keys stay in the widget);
-`<figure class="right" markdown>` floats a figure beside the text; `<details class="answer" markdown>`
-hides an answer. The page is one self-contained file (also the offline copy).
+The page is one self-contained file (also the offline copy). See `kit/starter/notes.md`.
 
 ## Decks
 

@@ -57,7 +57,10 @@ body.toc-on .deck-toc { display: block; }
 .deck-toc button { display: block; width: 100%; text-align: left; padding: 7px 10px; border: 0; background: none; color: var(--foreground); font: inherit; border-radius: var(--radius); cursor: pointer; }
 .deck-toc button:hover { background: var(--surface-recessed); }
 .deck-toc button.on { color: var(--brand); font-weight: 600; }
-@media (max-width: 720px) { .dt-title, .dt-act a, .dt-act [data-a="speaker"] { display: none; } }
+/* Frame: a prebuilt site or a document under the same header */
+body.frame { overflow: hidden; }
+.fr-view { position: fixed; left: 0; top: 46px; width: 100%; height: calc(100% - 46px); border: 0; display: block; background: var(--background); }
+@media (max-width: 720px) { .dt-title, .dt-act a:not(.dt-notes), .dt-act [data-a="speaker"] { display: none; } }
 
 /* Speaker view */
 body.speaker { overflow: auto; }

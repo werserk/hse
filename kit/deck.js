@@ -59,7 +59,7 @@
     const nav = h('span', 'dt-nav'); counter = btn('toc', '', 'Список слайдов (O)'); counter.className = 'dt-n';
     nav.append(btn('prev', '‹', 'Назад (←)'), counter, btn('next', '›', 'Вперёд (→)'));
     const act = h('span', 'dt-act');
-    if (notes) act.append(link(notes, 'Конспект'));
+    if (notes) act.append(Object.assign(link(notes, 'Конспект'), { className: 'dt-notes' }));
     const fsb = btn('full', '', 'Полный экран (F)');
     fsb.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>';
     act.append(btn('speaker', 'Докладчик', 'Режим докладчика (S)'), fsb);

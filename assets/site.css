@@ -1,4 +1,4 @@
-/* Catalogue: subject sections with material cards; material viewer page. Tokens from theme.css. */
+/* Catalogue: subject sections with material cards; material pages are built from kit/. Tokens from theme.css. */
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--background); color: var(--foreground); font: 16px/1.5 var(--font-sans); }
 a { color: var(--brand); text-decoration: none; }
@@ -43,20 +43,4 @@ a.card:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .empty { color: var(--subtle-foreground); font-style: italic; }
 .foot { padding-bottom: 32px; font-size: 13px; color: var(--subtle-foreground); }
 
-/* Material viewer */
-body.viewer { height: 100vh; display: flex; flex-direction: column; }
-.bar { display: flex; align-items: center; gap: 16px; padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 14px; flex: none; }
-.bar > a { color: var(--muted-foreground); white-space: nowrap; }
-.bar > a:hover { color: var(--foreground); }
-.bt { font: 600 17px var(--font-heading); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dl { display: flex; gap: 8px; }
-.dl a { border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 12px; white-space: nowrap; }
-.dl a:hover { border-color: var(--brand); }
-.view { flex: 1; min-height: 0; overflow: auto; }
-iframe.doc { width: 100%; height: 100%; border: 0; display: block; }
-.prose { max-width: 760px; margin: 0 auto; padding: 32px 28px 64px; font: 18px/1.65 var(--font-serif); }
-.prose h1, .prose h2, .prose h3 { font-family: var(--font-heading); line-height: 1.25; }
-.prose code { font-family: var(--font-mono); font-size: .85em; background: var(--surface-recessed); padding: 1px 4px; border-radius: 3px; }
-.prose pre { background: var(--surface-recessed); padding: 12px 16px; border-radius: var(--radius); overflow: auto; font-size: 14px; }
-.prose table { border-collapse: collapse; } .prose td, .prose th { border: 1px solid var(--border); padding: 4px 10px; }
-@media (max-width: 560px) { .hero h1 { font-size: 28px; } .hero, main, .foot { padding: 0 18px; } .hero { padding-top: 32px; } .bar > a { display: none; } }
+@media (max-width: 560px) { .hero h1 { font-size: 28px; } .hero, main, .foot { padding: 0 18px; } .hero { padding-top: 32px; } }
