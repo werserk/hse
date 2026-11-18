@@ -30,16 +30,34 @@ body.deck-body { overflow: hidden; background: var(--background); }
 iframe.widget { width: 100%; border: 0; display: block; background: transparent; min-height: 120px; }
 
 .deck-bar { position: fixed; left: 0; bottom: 0; height: 3px; background: var(--brand); transition: width .2s; }
-.deck-ui {
-  position: fixed; right: 12px; bottom: 10px; display: flex; gap: 4px; align-items: center;
-  font: 13px var(--font-sans); color: var(--muted-foreground); opacity: 0; transition: opacity .25s;
+/* Header: back, title, slide list, actions. In fullscreen it hides and returns when the mouse is at the top. */
+.deck-top {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 10; display: flex; align-items: center; gap: 16px; height: 46px;
+  padding: 0 16px; box-sizing: border-box; border-bottom: 1px solid var(--border); background: var(--background);
+  font: 14px/1 var(--font-sans); color: var(--muted-foreground); transition: transform .2s;
 }
-body.ui-on .deck-ui, .deck-ui:hover, .deck-ui:focus-within { opacity: 1; }
-.deck-ui a, .deck-ui button {
-  font: inherit; color: inherit; background: var(--secondary); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 3px 9px; cursor: pointer; text-decoration: none;
+body.fs .deck-top { transform: translateY(-100%); }
+body.fs.top-on .deck-top, body.fs.toc-on .deck-top { transform: none; }
+.deck-top a, .deck-top button { font: inherit; color: inherit; text-decoration: none; white-space: nowrap; }
+.deck-top svg { display: block; }
+.deck-top button { background: none; border: 0; padding: 6px 8px; border-radius: var(--radius); cursor: pointer; }
+.deck-top a:hover, .deck-top button:hover { color: var(--foreground); background: var(--surface-recessed); }
+.dt-back { padding: 6px 4px; }
+.dt-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 16px/1.2 var(--font-heading); color: var(--foreground); }
+.dt-nav, .dt-act { display: flex; align-items: center; gap: 2px; }
+.dt-act a { padding: 6px 8px; border-radius: var(--radius); }
+.dt-nav .dt-n { font-family: var(--font-mono); min-width: 74px; border: 1px solid var(--border); }
+.deck-toc {
+  position: fixed; top: 52px; left: 50%; transform: translateX(-50%); z-index: 11; display: none;
+  width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 72px); overflow: auto; margin: 0; padding: 6px; list-style: none;
+  background: var(--popover, var(--background)); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, .35); font: 15px/1.35 var(--font-sans);
 }
-.deck-ui a:hover, .deck-ui button:hover { color: var(--foreground); }
+body.toc-on .deck-toc { display: block; }
+.deck-toc button { display: block; width: 100%; text-align: left; padding: 7px 10px; border: 0; background: none; color: var(--foreground); font: inherit; border-radius: var(--radius); cursor: pointer; }
+.deck-toc button:hover { background: var(--surface-recessed); }
+.deck-toc button.on { color: var(--brand); font-weight: 600; }
+@media (max-width: 720px) { .dt-title, .dt-act a, .dt-act [data-a="speaker"] { display: none; } }
 
 /* Speaker view */
 body.speaker { overflow: auto; }
@@ -53,44 +71,12 @@ body.speaker { overflow: auto; }
 .spk-notes { flex: 1; overflow: auto; font-size: 20px; line-height: 1.5; background: var(--surface-recessed); border-radius: var(--radius); padding: 14px 18px; }
 .spk .deck-stage { left: 0; top: 0; }
 
-/* Reading view (?read, kit/read.js): contents on the left, slides as figures, notes as text */
-body.read-body { height: auto; overflow: auto; background: var(--background); color: var(--foreground); font: 19px/1.65 var(--font-serif); }
-.read-side { position: fixed; inset: 0 auto 0 0; width: 270px; overflow: auto; box-sizing: border-box; padding: 28px 20px; border-right: 1px solid var(--border); font: 14px/1.4 var(--font-sans); }
-.read-side a { text-decoration: none; }
-.read-home { color: var(--muted-foreground); }
-.read-title { font: 600 18px/1.3 var(--font-heading); margin: 18px 0 14px; }
-.read-act { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
-.read-act a { border: 1px solid var(--border); border-radius: var(--radius); padding: 3px 10px; color: var(--foreground); font-size: 13px; }
-.read-act a.read-go { background: var(--brand); border-color: var(--brand); color: #fff; }
-.read-toc { list-style: none; margin: 0; padding: 0; }
-.read-toc a { display: block; padding: 5px 10px; border-left: 2px solid var(--border); color: var(--muted-foreground); }
-.read-toc a:hover { color: var(--foreground); }
-.read-toc a.on { border-left-color: var(--brand); color: var(--foreground); background: var(--surface-recessed); }
-.read-main { margin-left: 270px; max-width: 880px; padding: 56px 64px 120px; box-sizing: border-box; }
-.read-head h1 { font: 600 46px/1.12 var(--font-heading); margin: 0 0 10px; }
-.read-head h3 { font: 400 23px/1.35 var(--font-heading); color: var(--muted-foreground); margin: 0 0 14px; }
-.read-head .meta { font: 14px/1.5 var(--font-sans); color: var(--subtle-foreground); }
-.read-head .notes, .read-hidden, .read-fig .pg { display: none; }
-.read-sec { margin-top: 64px; scroll-margin-top: 24px; }
-.read-sec > h2 { font: 600 29px/1.25 var(--font-heading); margin: 0 0 18px; }
-.read-fig { position: relative; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); }
-.read-fig .slide { display: flex; inset: auto; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; }
-.read-fig .slide .step { visibility: visible; }
-.read-text { margin-top: 18px; }
-.read-cue { color: var(--muted-foreground); font-style: italic; }
-@media (max-width: 900px) {
-  .read-side { position: static; width: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: 16px; }
-  .read-toc { display: none; } .read-act { margin: 0; }
-  .read-main { margin-left: 0; padding: 28px 16px 80px; }
-  .read-head h1 { font-size: 32px; }
-}
-
 @media print {
   @page { size: 1280px 720px; margin: 0; }
   html, body.deck-body { height: auto; overflow: visible; }
   .deck-stage { position: static; transform: none !important; width: auto; height: auto; }
   .slide { display: flex !important; position: relative; width: 1280px; height: 720px; break-after: page; page-break-after: always; }
   .slide .step { visibility: visible; }
-  .deck-ui, .deck-bar { display: none; }
+  .deck-top, .deck-toc, .deck-bar { display: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

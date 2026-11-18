@@ -1,12 +1,11 @@
 // Deck engine: keys/clicker/swipe navigation, .step reveals, #n hash, fit-to-window,
-// speaker view (S) synced by postMessage (works from file:// too), fullscreen (F), downloads.
+// header with slide list (O), speaker view (S) synced by postMessage (works from file:// too), fullscreen (F), downloads.
 (() => {
-  if (document.body.dataset.mode === 'read') return;  // reading view (read.js) owns the page
   const body = document.body;
   body.classList.add('deck-body');
   const slides = [...document.querySelectorAll('section.slide')];
   const meta = (n) => document.querySelector(`meta[name="deck:${n}"]`)?.content;
-  const speaker = new URLSearchParams(location.search).has('speaker');
+  const params = new URLSearchParams(location.search), speaker = params.has('speaker'), bare = params.has('bare');
   let cur = 0, step = 0, peer = null;
 
   const stage = document.createElement('div');
@@ -32,6 +31,7 @@
     slides.forEach((s, k) => s.classList.toggle('on', k === cur));
     steps(cur).forEach((el, k) => el.classList.toggle('shown', k < step));
     if (bar) bar.style.width = `${(100 * (cur + 1)) / slides.length}%`;
+    if (counter) { counter.textContent = `${cur + 1} / ${slides.length}`; toc.querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === cur)); }
     if (location.hash !== `#${cur + 1}`) history.replaceState(null, '', `#${cur + 1}`);
     if (speaker) renderSpeaker();
   }
@@ -44,32 +44,49 @@
   const next = () => (step < steps(cur).length ? go(cur, step + 1) : cur < slides.length - 1 && go(cur + 1, 0));
   const prev = () => (step > 0 ? go(cur, step - 1) : cur > 0 && go(cur - 1, steps(cur - 1).length));
 
-  let bar = null, nextStage = null, notesEl = null, clockEl = null, t0 = null;
+  let bar = null, nextStage = null, notesEl = null, clockEl = null, t0 = null, counter = null, toc = null;
+  const titleOf = (s, i) => (s.querySelector('h1, h2')?.textContent || `Слайд ${i + 1}`).replace(/\s+/g, ' ').trim();
+  const h = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
   if (!speaker) {
-    body.appendChild(stage);
-    bar = document.createElement('div'); bar.className = 'deck-bar'; body.appendChild(bar);
-    const ui = document.createElement('nav'); ui.className = 'deck-ui';
-    const home = meta('home'), pdf = meta('pdf');
-    ui.innerHTML =
-      (home ? `<a href="${home}" title="Каталог">⌂</a>` : '') +
-      `<button data-a="prev" title="Назад (←)">‹</button><button data-a="next" title="Вперёд (→)">›</button>` +
-      `<button data-a="read" title="Текст доклада с иллюстрациями">Текст</button>` +
-      `<button data-a="speaker" title="Режим докладчика (S)">S</button><button data-a="full" title="Полный экран (F)">⛶</button>` +
-      (pdf ? `<a href="${pdf}" download title="Скачать PDF">PDF</a>` : '') +
-      `<a href="${location.pathname.split('/').pop() || 'index.html'}" download="${meta('file') || 'deck.html'}" title="Скачать офлайн-HTML">HTML</a>`;
-    ui.addEventListener('click', (e) => {
-      const a = e.target.closest('button')?.dataset.a;
-      if (a === 'prev') prev(); else if (a === 'next') next();
+    // Header: back to the course, title, slide list, actions. Hidden in fullscreen; there it shows when the mouse is at the top.
+    const top = h('header', 'deck-top'), back = meta('back'), notes = meta('notes'), pdf = meta('pdf');
+    const btn = (a, text, title) => { const b = Object.assign(h('button', '', text), { title, type: 'button' }); b.dataset.a = a; return b; };
+    const link = (href, text, dl) => { const x = h('a', '', text); x.href = href; if (dl) x.download = dl; return x; };
+    if (back) top.append(link(back, `← ${meta('back-label') || 'Материалы'}`));
+    top.lastChild?.classList.add('dt-back');
+    top.append(h('span', 'dt-title', meta('title') || document.title));
+    const nav = h('span', 'dt-nav'); counter = btn('toc', '', 'Список слайдов (O)'); counter.className = 'dt-n';
+    nav.append(btn('prev', '‹', 'Назад (←)'), counter, btn('next', '›', 'Вперёд (→)'));
+    const act = h('span', 'dt-act');
+    if (notes) act.append(link(notes, 'Конспект'));
+    const fsb = btn('full', '', 'Полный экран (F)');
+    fsb.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>';
+    act.append(btn('speaker', 'Докладчик', 'Режим докладчика (S)'), fsb);
+    if (pdf) act.append(link(pdf, 'PDF', pdf));
+    act.append(link(location.pathname.split('/').pop() || 'index.html', 'HTML', meta('file') || 'deck.html'));
+    top.append(nav, act);
+    toc = h('ol', 'deck-toc');
+    slides.forEach((s, i) => { const li = h('li'); li.append(btn('go', `${i + 1}. ${titleOf(s, i)}`, '')); li.firstChild.dataset.i = i; toc.append(li); });
+    bar = h('div', 'deck-bar');
+    body.append(top, toc, stage, bar);
+    addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-a]');
+      if (!b) { if (!e.target.closest('.deck-toc')) body.classList.remove('toc-on'); return; }
+      const a = b.dataset.a;
+      if (a === 'prev') prev(); else if (a === 'next') next(); else if (a === 'toc') toggleToc();
+      else if (a === 'go') { go(+b.dataset.i); toggleToc(false); }
       else if (a === 'speaker') openSpeaker(); else if (a === 'full') full();
-      else if (a === 'read') location.href = `${location.pathname}?read#${cur + 1}`;
+      b.blur();
     });
-    body.appendChild(ui);
     const doFit = () => {
-      const k = Math.min(innerWidth / 1280, innerHeight / 720);
+      const fs = !!document.fullscreenElement || bare;  // ?bare: no header (card previews, embedding)
+      body.classList.toggle('fs', fs);
+      const th = fs ? 0 : top.offsetHeight, k = Math.min(innerWidth / 1280, (innerHeight - th) / 720);
+      stage.style.top = `${th + (innerHeight - th) / 2}px`;
       stage.style.transform = `translate(-50%,-50%) scale(${k})`;
     };
-    addEventListener('resize', doFit); doFit();
-    let idle; addEventListener('mousemove', () => { body.classList.add('ui-on'); clearTimeout(idle); idle = setTimeout(() => body.classList.remove('ui-on'), 1800); });
+    addEventListener('resize', doFit); addEventListener('fullscreenchange', doFit); doFit();
+    addEventListener('mousemove', (e) => body.classList.toggle('top-on', e.clientY < 56 || !!e.target.closest?.('.deck-top, .deck-toc')));
   } else {
     body.classList.add('speaker');
     const root = document.createElement('div'); root.className = 'spk';
@@ -116,6 +133,11 @@
     const w = window.open(`${location.pathname}?speaker#${cur + 1}`, 'deck-speaker', 'width=1200,height=760');
     if (w) peer = w;
   }
+  function toggleToc(on) {
+    if (!toc) return;
+    body.classList.toggle('toc-on', on);
+    if (body.classList.contains('toc-on')) toc.querySelector('.on')?.scrollIntoView({ block: 'nearest' });
+  }
   function full() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); }
 
   // Navigation keys; widgets forward theirs (PageUp/PageDown always, so a clicker keeps working after a click in a widget).
@@ -125,6 +147,8 @@
     else if (k === 'Home') go(0); else if (k === 'End') go(slides.length - 1);
     else if (k === 'f' || k === 'F' || k === 'а' || k === 'А') full();
     else if ((k === 's' || k === 'S' || k === 'ы' || k === 'Ы') && !speaker) openSpeaker();
+    else if (k === 'o' || k === 'O' || k === 'щ' || k === 'Щ') toggleToc();
+    else if (k === 'Escape' && body.classList.contains('toc-on')) toggleToc(false);
     else return false;
     return true;
   }
