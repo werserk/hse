@@ -1,0 +1,40 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;row-gap:16px;font-family:var(--font-sans);align-items:start}
+.blk{position:relative}
+.t{font-size:14px;font-weight:600;margin:0 0 6px 54px}
+.r{display:flex;align-items:center;gap:10px;margin:3px 0}
+.l{width:44px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
+.s{display:flex;gap:3px;font-family:var(--font-mono);font-size:13px}
+.s span{box-sizing:border-box;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.idx span{height:14px;font-size:10px;color:var(--subtle-foreground)}
+.h span{background:var(--muted);font-weight:600}
+.p span{font-size:11px;border:1px dashed var(--border)}
+.A{background:color-mix(in srgb,var(--chart-1) 28%,transparent)}
+.B{background:color-mix(in srgb,var(--chart-2) 28%,transparent)}
+.s span.x{outline:2px solid var(--destructive);outline-offset:-2px}
+.vl{position:absolute;width:2px;background:var(--warning);border-radius:1px}
+.n{font-size:13px;line-height:1.6;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px;align-self:stretch}
+.n b{color:var(--foreground)}
+.kx,.kl{display:inline-block;vertical-align:-2px;margin-right:6px}.kx{width:12px;height:12px;border:2px solid var(--destructive);border-radius:3px;box-sizing:border-box}.kl{width:2px;height:13px;background:var(--warning);margin:0 11px 0 5px}
+.c{margin-top:6px;font:600 14px var(--font-mono);color:var(--foreground)}
+</style>
+<div class="g" id="g"></div>
+<script>
+const H={A1:'0010001000',A2:'0100000010',B1:'1111101111',B2:'1011111101'},h='0011101010',P=10;
+const paths=[['A1','A1','B1','B1','B1','B1','B1','A2','A2','A2'],Array(P).fill('A1')];
+const R=(l,cls,f)=>`<div class="r"><div class="l">${l}</div><div class="s ${cls}">${Array.from({length:P},(_,j)=>f(j)).join('')}</div></div>`;
+let html='';
+paths.forEach((p,k)=>{
+ const mm=p.filter((r,j)=>H[r][j]!=h[j]).length,sw=p.filter((r,j)=>j&&r!=p[j-1]).length;
+ html+=`<div class="blk"><div class="t">Путь ${k+1}</div>`+
+  (k==0?R('',`idx`,j=>`<span>${j+1}</span>`):'')+
+  R('h','h',j=>`<span>${h[j]}</span>`)+
+  R('s','p',j=>`<span>${p[j]}</span>`)+
+  R('копия','',j=>`<span class="${p[j][0]} ${H[p[j]][j]!=h[j]?'x':''}">${H[p[j]][j]}</span>`)+`</div>`+
+  `<div class="n"><span class="kx"></span>Несовпадений: <b>${mm}</b><br><span class="kl"></span>Переключений: <b>${sw}</b><div class="c">C = ${mm} + ${sw}·λ</div></div>`;
+});
+const g=document.getElementById('g');g.innerHTML=html;
+// one continuous line per switch, across the block's rows
+g.querySelectorAll('.blk').forEach((b,k)=>{const p=paths[k],rows=[...b.querySelectorAll('.s:not(.idx)')],last=rows[rows.length-1],t=rows[0].offsetTop-3,bt=last.offsetTop+last.offsetHeight+3;
+ for(let j=1;j<P;j++)if(p[j]!=p[j-1])b.insertAdjacentHTML('beforeend',`<div class="vl" style="left:${rows[0].children[j].offsetLeft-2.5}px;top:${t}px;height:${bt-t}px"></div>`)});
+</script>

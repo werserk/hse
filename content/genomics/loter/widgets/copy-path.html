@@ -19,8 +19,8 @@
 .p span:empty,.a span:empty{border:1px dashed var(--border);background:transparent}
 .a span{color:var(--background);font-weight:600}
 .s span.cur{outline:2px solid var(--foreground);outline-offset:-2px}
-.s span{position:relative}
-.s span.sw::before{content:'';position:absolute;left:-3px;top:-3px;bottom:-3px;width:2px;background:var(--warning)}
+#fig{position:relative}
+.vl{position:absolute;width:2px;background:var(--warning);border-radius:1px}
 .sep{margin:10px 0 10px 34px;border-top:1px solid var(--border)}
 .txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
 .txt:first-child{border-top:0;padding-top:0}
@@ -43,16 +43,21 @@ const H={A1:'0010001000',A2:'0100000010',B1:'1111101111',B2:'1011111101'},h='001
 const path=['A1','A1','B1','B1','B1','B1','B1','A2','A2','A2'];
 // per step: how many SNPs of the path are filled (cov) and of the ancestry (anc); ms per SNP when animating forward
 const S=[
- {t:'Референсы и цель',cov:0,anc:0,d:'Сверху четыре референсных гаплотипа: A1, A2 из популяции A, B1, B2 из популяции B. Под чертой цель h. Модель объясняет h как склейку кусков референсов.'},
- {t:'SNP 1–2: копируем A1',cov:2,anc:0,ms:900,d:'На SNP 1–2 цель совпадает с A1. В строку s записываем, какой референс копируется: A1, A1.'},
- {t:'SNP 3–7: переключение на B1',cov:7,anc:0,ms:650,d:'Дальше A1 расходится с целью: на SNP 4 у A1 стоит 0, у h стоит 1. B1 совпадает с h на SNP 3–7, и путь переходит на B1. Переход отмечен чертой <span class="mk"></span>.'},
- {t:'SNP 8–10: переключение на A2',cov:10,anc:0,ms:650,d:'На SNP 8 B1 расходится с целью (1 против 0). A2 совпадает с h на SNP 8–10: второе переключение.'},
- {t:'Путь s',cov:10,anc:0,d:'Строка s — путь копирования. Он ни разу не расходится с целью и переключается два раза.'},
- {t:'Происхождение a',cov:10,anc:10,ms:250,d:'Каждый референс заменяем его популяцией: A1, A2 дают A; B1, B2 дают B. Получается ответ задачи LAI: три куска A, B, A.'}];
+ {t:'Референсы и цель',cov:0,anc:0,d:'Сверху четыре референсных гаплотипа: A1, A2 из популяции A, B1, B2 из популяции B. Под чертой цель h. Объясним h как склейку кусков референсов.'},
+ {t:'SNP 1–2: копируем A1',cov:2,anc:0,ms:900,d:'Начинаем с референса, который совпадает с h. На SNP 1–2 это A1. В строку s записываем, откуда копируем: A1, A1.'},
+ {t:'SNP 3–7: переключение на B1',cov:7,anc:0,ms:650,d:'Дальше A1 перестаёт подходить: на SNP 4 у A1 стоит 0, а у h стоит 1. Ищем референс, который совпадает с h на следующем куске: B1 совпадает на SNP 3–7. Путь переключается на B1, переключение отмечено чертой <span class="mk"></span>.'},
+ {t:'SNP 8–10: переключение на A2',cov:10,anc:0,ms:650,d:'На SNP 8 B1 перестаёт подходить (1 против 0). A1 тоже не подходит: на SNP 9 у A1 0, у h 1. A2 совпадает с h на SNP 8–10, путь переключается на A2.'},
+ {t:'Путь s',cov:10,anc:0,d:'Строка s — путь копирования: ни одного несовпадения с h и два переключения. Оба меняют популяцию (A → B и B → A), то есть это два разреза, как на рис. 1.2.'},
+ {t:'Происхождение a',cov:10,anc:10,ms:250,d:'Каждый референс заменяем его популяцией: A1, A2 дают A; B1, B2 дают B. Получается ответ задачи LAI: куски A, B, A.'}];
 let k=0,cov=0,anc=0,cur=-1,timer=null;
 const $=id=>document.getElementById(id);
 const sw=j=>j>0&&j<cov&&path[j]!=path[j-1];
-const line=(lab,cls,f)=>`<div class="r"><div class="l">${lab}</div><div class="s ${cls}">${Array.from({length:P},(_,j)=>sw(j)?f(j).replace('<span class="','<span class="sw ').replace('<span>','<span class="sw">').replace('<span style','<span class="sw" style'):f(j)).join('')}</div></div>`;
+const line=(lab,cls,f)=>`<div class="r"><div class="l">${lab}</div><div class="s ${cls}">${Array.from({length:P},(_,j)=>f(j)).join('')}</div></div>`;
+function lines(){
+ // offset* are layout px, unaffected by the page zoom applied to the widget
+ const F=$('fig'),rows=[...F.querySelectorAll('.s:not(.idx)')],last=rows[rows.length-1],top=rows[0].offsetTop-3,bot=last.offsetTop+last.offsetHeight+3;
+ for(let j=1;j<P;j++)if(sw(j))F.insertAdjacentHTML('beforeend',`<div class="vl" style="left:${rows[0].children[j].offsetLeft-2.5}px;top:${top}px;height:${bot-top}px"></div>`);
+}
 function draw(){
  const c=j=>j==cur?'cur':'';
  $('fig').innerHTML=
@@ -62,6 +67,7 @@ function draw(){
   line('h','h',j=>`<span class="${c(j)}">${h[j]}</span>`)+
   line('s','p',j=>`<span>${j<cov?path[j]:''}</span>`)+
   line('a','a',j=>j<anc?`<span style="background:var(--chart-${path[j][0]=='A'?1:2})">${path[j][0]}</span>`:'<span></span>');
+ lines();
  $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
  $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
 }
