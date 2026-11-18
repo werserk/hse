@@ -1,0 +1,62 @@
+<!doctype html><meta charset="utf-8">
+<!-- Widget: one DP step of Loter, marker j-1 -> j, for R panel haplotypes.
+     c_j(l) = [h_j != A_lj] + min(c_{j-1}(l), m_{j-1} + lambda), m_{j-1} = min_l' c_{j-1}(l').
+     Naive: every l looks at every l' -> R^2 per marker. With the shared minimum: R + R per marker.
+     Loter: src/graph/graph.cpp, EstimateSknn::s_cost_i. M = 50 000, R ~ 372 (see ../../calc.py). -->
+<style>
+.w{font-family:var(--font-sans,sans-serif);color:var(--foreground,#111);display:flex;flex-direction:column;gap:10px;--bad:var(--chart-1,#8c2f2b);--good:var(--chart-2,#2b5b8c)}
+.ctl{display:flex;align-items:center;gap:10px;font-size:13px}
+.ctl input{flex:1;accent-color:var(--brand,#1F4E8C)}
+.ctl b{font-variant-numeric:tabular-nums;min-width:90px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.t{font-size:13px;margin-bottom:2px}.t b.bad{color:var(--bad)}.t b.good{color:var(--good)}
+svg{width:100%;height:200px;display:block}
+svg text{font-size:11px;fill:var(--muted-foreground,#6B6B6B);font-family:inherit}
+.e{font-size:13px;line-height:1.6;background:var(--surface-recessed,#f4f4f4);border-radius:var(--radius,6px);padding:12px 16px}
+.f{font-family:var(--font-mono,monospace);font-size:12px}
+.n{font-size:11px;color:var(--subtle-foreground,#888)}
+</style>
+<div class="w">
+<div class="ctl"><span>гаплотипов в панели</span><input id="s" type="range" min="0" max="8" value="2"><b id="rv"></b></div>
+<div class="g">
+  <div><div class="t">в лоб: каждая строка смотрит на все — <b class="bad" id="c1"></b></div><svg id="a" viewBox="0 0 260 200"></svg></div>
+  <div><div class="t">с общим минимумом — <b class="good" id="c2"></b></div><svg id="b" viewBox="0 0 260 200"></svg></div>
+</div>
+<div class="e" id="ex"></div>
+<div class="n">Штраф λ за прыжок одинаковый для всех строк, поэтому из всех прыжков в строку l выгоден только прыжок из минимума прошлого столбца m. Это видно в Loter: <span class="f">src/graph/graph.cpp</span>, <span class="f">EstimateSknn::s_cost_i</span>. В HMM (Li &amp; Stephens) то же самое с суммой вместо минимума.</div>
+</div>
+<script>
+(()=>{
+const RS=[2,4,6,8,12,16,50,100,372], M=50000, SHOW=16, ns="http://www.w3.org/2000/svg";
+function el(p,t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e;}
+const nf=x=>x>=1e6?(x/1e6).toFixed(x>=1e7?0:1).replace('.',',')+' млн':x>=1e4?Math.round(x).toLocaleString('ru-RU'):String(x);
+function sci(x){const e=Math.floor(Math.log10(x)),m=x/Math.pow(10,e);return m.toFixed(1).replace('.',',')+'·10'+String(e).split('').map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[c]).join('');}
+const s=document.getElementById('s');
+const raz=k=>{const d=k%10,h=k%100;return (d>=2&&d<=4&&!(h>=12&&h<=14))?'раза':'раз';};
+function col(svg,x,n,label){const ys=[];for(let i=0;i<n;i++)ys.push(18+(n==1?80:i*164/(n-1)));
+  ys.forEach(y=>el(svg,'circle',{cx:x,cy:y,r:n>12?3:4.5,fill:'var(--foreground,#111)'}));
+  el(svg,'text',{x,y:197,'text-anchor':'middle'}).textContent=label;return ys;}
+function upd(){
+  const R=RS[s.value],n=Math.min(R,SHOW);
+  document.getElementById('rv').textContent='R = '+R;
+  for(const id of ['a','b']){const svg=document.getElementById(id);svg.innerHTML='';
+    const yl=col(svg,40,n,'маркер j−1'),yr=col(svg,220,n,'маркер j');
+    if(id=='a'){for(const y1 of yl)for(const y2 of yr)el(svg,'line',{x1:40,y1:y1,x2:220,y2:y2,stroke:'var(--bad)','stroke-opacity':n>8?0.25:0.5});}
+    else{const ym=100;
+      for(const y1 of yl)el(svg,'line',{x1:40,y1:y1,x2:130,y2:ym,stroke:'var(--good)','stroke-opacity':0.6});
+      for(const y2 of yr)el(svg,'line',{x1:130,y1:ym,x2:220,y2:y2,stroke:'var(--good)','stroke-opacity':0.6});
+      for(let i=0;i<n;i++)el(svg,'line',{x1:40,y1:yl[i],x2:220,y2:yr[i],stroke:'var(--muted-foreground,#999)','stroke-dasharray':'2 3'});
+      el(svg,'circle',{cx:130,cy:ym,r:11,fill:'var(--background,#fff)',stroke:'var(--good)','stroke-width':2});
+      el(svg,'text',{x:130,y:ym+4,'text-anchor':'middle',style:'fill:var(--good);font-weight:700'}).textContent='m';}
+    if(R>SHOW)el(svg,'text',{x:130,y:10,'text-anchor':'middle'}).textContent='показано '+SHOW+' из '+R;}
+  const naive=R*R, trick=2*R;
+  document.getElementById('c1').textContent=nf(naive)+' на маркер';
+  document.getElementById('c2').textContent=nf(trick)+' на маркер';
+  document.getElementById('ex').innerHTML=
+   '<span class="f">c<sub>j</sub>(l) = [h<sub>j</sub> ≠ A<sub>lj</sub>] + min( c<sub>j−1</sub>(l), m + λ ),  m = min<sub>l′</sub> c<sub>j−1</sub>(l′)</span><br>'+
+   'Один гаплотип, M = 50 000 маркеров: в лоб '+sci(naive*M)+', с минимумом '+sci(trick*M)+' — в <b>'+Math.round(naive/trick)+'</b> '+raz(Math.round(naive/trick))+' меньше.'+
+   (R==372?'<br>Это R = 372 из доклада: таблица R × M ≈ 1,9·10⁷ клеток на гаплотип.':'');
+}
+s.addEventListener('input',upd);upd();
+})();
+</script>

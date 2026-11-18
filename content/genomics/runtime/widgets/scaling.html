@@ -1,0 +1,110 @@
+<!doctype html><meta charset="utf-8">
+<!-- Widget: how time and peak memory grow with cohort size N (RFMix vs Loter).
+     Data: Schubert, Andaleon & Wheeler 2020, Fig. 2-3 (digitized, see ../../src/digitized.json, ../../calc.py).
+     N <= 2000 measured; N > 2000 extrapolated (RFMix: band between alpha=2 and alpha=2.72; Loter: linear). -->
+<style>
+.w{font-family:var(--font-sans,sans-serif);color:var(--foreground,#111);display:flex;flex-direction:column;gap:10px;--lo:var(--chart-2,#2b5b8c);--rf:var(--chart-1,#8c2f2b);--ram:var(--success,#2E7D32)}
+.ctl{display:flex;align-items:center;gap:10px;font-size:13px}
+.ctl input{flex:1;accent-color:var(--brand,#1F4E8C)}
+.ctl b{font-variant-numeric:tabular-nums;min-width:120px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:560px){.g{grid-template-columns:1fr}}
+.t{font-size:12px;color:var(--muted-foreground,#6B6B6B);margin-bottom:2px}
+svg{width:100%;height:220px;display:block;overflow:visible}
+svg text{font-size:10px;fill:var(--muted-foreground,#6B6B6B);font-family:inherit}
+.ax{stroke:var(--border,#ccc);stroke-width:1}
+.cur{stroke:var(--foreground,#111);stroke-width:1;stroke-dasharray:2 3}
+.e{font-size:13px;line-height:1.55;background:var(--surface-recessed,#f4f4f4);border-radius:var(--radius,6px);padding:12px 16px}
+.e .lo{color:var(--lo);font-weight:700}.e .rf{color:var(--rf);font-weight:700}.e .bad{color:var(--rf)}.e .ok{color:var(--ram)}
+.n{font-size:11px;color:var(--subtle-foreground,#888)}
+</style>
+<div class="w">
+<div class="ctl"><span>людей в когорте</span><input id="s" type="range" min="0" max="1000" value="250"><b id="nv"></b></div>
+<div class="g">
+  <div><div class="t">время на одном ядре, ч (лог. оси)</div><svg id="ct" viewBox="0 0 300 220"></svg></div>
+  <div><div class="t">пик памяти, ГБ (лог. оси)</div><svg id="cm" viewBox="0 0 300 220"></svg></div>
+</div>
+<div class="e" id="ex"></div>
+<div class="n">Точки — замер (Schubert 2020, Fig. 2–3, N = 500…2000, одно ядро, M ≈ 50 000 SNP). Дальше — экстраполяция: RFMix между α = 2 и α = 2,7 (полоса), Loter — прямая.</div>
+</div>
+<script>
+(()=>{
+const NS=[500,1000,1500,2000];
+const T={RF:[5.19,22.3,65.22,146.56],LO:[2.48,4.13,6.18,8.06]};
+const MEM={RF:[0.56,1.13,1.7,2.29],LO:[8.59,16.92,25.15,33.43]};
+const A_HI=Math.log(146.56/22.3)/Math.log(2);            // 2.72, secant 1000->2000
+const slope=k=>(MEM[k][3]-MEM[k][0])/1500, m0=k=>MEM[k][3]-slope(k)*2000;
+const NMIN=500,NMAX=20000, RAMS=[16,64,256];
+function interp(xs,ys,x,log){ // piecewise, log-log if log
+  for(let i=0;i<xs.length-1;i++) if(x<=xs[i+1]){const a=xs[i],b=xs[i+1];
+    if(log){const t=Math.log(x/a)/Math.log(b/a);return ys[i]*Math.pow(ys[i+1]/ys[i],t);}
+    const t=(x-a)/(b-a);return ys[i]+t*(ys[i+1]-ys[i]);}
+}
+const tRF=(n,hi)=>n<=2000?interp(NS,T.RF,n,1):T.RF[3]*Math.pow(n/2000,hi?A_HI:2);
+const tLO=n=>n<=2000?interp(NS,T.LO,n,1):T.LO[3]*n/2000;
+const mem=(k,n)=>n<=2000?interp(NS,MEM[k],n,0):m0(k)+slope(k)*n;
+const ns="http://www.w3.org/2000/svg";
+function el(p,tag,a){const e=document.createElementNS(ns,tag);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e;}
+const L=44,R=292,TOP=6,B=196;
+function axes(svg,ymin,ymax,yt,yl){
+  const X=n=>L+(R-L)*Math.log(n/NMIN)/Math.log(NMAX/NMIN);
+  const Y=v=>B-(B-TOP)*Math.log(v/ymin)/Math.log(ymax/ymin);
+  el(svg,'line',{x1:L,y1:B,x2:R,y2:B,class:'ax'});el(svg,'line',{x1:L,y1:TOP,x2:L,y2:B,class:'ax'});
+  for(const n of [500,1000,2000,5000,10000,20000]){el(svg,'line',{x1:X(n),y1:B,x2:X(n),y2:B+3,class:'ax'});
+    el(svg,'text',{x:X(n),y:B+13,'text-anchor':'middle'}).textContent=n>=1000?(n/1000)+'k':n;}
+  yt.forEach((v,i)=>{el(svg,'line',{x1:L-3,y1:Y(v),x2:L,y2:Y(v),class:'ax'});
+    el(svg,'text',{x:L-5,y:Y(v)+3,'text-anchor':'end'}).textContent=yl[i];});
+  return {X,Y};
+}
+function path(svg,f,X,Y,a,from,to){let d='';for(let i=0;i<=80;i++){const n=from*Math.pow(to/from,i/80);d+=(i?'L':'M')+X(n).toFixed(1)+' '+Y(f(n)).toFixed(1);}return el(svg,'path',Object.assign({d,fill:'none'},a));}
+// time chart
+const ct=document.getElementById('ct');
+const tA=axes(ct,1,1e5,[1,10,100,1e3,1e4,1e5],['1','10','100','1000','10 000','100 000']);
+for(const [v,lab] of [[24,'сутки'],[24*365,'год']]){el(ct,'line',{x1:L,y1:tA.Y(v),x2:R,y2:tA.Y(v),stroke:'var(--border,#ccc)','stroke-dasharray':'1 3'});
+  el(ct,'text',{x:L+3,y:tA.Y(v)-3}).textContent=lab;}
+{let d='';for(let i=0;i<=40;i++){const n=2000*Math.pow(10,i/40);d+=(i?'L':'M')+tA.X(n)+' '+tA.Y(tRF(n,1));}
+ for(let i=40;i>=0;i--){const n=2000*Math.pow(10,i/40);d+='L'+tA.X(n)+' '+tA.Y(tRF(n,0));}
+ el(ct,'path',{d:d+'Z',fill:'var(--rf)','fill-opacity':0.15,stroke:'none'});}
+path(ct,n=>tRF(n,0),tA.X,tA.Y,{stroke:'var(--rf)','stroke-width':2},NMIN,2000);
+path(ct,n=>tLO(n),tA.X,tA.Y,{stroke:'var(--lo)','stroke-width':2},NMIN,2000);
+path(ct,n=>tRF(n,0),tA.X,tA.Y,{stroke:'var(--rf)','stroke-width':2,'stroke-dasharray':'4 3'},2000,NMAX);
+path(ct,n=>tLO(n),tA.X,tA.Y,{stroke:'var(--lo)','stroke-width':2,'stroke-dasharray':'4 3'},2000,NMAX);
+NS.forEach((n,i)=>{el(ct,'circle',{cx:tA.X(n),cy:tA.Y(T.RF[i]),r:2.6,fill:'var(--rf)'});el(ct,'circle',{cx:tA.X(n),cy:tA.Y(T.LO[i]),r:2.6,fill:'var(--lo)'});});
+el(ct,'text',{x:tA.X(1100),y:tA.Y(60),fill:'var(--rf)',style:'fill:var(--rf)'}).textContent='RFMix';
+el(ct,'text',{x:tA.X(2500),y:tA.Y(8),style:'fill:var(--lo)'}).textContent='Loter';
+// memory chart
+const cm=document.getElementById('cm');
+const mA=axes(cm,0.3,1000,[1,10,100,1000],['1','10','100','1000']);
+RAMS.forEach(g=>{el(cm,'line',{x1:L,y1:mA.Y(g),x2:R,y2:mA.Y(g),stroke:'var(--ram)','stroke-dasharray':'4 3'});
+  el(cm,'text',{x:L+3,y:mA.Y(g)-3,style:'fill:var(--ram)'}).textContent=g+' ГБ RAM';});
+for(const k of ['RF','LO']){const c=k=='RF'?'var(--rf)':'var(--lo)';
+  path(cm,n=>mem(k,n),mA.X,mA.Y,{stroke:c,'stroke-width':2},NMIN,2000);
+  path(cm,n=>mem(k,n),mA.X,mA.Y,{stroke:c,'stroke-width':2,'stroke-dasharray':'4 3'},2000,NMAX);
+  NS.forEach((n,i)=>el(cm,'circle',{cx:mA.X(n),cy:mA.Y(MEM[k][i]),r:2.6,fill:c}));}
+el(cm,'text',{x:tA.X(9000),y:mA.Y(110),style:'fill:var(--lo)'}).textContent='Loter';
+el(cm,'text',{x:tA.X(600),y:mA.Y(0.95),style:'fill:var(--rf)'}).textContent='RFMix';
+// cursor
+const cur=[ct,cm].map(s=>el(s,'line',{class:'cur',y1:TOP,y2:B}));
+const dot=[el(ct,'circle',{r:4,fill:'none',stroke:'var(--rf)','stroke-width':1.5}),el(ct,'circle',{r:4,fill:'none',stroke:'var(--lo)','stroke-width':1.5}),
+           el(cm,'circle',{r:4,fill:'none',stroke:'var(--rf)','stroke-width':1.5}),el(cm,'circle',{r:4,fill:'none',stroke:'var(--lo)','stroke-width':1.5})];
+const fmtN=n=>n.toLocaleString('ru-RU');
+function fmtT(h){if(h<48)return (h<10?h.toFixed(1).replace('.',','):Math.round(h))+' ч';const d=h/24;if(d<365)return Math.round(d)+' сут';const y=d/365;return y<10?y.toFixed(1).replace('.',',')+' года':Math.round(y)+' лет';}
+const fmtG=g=>(g<10?g.toFixed(1):Math.round(g)).toString().replace('.',',')+' ГБ';
+function fits(g){const f=RAMS.filter(r=>r>=g);return f.length?'<span class="ok">влезет в '+f[0]+' ГБ</span>':'<span class="bad">не влезет даже в 256 ГБ</span>';}
+const s=document.getElementById('s'),nv=document.getElementById('nv'),ex=document.getElementById('ex');
+function upd(){
+  let n=NMIN*Math.pow(NMAX/NMIN,s.value/1000); n=n<2000?Math.round(n/50)*50:Math.round(n/500)*500;
+  nv.textContent='N = '+fmtN(n);
+  const x=tA.X(n);cur.forEach(c=>{c.setAttribute('x1',x);c.setAttribute('x2',x);});
+  const rl=tRF(n,0),rh=tRF(n,1),lo=tLO(n),mr=mem('RF',n),ml=mem('LO',n);
+  [[0,tA.Y(rl)],[1,tA.Y(lo)],[2,mA.Y(mr)],[3,mA.Y(ml)]].forEach(([i,y])=>{dot[i].setAttribute('cx',x);dot[i].setAttribute('cy',y);});
+  const meas=n<=2000;
+  ex.innerHTML=(n%500==0&&meas?'<b>Замер.</b> ':meas?'<b>Между замерами.</b> ':'<b>Экстраполяция.</b> ')+
+   '<span class="rf">RFMix</span>: '+(meas||Math.abs(rh-rl)<1?fmtT(rl):fmtT(rl)+' … '+fmtT(rh))+', память '+fmtG(mr)+' — '+fits(mr)+'.<br>'+
+   '<span class="lo">Loter</span>: '+fmtT(lo)+', память '+fmtG(ml)+' — '+fits(ml)+'.<br>'+
+   (n>2000?'Людей ×'+(n/2000).toFixed(n%2000?1:0).replace('.',',')+' от замера: Loter дольше в '+(lo/T.LO[3]).toFixed(0)+' раз, RFMix — в '+(rl/T.RF[3]).toFixed(0)+'…'+(rh/T.RF[3]).toFixed(0)+' раз.'
+          :'Время: Loter растёт как N, RFMix — быстрее N². Память — наоборот: у Loter в '+Math.round(ml/mr)+' раз больше.');
+}
+s.addEventListener('input',upd);upd();
+})();
+</script>

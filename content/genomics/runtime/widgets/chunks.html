@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8">
+<!-- Widget: splitting a cohort of N = 2000 into p parts for RFMix with EM.
+     Each person's forest trains on the rest of its part, so work ~ p * c (N/p)^2 = c N^2 / p.
+     Measured: T(2000)=146.56 h, T(1000)=22.3 h, T(500)=5.19 h (Schubert 2020 Fig. 2, digitized; see ../../calc.py). -->
+<style>
+.w{font-family:var(--font-sans,sans-serif);color:var(--foreground,#111);display:flex;flex-direction:column;gap:10px;--rf:var(--chart-1,#8c2f2b);--ok:var(--success,#2E7D32)}
+.ctl{display:flex;align-items:center;gap:10px;font-size:13px}
+.ctl input{flex:1;accent-color:var(--brand,#1F4E8C)}
+.ctl b{font-variant-numeric:tabular-nums;min-width:120px}
+.g{display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:start}
+@media (max-width:560px){.g{grid-template-columns:1fr}}
+svg{width:220px;height:220px;display:block}
+.cap{font-size:11px;color:var(--muted-foreground,#6B6B6B);margin-top:4px;text-align:center}
+.e{font-size:13px;line-height:1.6;background:var(--surface-recessed,#f4f4f4);border-radius:var(--radius,6px);padding:12px 16px}
+.e .rf{color:var(--rf);font-weight:700}.e .ok{color:var(--ok);font-weight:700}
+.f{font-family:var(--font-mono,monospace);font-size:12px}
+.n{font-size:11px;color:var(--subtle-foreground,#888)}
+table{border-collapse:collapse;font-size:12px;margin-top:6px}
+td,th{padding:2px 10px 2px 0;text-align:right;font-variant-numeric:tabular-nums}th{font-weight:400;color:var(--muted-foreground,#6B6B6B)}
+td:first-child,th:first-child{text-align:left}
+tr.cur td{font-weight:700}
+</style>
+<div class="w">
+<div class="ctl"><span>частей</span><input id="s" type="range" min="0" max="7" value="2"><b id="pv"></b></div>
+<div class="g">
+  <div><svg id="sq" viewBox="0 0 200 200"></svg><div class="cap">квадрат N×N: кто на ком учится при EM<br>цветное — работа, которая осталась</div></div>
+  <div class="e" id="ex"></div>
+</div>
+<div class="n">RFMix, N = 2000, одно ядро. «Модель» — c·N²/p по замеру 146,6 ч. «Замер» — p частей по N/p человек, время N/p взято с Fig. 2 (Schubert 2020); точки N &lt; 500 не снимаются надёжно.</div>
+</div>
+<script>
+(()=>{
+const PS=[1,2,4,5,8,10,20,40], N=2000, T2000=146.56, MEAS={1:146.56,2:2*22.3,4:4*5.19};
+const svg=document.getElementById('sq'),ns="http://www.w3.org/2000/svg",G=40,C=200/G;
+const cells=[];for(let i=0;i<G;i++)for(let j=0;j<G;j++){const r=document.createElementNS(ns,'rect');
+  r.setAttribute('x',j*C);r.setAttribute('y',i*C);r.setAttribute('width',C-0.6);r.setAttribute('height',C-0.6);svg.appendChild(r);cells.push([i,j,r]);}
+const fmt=(x,d=1)=>x.toFixed(d).replace('.',',');
+const s=document.getElementById('s'),pv=document.getElementById('pv'),ex=document.getElementById('ex');
+function upd(){
+  const p=PS[s.value],b=G/p;pv.textContent='p = '+p+' (по '+N/p+' чел.)';
+  for(const [i,j,r] of cells){const inb=Math.floor(i/b)==Math.floor(j/b);
+    r.setAttribute('fill',inb?'var(--rf)':'var(--muted,#e6e6e6)');r.setAttribute('fill-opacity',inb?(i==j?0.35:0.85):1);}
+  const model=T2000/p, meas=MEAS[p];
+  let rows='<tr><th>p</th><th>модель, ч</th><th>замер, ч</th></tr>';
+  for(const q of [1,2,4]) rows+='<tr'+(q==p?' class="cur"':'')+'><td>'+q+'</td><td>'+fmt(T2000/q)+'</td><td>'+fmt(MEAS[q])+'</td></tr>';
+  ex.innerHTML='Работа: <span class="f">p · c(N/p)² = cN²/p</span> → в <b>'+p+'</b> раз меньше <i>даже на одном ядре</i>.<br>'+
+    '<span class="rf">RFMix</span>, одно ядро: '+(meas?'замер <span class="ok">'+fmt(meas)+' ч</span> (модель '+fmt(model)+' ч)':'модель '+fmt(model)+' ч')+
+    ' вместо '+fmt(T2000)+' ч.<br>'+
+    'На '+p+' ядрах параллельно: ≈ '+fmt((meas||model)/p)+' ч.<br>'+
+    (p>1?'Цена: EM учится на '+(2*N/p-2)+' гаплотипах вместо '+(2*N-2)+' — точность надо проверять.':'Целиком: каждый учится на всех остальных 3998 гаплотипах.')+
+    '<table>'+rows+'</table>'+
+    (p==4?'<div style="margin-top:4px">Замер даёт ×7, больше модельных ×4: время RFMix растёт быстрее N² (α ≈ 2,4 на 500→2000).</div>':'');
+}
+s.addEventListener('input',upd);upd();
+})();
+</script>

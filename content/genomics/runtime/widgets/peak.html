@@ -1,0 +1,72 @@
+<!doctype html><meta charset="utf-8">
+<!-- Widget: Loter runs 8 lambdas x 20 bootstrap = 160 passes one after another.
+     Time adds up over passes; peak memory (what /usr/bin/time -v reports: max RSS) does not.
+     Schematic memory profile; numbers: N=2000, T=8.1 h, peak 33.4 GB (Schubert 2020 Fig. 2-3, digitized). -->
+<style>
+.w{font-family:var(--font-sans,sans-serif);color:var(--foreground,#111);display:flex;flex-direction:column;gap:10px;--lo:var(--chart-2,#2b5b8c);--hot:var(--chart-1,#8c2f2b)}
+.ctl{display:flex;align-items:center;gap:8px;font-size:13px}
+button{font:inherit;font-size:12px;padding:4px 12px;border-radius:var(--radius,6px);border:1px solid var(--border,#ccc);background:var(--secondary,#f2f2f2);color:var(--secondary-foreground,#111);cursor:pointer}
+svg{width:100%;height:190px;display:block;overflow:visible}
+svg text{font-size:10px;fill:var(--muted-foreground,#6B6B6B);font-family:inherit}
+.bars{display:grid;grid-template-columns:110px 1fr 90px;gap:6px 10px;align-items:center;font-size:13px}
+.bar{height:14px;background:var(--surface-recessed,#eee);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%}
+.v{font-variant-numeric:tabular-nums;text-align:right}
+.e{font-size:13px;line-height:1.55;background:var(--surface-recessed,#f4f4f4);border-radius:var(--radius,6px);padding:12px 16px}
+.n{font-size:11px;color:var(--subtle-foreground,#888)}
+</style>
+<div class="w">
+<div class="ctl"><button id="b1">проход ▶</button><button id="b20">+20</button><button id="b0">сначала</button><span id="pv" style="margin-left:8px"></span></div>
+<svg id="sv" viewBox="0 0 600 190"></svg>
+<div class="bars">
+  <div>время (сумма)</div><div class="bar"><i id="bt" style="background:var(--lo)"></i></div><div class="v" id="vt"></div>
+  <div>память (пик)</div><div class="bar"><i id="bm" style="background:var(--hot)"></i></div><div class="v" id="vm"></div>
+</div>
+<div class="e" id="ex"></div>
+<div class="n">Loter, N = 2000, одно ядро: 8 значений λ × 20 бутстрэп-панелей = 160 проходов по очереди. Профиль памяти — схема; числа — замер (Schubert 2020, Fig. 2–3). <code>time -v</code> сообщает пик: Maximum resident set size.</div>
+</div>
+<script>
+(()=>{
+const P=160,TT=8.06,PEAK=33.4,ns="http://www.w3.org/2000/svg",sv=document.getElementById('sv');
+const L=40,R=596,TOP=10,B=156,BASE=0.62; // persistent arrays as a share of the peak (schematic)
+const X=k=>L+(R-L)*k/P, Y=f=>B-(B-TOP)*f;
+function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);sv.appendChild(e);return e;}
+el('line',{x1:L,y1:B,x2:R,y2:B,stroke:'var(--border,#ccc)'});el('line',{x1:L,y1:TOP,x2:L,y2:B,stroke:'var(--border,#ccc)'});
+el('text',{x:L-4,y:Y(1)+3,'text-anchor':'end'}).textContent='пик';
+el('text',{x:L-4,y:B+3,'text-anchor':'end'}).textContent='0';
+el('text',{x:R,y:B+28,'text-anchor':'end'}).textContent='время →  (160 проходов)';
+for(let l=0;l<=8;l++){el('line',{x1:X(20*l),y1:B,x2:X(20*l),y2:B+3,stroke:'var(--border,#ccc)'});
+  if(l<8)el('text',{x:X(20*l+10),y:B+14,'text-anchor':'middle'}).textContent='λ='+(1.5+0.5*l).toString().replace('.',',');}
+const base=el('path',{fill:'var(--lo)','fill-opacity':0.15,stroke:'none'});
+const prof=el('path',{fill:'none',stroke:'var(--lo)','stroke-width':1.5});
+const pk=el('line',{stroke:'var(--hot)','stroke-dasharray':'4 3','stroke-width':1.5});
+const lab1=el('text',{x:L+6,y:Y(BASE/2)});lab1.textContent='живут весь запуск: накопитель counts K×2N×M, вход, путь S…';
+function mem(t){ // t in passes (float); load phase in first 0.15 pass
+  if(t<0.15) return BASE*t/0.15;
+  const ph=(t%1); return BASE+(1-BASE)*Math.pow(Math.sin(Math.PI*Math.min(1,ph/0.9)),6);
+}
+let k=0;
+function draw(){
+  let d='',db='';
+  const steps=Math.max(2,Math.round(k*24));
+  for(let i=0;i<=steps;i++){const t=k*i/steps;d+=(i?'L':'M')+X(t).toFixed(1)+' '+Y(k?mem(t):0).toFixed(1);}
+  prof.setAttribute('d',d);
+  base.setAttribute('d',k?'M'+X(0)+' '+B+' L'+X(0.15)+' '+Y(BASE)+' L'+X(k)+' '+Y(BASE)+' L'+X(k)+' '+B+'Z':'');
+  lab1.style.display=k>=40?'':'none';
+  if(k){pk.setAttribute('x1',L);pk.setAttribute('x2',R);pk.setAttribute('y1',Y(1));pk.setAttribute('y2',Y(1));pk.style.display='';}else pk.style.display='none';
+  const t=TT*k/P, m=k?PEAK:0;
+  document.getElementById('bt').style.width=(100*t/TT)+'%';document.getElementById('bm').style.width=(100*m/PEAK)+'%';
+  document.getElementById('vt').textContent=t.toFixed(1).replace('.',',')+' ч';
+  document.getElementById('vm').textContent=k?PEAK.toString().replace('.',',')+' ГБ':'0';
+  document.getElementById('pv').textContent='проход '+k+' / 160';
+  document.getElementById('ex').innerHTML= k==0?'Нажми «проход ▶»: Loter делает 160 одинаковых проходов один за другим.':
+    k==1?'Один проход: время 0,05 ч, пик памяти уже <b>33,4 ГБ</b>.':
+    k<P?'Время копится: <b>×'+k+'</b>. Пик памяти тот же — проходы не живут одновременно.':
+    'Итог: время <b>×160</b>, память <b>×1</b>. С N растёт только то, что живёт весь запуск: массивы 2N×M.';
+}
+document.getElementById('b1').onclick=()=>{k=Math.min(P,k+1);draw();};
+document.getElementById('b20').onclick=()=>{k=Math.min(P,k+20);draw();};
+document.getElementById('b0').onclick=()=>{k=0;draw();};
+k=P;draw(); // printable default: the whole run
+})();
+</script>

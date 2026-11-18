@@ -1,1 +1,1 @@
-{"title": "Runtime, memory & scalability", "type": "deck", "status": "planned", "date": "2026-11-19", "event": "НИС АДНЖ", "summary": "Сколько времени и памяти требуют методы локальной оценки происхождения и как они масштабируются.", "tags": ["LAI"]}
+{"title": "Runtime, memory & scalability", "type": "deck", "date": "2026-11-19", "event": "НИС АДНЖ", "summary": "Интерактивный доклад: откуда у методов LAI линейное и квадратичное время, байт на аллель и пределы ускорения — по данным Schubert et al. (2020).", "tags": ["LAI"]}
