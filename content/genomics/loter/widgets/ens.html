@@ -1,0 +1,166 @@
+<!-- One ensemble widget, two figures. The iframe's data-mode picks the figure:
+     boot (Fig. 4.1, bootstrap samples of the panel) and vote (Fig. 4.2, 160 runs and the vote). -->
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:24px;align-items:start}
+.r{display:flex;align-items:center;gap:6px;margin:2px 0}
+.l{width:68px;flex:none;display:flex;justify-content:flex-end;align-items:center;gap:3px;font:10px var(--font-mono);color:var(--muted-foreground);white-space:nowrap}
+.c{padding:0 3px;border-radius:3px;color:var(--foreground);font:11px/16px var(--font-mono)}
+.c.A{background:color-mix(in srgb,var(--chart-1) 25%,transparent)}
+.c.B{background:color-mix(in srgb,var(--chart-2) 25%,transparent)}
+.c.on{outline:2px solid var(--foreground);outline-offset:1px}
+.c.off{opacity:.35}
+.s{display:flex;gap:2px;font-family:var(--font-mono);font-size:11px}
+.s>span{box-sizing:border-box;width:16px;height:16px;display:flex;align-items:center;justify-content:center;border-radius:3px}
+.idx>span{font-size:9px;color:var(--subtle-foreground);height:12px}
+.q>span{background:var(--muted);color:var(--muted-foreground)}
+.q>span.e{background:transparent;border:1px dashed var(--border)}
+.q>span.pA{background:var(--chart-1);color:var(--background);font-weight:600}
+.q>span.pB{background:var(--chart-2);color:var(--background);font-weight:600}
+.h>span{background:var(--muted);font-weight:600;color:var(--foreground)}
+.a>span{color:var(--background);font-weight:600;font-size:10px}
+.a>span:empty{border:1px dashed var(--border);background:transparent}
+.a>span.lo{outline:2px dashed var(--foreground);outline-offset:-1px}
+.a>span.cur{outline:2px solid var(--foreground);outline-offset:1px}
+.s.st>span{height:2px;border-radius:0}
+.blk{margin:0 0 4px}
+.blk .l{height:40px;align-items:center}
+.blk .rows{display:flex;flex-direction:column}
+.bars>span{height:44px;align-items:flex-end;background:var(--chart-2);position:relative;border-radius:2px;overflow:hidden}
+.bars>span i{display:block;width:100%;background:var(--chart-1)}
+.bars>span.e{background:transparent;border:1px dashed var(--border)}
+.thr{position:absolute;left:0;right:0;border-top:1px dashed var(--foreground);opacity:.8}
+.num>span{font-size:8px;color:var(--muted-foreground);height:12px}
+.urn{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin:0 0 8px 74px;font-size:12px;color:var(--muted-foreground);min-height:20px}
+.urn b{font-weight:600;color:var(--foreground)}
+.cap{margin:10px 0 3px 74px;font-size:12px;font-weight:600;color:var(--foreground)}
+.note{margin:0 0 4px 74px;font-size:11px;color:var(--muted-foreground);min-height:16px}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+const MODE=(window.frameElement&&window.frameElement.dataset.mode)||'boot';
+// a generated example: 4 reference haplotypes per population, 24 SNPs; the target's true ancestry is known
+const A=['101001001011110010100101','100000110011110011100101','101011111010110010000101','100100110001110011100101'];
+const B=['011111001100001100010010','011101001100001100011010','001001001110011110111010','010111001100001101011010'];
+const h='100000111100001100000101',TRUE='AAAAAAAABBBBBBBBBBAAAAAA',P=24,NB=20,THR=0.75;
+const LAMS=[1.5,2,2.5,3,3.5,4,4.5,5],NA=A.map((_,i)=>'A'+(i+1)),NBn=B.map((_,i)=>'B'+(i+1));
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+// Loter DP (chapter 3); on a tie the path keeps its reference
+function dp(names,lam){const H=names.map(n=>(n[0]=='A'?A:B)[+n.slice(1)-1]),R=H.length,mis=(i,j)=>+(H[i][j]!=h[j]);
+ let q=H.map((_,i)=>mis(i,0));const J=[];
+ for(let j=1;j<P;j++){const m=Math.min(...q),am=q.indexOf(m);J.push(q.map(st=>m+lam<st?am:-1));q=q.map((st,i)=>mis(i,j)+Math.min(st,m+lam))}
+ let i=q.indexOf(Math.min(...q));const path=[i];for(let j=P-1;j>0;j--){if(J[j-1][i]>=0)i=J[j-1][i];path.push(i)}path.reverse();
+ return {names,H,path,a:path.map(i=>names[i][0]).join('')}}
+// SNPs where cheapest paths of the full panel disagree on ancestry (forward + backward costs)
+function amb(names,lam){const H=names.map(n=>(n[0]=='A'?A:B)[+n.slice(1)-1]),R=H.length,mis=(i,j)=>+(H[i][j]!=h[j]);
+ const F=[H.map((_,i)=>mis(i,0))];for(let j=1;j<P;j++){const m=Math.min(...F[j-1]);F.push(H.map((_,i)=>mis(i,j)+Math.min(F[j-1][i],m+lam)))}
+ const G=Array(P);G[P-1]=H.map(()=>0);for(let j=P-2;j>=0;j--){const nx=H.map((_,i)=>G[j+1][i]+mis(i,j+1)),m=Math.min(...nx);G[j]=H.map((_,i)=>Math.min(nx[i],m+lam))}
+ const opt=Math.min(...F[P-1]);return Array.from({length:P},(_,j)=>j).filter(j=>new Set(H.map((_,i)=>i).filter(i=>Math.abs(F[j][i]+G[j][i]-opt)<1e-9).map(i=>names[i][0])).size>1).map(j=>j+1)}
+// bagging as in Loter: for each λ, 20 panels; each population's haplotypes are drawn with replacement, the target stays
+const r=rng(7),RUNS=[];
+for(const lam of LAMS)for(let b=0;b<NB;b++){const names=[...A.map(()=>NA[Math.floor(r()*A.length)]),...B.map(()=>NBn[Math.floor(r()*B.length)])];RUNS.push({lam,...dp(names,lam)})}
+const nA=j=>RUNS.filter(x=>x.a[j]=='A').length,N=RUNS.length;
+const VA=Array.from({length:P},(_,j)=>nA(j)),MAJ=VA.map(v=>v>=N-v?'A':'B'),LOW=VA.map(v=>Math.max(v,N-v)/N<THR);
+// a low-confidence SNP takes the label of the closest confident SNP, the left one on a tie
+const FIN=MAJ.map((m,j)=>{if(!LOW[j])return m;for(let d=1;d<P;d++){if(j-d>=0&&!LOW[j-d])return MAJ[j-d];if(j+d<P&&!LOW[j+d])return MAJ[j+d]}return m});
+const FULL=dp([...NA,...NBn],1.5),BIG=RUNS.filter(x=>x.lam>=4.5),BIGLOST=BIG.filter(x=>x.a.endsWith('B')||!x.a.includes('B')).length,lowList=LOW.map((x,j)=>x?j+1:0).filter(Boolean);
+const diff=(a,b)=>[...a].map((x,j)=>x!=b[j]?j+1:0).filter(Boolean);
+const snps=l=>l.length==1?`SNP ${l[0]}`:`SNP ${l.join(', ')}`;
+const missing=n=>[...NA,...NBn].filter(x=>!n.includes(x));
+const pct=v=>Math.round(100*v/N);
+const span=(a,c)=>{const i=a.indexOf(c),k=a.lastIndexOf(c);return `${i+1}–${k+1}`};
+const STEPS={
+ boot:[
+  {t:'Новый пример',pan:'full',d:`Пример побольше: по 4 референса от A и от B, 24 SNP. Его сгенерировали, поэтому истинное происхождение h известно: A на SNP 1–8, B на 9–18, A на 19–24 (строка «истина»).`},
+  {t:'Ответ на полной панели',pan:'full',path:1,list:1,d:`DP главы 3 при λ = 1.5 (наименьшее λ Loter). Залиты клетки, которые копирует лучший путь. Ответ: B на SNP ${span(FULL.a,'B')}, отличие от истины на ${snps(diff(FULL.a,TRUE))}.`},
+  {t:'Выборка 1: тянем референсы',pan:0,n:8,ms:900,list:1,d:`Новая панель того же размера. Из мешка A четыре раза вынимаем референс и кладём обратно, затем так же из B. Поэтому один референс может попасть дважды, а другой ни разу: здесь не попали ${missing(RUNS[0].names).join(' и ')}. Цель h не меняется.`},
+  {t:'Выборка 1: ответ',pan:0,path:1,list:2,d:`Та же DP на новой панели. Путь копирует другие референсы, но ответ тот же: B на SNP ${span(RUNS[0].a,'B')}.`},
+  {t:'Выборка 2',pan:1,n:8,ms:400,path:1,list:3,d:`Здесь не попал ${missing(RUNS[1].names).join(', ')}. Ответ: B на SNP ${span(RUNS[1].a,'B')}. Граница куска сдвинулась: на ${snps(diff(RUNS[1].a,RUNS[0].a))} выборки разошлись.`},
+  {t:'Что меняет выборка',pan:1,path:1,list:3,d:`Ответы совпадают везде, кроме ${snps(diff(RUNS[1].a,RUNS[0].a))} у правой границы куска B. Там вывод зависит от того, какие референсы попали в панель, а на остальных SNP нет. Loter делает 20 таких выборок для каждого λ (рис. 4.2).`}],
+ vote:[
+  {t:'Прогоны 1–2',runs:2,cur:1,d:`Прогон — одна выборка панели и DP при одном λ. Прогоны 1 и 2 — выборки рис. 4.1 при λ = 1.5. Каждый ответ ложится строкой в стопку слева; строка тонкая, но цвета те же: A, B.`},
+  {t:'Прогон 3',runs:3,cur:2,n:8,ms:500,d:`Новая выборка при том же λ: тянем 8 референсов с возвращением, запускаем DP, ответ — третья строка стопки. Не попали ${missing(RUNS[2].names).join(', ')}.`},
+  {t:'Прогоны 4–20: λ = 1.5',runs:20,cur:19,n:17,ms:250,d:`Ещё 17 выборок при λ = 1.5. Строки почти одинаковы и различаются только у границ куска B.`},
+  {t:'λ = 2 … 5',runs:N,cur:N-1,n:7,ms:650,blocks:1,d:`По 20 выборок для каждого из остальных 7 значений λ: всего ${LAMS.length} × ${NB} = ${N} ответов. С ростом λ разрезы дороже: при λ = 4.5 и 5 у ${BIGLOST} из ${BIG.length} ответов нет второго разреза, B тянется до конца или куска B нет вовсе.`},
+  {t:'Голоса',runs:N,cur:null,bars:1,d:`Столбик над SNP — доля голосов: снизу A, сверху B. Пунктир — порог ${pct(N*THR)}%. На большинстве SNP одна популяция набирает больше ${pct(N*THR)}%.`},
+  {t:'Большинство и неуверенные SNP',runs:N,cur:null,bars:1,maj:1,d:`На каждом SNP побеждает популяция с большинством голосов. На ${snps(lowList)} у победителя меньше 75% (${lowList.map(j=>`${pct(Math.max(VA[j-1],N-VA[j-1]))}%`).join(', ')}): это неуверенные SNP, пунктирная рамка.`},
+  {t:'Неуверенные SNP берут метку соседа',runs:N,cur:null,bars:1,maj:1,fin:1,n:lowList.length,ms:900,d:`Неуверенный SNP получает метку ближайшего уверенного SNP, при равном расстоянии — левого. ${lowList.map(j=>`SNP ${j}: ${FIN[j-1]}`).join('; ')}.`},
+  {t:'Сравнение с истиной',runs:N,cur:null,bars:1,maj:1,fin:1,truth:1,d:`${diff(FIN.join(''),TRUE).length?`Итог отличается от истины на ${snps(diff(FIN.join(''),TRUE))}.`:'Итог совпал с истиной на всех 24 SNP.'} На полной панели при λ = 1.5 (рис. 4.1) было отличие на ${snps(diff(FULL.a,TRUE))}. На ${snps(amb([...NA,...NBn],1.5))} данные не решают: на полной панели самые дешёвые пути с A и с B там стоят одинаково, и итог на них дало правило соседа.`}]};
+const S=STEPS[MODE];
+let k=0,fr=null,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+const row=(lab,cls,f)=>`<div class="r"><div class="l">${lab}</div><div class="s ${cls}">${Array.from({length:P},(_,j)=>f(j)).join('')}</div></div>`;
+const strip=(a,extra)=>j=>a?`<span class="${extra?extra(j):''}" style="background:var(--chart-${a[j]=='A'?1:2})">${a[j]}</span>`:'<span></span>';
+const chips=(names,upto,pick)=>names.map((n,i)=>i<upto?`<span class="c ${n[0]} ${i==pick?'on':''}">${n}</span>`:'').join('');
+function figBoot(){
+ const s=S[k],p=s.pan=='full'?FULL:RUNS[s.pan],dr=fr==null?8:fr,showPath=s.path&&fr==null;
+ const pick=fr!=null&&fr>0?p.names[fr-1]:null;
+ let html=`<div class="urn">${s.pan=='full'?'вся панель':'мешки'}: ${[...NA,...NBn].map(n=>`<span class="c ${n[0]} ${n==pick?'on':''}">${n}</span>`).join('')}</div>`;
+ html+=`<div class="note">${pick?`вынули <b>${pick}</b>`:s.pan=='full'?'':`выборка ${s.pan+1}`}</div>`;
+ html+=row('SNP','idx',j=>`<span>${j+1}</span>`);
+ html+=p.names.map((n,i)=>i<dr?row(`<span class="c ${n[0]}">${n}</span>`,'q',j=>`<span class="${showPath&&p.path[j]==i?'p'+n[0]:''}">${p.H[i][j]}</span>`):row('','q',()=>'<span class="e"></span>')).join('');
+ html+=row('h','h',j=>`<span>${h[j]}</span>`)+row('a','a',strip(showPath?p.a:null))+row('истина','a',strip(TRUE));
+ html+=`<div class="cap">Ответы при λ = 1.5</div>`;
+ const L=[['вся панель',FULL.a],['выборка 1',RUNS[0].a],['выборка 2',RUNS[1].a]];
+ html+=L.map(([lab,a],i)=>row(lab,'a',strip(i<s.list?a:null))).join('');
+ return html;
+}
+function figVote(){
+ const s=S[k],busy=fr!=null;
+ // how many runs are stacked (during an animation: grows per tick) and which run is shown on top
+ let runs=s.runs,cur=s.cur,drawn=8;
+ if(busy){const prev=S[k-1];
+  if(s.blocks){runs=Math.min(N,NB*(1+fr));cur=runs-1}
+  else if(s.n==8){runs=prev.runs;cur=s.cur;drawn=fr}
+  else{runs=prev.runs+fr;cur=runs-1}}
+ const c=cur!=null?RUNS[cur]:null;
+ let html=`<div class="urn">${c?`прогон <b>${cur+1}</b> · λ = ${c.lam} · ${chips(c.names,drawn)}`:`${N} прогонов`}</div>`;
+ html+=row('SNP','idx',j=>`<span>${j+1}</span>`);
+ html+=row(c?`прогон ${cur+1}`:'','a',strip(c&&drawn==8?c.a:null));
+ html+=LAMS.map((lam,b)=>`<div class="r blk"><div class="l">λ = ${lam}</div><div class="rows">${RUNS.slice(b*NB,(b+1)*NB).map((x,i)=>`<div class="s st">${[...x.a].map(c=>`<span style="background:${b*NB+i<runs?`var(--chart-${c=='A'?1:2})`:'transparent'}"></span>`).join('')}</div>`).join('')}</div></div>`).join('');
+ const bars=s.bars;
+ html+=`<div class="r" style="margin-top:8px"><div class="l">голоса</div><div class="s bars" style="position:relative">${VA.map(v=>bars?`<span><i style="height:${100*v/N}%"></i></span>`:'<span class="e"></span>').join('')}${bars?`<div class="thr" style="bottom:${100*THR}%"></div><div class="thr" style="bottom:${100*(1-THR)}%"></div>`:''}</div></div>`;
+ html+=row('A из 160','num',j=>`<span>${bars?VA[j]:''}</span>`);
+ html+=row('большинство','a',strip(s.maj?MAJ:null,j=>LOW[j]?'lo':''));
+ const fixed=busy&&s.fin?fr:lowList.length,shown=s.fin?FIN.map((x,j)=>LOW[j]&&lowList.indexOf(j+1)>=fixed?MAJ[j]:x):null;
+ html+=row('итог','a',strip(shown,j=>LOW[j]&&lowList.indexOf(j+1)==fixed-1&&busy?'cur':''));
+ html+=row('истина','a',strip(s.truth?TRUE:null));
+ return html;
+}
+function draw(){
+ $('fig').innerHTML=MODE=='boot'?figBoot():figVote();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;fr=null;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1;k=i;const s=S[k];
+ if(fwd&&s.n){ // animate only one step forward: one element per tick, then the full static state
+  window.stepperBusy=true;fr=0;
+  const t=timer=setInterval(()=>{fr++;if(fr>s.n){clearInterval(t);fr=null;window.stepperBusy=false}draw()},s.ms);
+ }
+ draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+// reserve the tallest step-list height, so the frame does not resize between steps
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

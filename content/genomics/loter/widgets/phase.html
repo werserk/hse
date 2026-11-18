@@ -1,0 +1,145 @@
+<!-- Fig. 4.3: phase-error correction for K = 2. The second DP sees only the diploid ancestry d. -->
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:24px;align-items:start}
+#tab{position:relative}
+.r{display:flex;align-items:center;gap:8px;margin:4px 0}
+.l{width:74px;flex:none;display:flex;justify-content:flex-end;align-items:center;gap:3px;font:11px var(--font-mono);color:var(--muted-foreground);white-space:nowrap}
+.l .A,.l .B{padding:1px 4px;border-radius:3px;color:var(--foreground);font-size:12px}
+.l .A{background:color-mix(in srgb,var(--chart-1) 25%,transparent)}
+.l .B{background:color-mix(in srgb,var(--chart-2) 25%,transparent)}
+.s{display:flex;gap:14px;font-family:var(--font-mono)}
+.s>span{box-sizing:border-box;width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative;font-size:12px}
+.idx>span{height:14px;font-size:10px;color:var(--subtle-foreground)}
+.a>span{color:var(--background);font-weight:600}
+.a>span:empty{border:1px dashed var(--border);background:transparent}
+.dd>span{background:var(--muted);font-weight:600;font-size:13px;color:var(--foreground)}
+.dd>span:empty{background:transparent;border:1px dashed var(--border)}
+.q>span{background:var(--muted);font-size:13px;font-weight:600;color:var(--foreground)}
+.q>span.e{background:transparent;border:1px dashed var(--border)}
+.q>span sub{position:absolute;left:2px;top:1px;font-size:9px;font-weight:400;line-height:1;color:var(--muted-foreground)}
+.q>span sub.mm{color:var(--destructive);font-weight:700}
+.q>span.pp{background:var(--foreground);color:var(--background)}
+.q>span.pp sub{color:var(--background)}
+.hid{visibility:hidden}
+.s>span.cur{outline:2px solid var(--foreground);outline-offset:1px}
+.s>span.src{outline:2px dashed var(--muted-foreground);outline-offset:1px}
+.cap{margin:12px 0 4px 82px;font-size:12px;font-weight:600;color:var(--foreground)}
+.sep{margin:10px 0 10px 82px;border-top:1px solid var(--border)}
+.vl{position:absolute;width:2px;background:var(--warning);border-radius:1px}
+svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt .d .f{display:block;margin-top:6px;font-family:var(--font-mono);font-size:12px;color:var(--foreground)}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+.ar{display:inline-block;width:16px;height:2px;vertical-align:3px;background:var(--muted-foreground)}
+.ar.sw{background:var(--warning)}
+.mk{display:inline-block;width:2px;height:12px;background:var(--warning);vertical-align:-1px;margin:0 2px}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+// one individual, two copies of a chromosome; the phasing swaps the copies after SNP E
+const X='AAAAAAABBB',Y='BBBBBBBBBB',E=3,P=10,L=2;
+const OA=X.slice(0,E)+Y.slice(E),OB=Y.slice(0,E)+X.slice(E);
+const nb=c=>+(c=='B'),D=[...OA].map((c,j)=>nb(c)+nb(OB[j]));
+// states: ancestry of copy 1 and copy 2 at one SNP; cost |d - number of B|, λ for every copy that changes
+const ST=['AA','AB','BA','BB'],R=4,bs=s=>nb(ST[s][0])+nb(ST[s][1]),chg=(t,s)=>(ST[t][0]!=ST[s][0])+(ST[t][1]!=ST[s][1]);
+const mis=(s,j)=>Math.abs(D[j]-bs(s)),Q=[],F=[];
+for(let s=0;s<R;s++){Q.push([mis(s,0)]);F.push([s])}
+for(let j=1;j<P;j++)for(let s=0;s<R;s++){let best=Q[s][j-1],arg=s; // staying wins a tie
+ for(let t=0;t<R;t++){const c=Q[t][j-1]+L*chg(t,s);if(c<best){best=c;arg=t}}Q[s][j]=mis(s,j)+best;F[s][j]=arg}
+const lastCol=Q.map(r=>r[P-1]),end=lastCol.indexOf(Math.min(...lastCol));
+const path=Array(P);path[P-1]=end;for(let j=P-1;j>0;j--)path[j-1]=F[path[j]][j];
+const NX=path.map(s=>ST[s][0]).join(''),NY=path.map(s=>ST[s][1]).join('');
+const breaks=a=>[...a].filter((c,j)=>j>0&&c!=a[j-1]).length;
+const cand=(s,j)=>[0,1,2,3].map(t=>`<span class="f">из ${ST[t]}: ${Q[t][j-1]} + ${chg(t,s)}·λ = ${Q[t][j-1]+L*chg(t,s)}</span>`).join('');
+const best=(s,j)=>Math.min(...[0,1,2,3].map(t=>Q[t][j-1]+L*chg(t,s)));
+const c=(s,j)=>`Q(${ST[s]}, ${j+1})`;
+const J10=X.indexOf('B'); // the column where d changes from 1 to 2
+// per step: rows shown (top), cells filled (fill), focus cell, candidate arrows, traceback length, result rows
+const S=[
+ {t:'Две копии',top:1,d:`Хромосома есть в двух копиях. Истина: копия 1 от A на SNP 1–${J10} и от B дальше, копия 2 вся от B. Loter её не знает.`},
+ {t:'Ошибка фазирования',top:2,d:`Фазирование ошиблось после SNP ${E}: дальше копии перепутаны. Loter работает с тем, что дало фазирование, поэтому его ответы для копий (строки «ответ») тоже перепутаны. В обоих ответах появился разрез <span class="mk"></span> между SNP ${E} и ${E+1}, которого в истине нет. Разрезов стало ${breaks(OA)+breaks(OB)} вместо ${breaks(X)+breaks(Y)}.`},
+ {t:'Сумма d',top:3,d:`На каждом SNP считаем, сколько копий от B: d = 0, 1 или 2 (строка d под чертой). Перестановка копий сумму не меняет, поэтому d у истины и у перепутанных копий одинаковое. Дальше Loter забывает ответы для копий и восстанавливает их из d.`},
+ {t:'Таблица состояний',top:3,tab:1,d:`Состояние на SNP — пара (копия 1, копия 2): AA, AB, BA или BB. В углу клетки — расхождение с d: |d − число B в паре|. В клетку (s, j) запишем <strong>Q(s, j)</strong> — цену самой дешёвой пары последовательностей по SNP 1…j, которая на SNP j в состоянии s. Каждое переключение одной копии стоит λ, в примере λ = ${L}.`},
+ {t:'Граница: столбец 1',top:3,tab:1,fill:4,ms:900,d:`На первом SNP переключений нет, цена — только расхождение с d₁ = ${D[0]}: AA ${Q[0][0]}, AB ${Q[1][0]}, BA ${Q[2][0]}, BB ${Q[3][0]}.<span class="f">Q(s, 1) = |d₁ − число B в s|</span>`},
+ {t:'Клетка (AB, 2): четыре варианта',top:3,tab:1,fill:4,focus:[1,1],cand:1,d:`Прийти в AB можно из любого состояния столбца 1. Остаться в AB бесплатно, из AA или BB переключается одна копия (+λ), из BA обе (+2λ).${cand(1,1)}<span class="f">${c(1,1)} = ${mis(1,1)} + min = ${mis(1,1)} + ${best(1,1)} = ${Q[1][1]}</span>`},
+ {t:'Столбец 2',top:3,tab:1,fill:8,ms:900,d:`То же для остальных клеток столбца. AB и BA стоят одинаково: они отличаются только тем, какую копию назвать первой. При равенстве вариантов состояние не меняется.`},
+ {t:`Столбцы 3–${J10}`,top:3,tab:1,fill:4*J10,ms:250,d:`Пока d = 1, дешевле всего оставаться в AB или BA: цена не растёт. Перепутывание после SNP ${E} в d не видно, поэтому и разреза там нет.`},
+ {t:`Клетка (BB, ${J10+1}): d стало 2`,top:3,tab:1,fill:4*J10,focus:[3,J10],cand:1,d:`На SNP ${J10+1} d = 2: без расхождения подходит только BB. Остаться в BB дорого, ${c(3,J10-1)} = ${Q[3][J10-1]}. Дешевле прийти из AB или BA, переключив одну копию.${cand(3,J10)}<span class="f">${c(3,J10)} = ${mis(3,J10)} + ${best(3,J10)} = ${Q[3][J10]}</span>`},
+ {t:`Столбцы ${J10+1}–${P}`,top:3,tab:1,fill:4*P,ms:250,d:`Остальные клетки по тому же правилу. Минимум последнего столбца ${Math.min(...lastCol)}, в ${ST[end]}: одно переключение одной копии, ни одного расхождения с d.`},
+ {t:'Обратный проход',top:3,tab:1,fill:4*P,back:P,ms:450,d:`От минимума идём по стрелкам справа налево, как на рис. 3.4. Из AB и BA выбираем верхнюю: они равноценны.`},
+ {t:'Новые копии',top:3,tab:1,fill:4*P,back:P,res:1,d:`Состояния пути дают две новые последовательности. Разрезов ${breaks(NX)+breaks(NY)}, как в истине, ложный разрез после SNP ${E} исчез, сумма по-прежнему равна d.`}];
+let k=0,fill=0,back=0,cur=null,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+const row=(lab,cls,f)=>`<div class="r"><div class="l">${lab}</div><div class="s ${cls}">${Array.from({length:P},(_,j)=>f(j)).join('')}</div></div>`;
+const strip=a=>j=>a?`<span style="background:var(--chart-${a[j]=='A'?1:2})">${a[j]}</span>`:'<span></span>';
+const done=(s,j)=>j*R+s<fill;
+const chip=st=>`<span class="${st[0]}">${st[0]}</span><span class="${st[1]}">${st[1]}</span>`;
+function fig(){
+ const st=S[k],f=cur||(!window.stepperBusy&&st.focus?st.focus:null),cd=!window.stepperBusy&&st.cand;
+ const onPath=(s,j)=>st.back&&j>=P-back&&path[j]==s;
+ const srcs=f&&!cd&&f[1]>0&&!st.back?[[F[f[0]][f[1]],f[1]-1]]:[];
+ let html=row('истина 1','a',strip(X))+row('истина 2','a',strip(Y))+row('ответ 1','a',strip(st.top>=2?OA:null))+row('ответ 2','a',strip(st.top>=2?OB:null));
+ // the table and the result rows are always laid out, hidden until their step, so the frame does not resize
+ html+=`<div class="sep"></div>`+row('SNP','idx',j=>`<span>${j+1}</span>`)+`<div class="${st.top>=3?'':'hid'}">`+row('d','dd',j=>`<span class="${f&&f[1]==j?'cur':''}">${D[j]}</span>`)+'</div>';
+ html+=`<div class="${st.tab?'':'hid'}">`+ST.map((n,s)=>row(chip(n),'q',j=>{const cls=[done(s,j)?'':'e',onPath(s,j)?'pp':'',f&&f[0]==s&&f[1]==j?'cur':srcs.some(x=>x[0]==s&&x[1]==j)?'src':''].join(' ');
+   return `<span class="${cls}">${done(s,j)?`<sub class="${mis(s,j)?'mm':''}">${mis(s,j)}</sub>${Q[s][j]}`:''}</span>`})).join('')+'</div>';
+ html+=`<div class="${st.res?'':'hid'}"><div class="cap">После второй DP</div>`+row('копия 1','a',strip(NX))+row('копия 2','a',strip(NY))+'</div>';
+ return `<div id="tab">${html}</div>`;
+}
+function marks(){
+ // offset* are layout px relative to #tab, unaffected by the page zoom applied to the widget
+ const T=$('tab'),st=S[k];
+ if(st.top>=2){const rows=[...T.querySelectorAll('.s.a')].slice(2,4),a=rows[0].children[E],top=rows[0].offsetTop-3,bot=rows[1].offsetTop+rows[1].offsetHeight+3;
+  T.insertAdjacentHTML('beforeend',`<div class="vl" style="left:${a.offsetLeft-8}px;top:${top}px;height:${bot-top}px"></div>`)}
+ if(!st.tab)return;
+ const rows=[...T.querySelectorAll('.s.q')],cell=(s,j)=>rows[s].children[j],out=[];
+ const ar=(s0,j0,s1,j1,kind,style)=>{const a=cell(s0,j0),b=cell(s1,j1);
+  out.push({x1:a.offsetLeft+a.offsetWidth+1,y1:a.offsetTop+a.offsetHeight/2,x2:b.offsetLeft-3,y2:b.offsetTop+b.offsetHeight/2,kind,style})};
+ for(let j=1;j<P;j++)for(let s=0;s<R;s++)if(done(s,j)){const bold=st.back&&j>=P-back+1&&path[j]==s;
+  ar(F[s][j],j-1,s,j,F[s][j]==s?'st':'sw',st.back?(bold?'bold':'faint'):'')}
+ const f=st.focus;if(st.cand&&f&&!window.stepperBusy)for(let t=0;t<R;t++)ar(t,f[1]-1,f[0],f[1],t==f[0]?'st':'sw','cand');
+ const col=k=>k=='sw'?'var(--warning)':'var(--muted-foreground)';
+ T.insertAdjacentHTML('beforeend',`<svg width="${T.offsetWidth}" height="${T.offsetHeight}"><defs>`+
+  ['st','sw'].map(k=>`<marker id="m${k}" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0L6,3L0,6z" style="fill:${col(k)}"/></marker>`).join('')+'</defs>'+
+  out.map(a=>`<line x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" marker-end="url(#m${a.kind})" style="stroke:${col(a.kind)};stroke-width:${a.style=='bold'?2.5:1.5};${a.style=='cand'?'stroke-dasharray:3 2;':''}opacity:${a.style=='faint'?.3:1}"/>`).join('')+'</svg>');
+}
+function draw(){
+ $('fig').innerHTML=fig();marks();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;cur=null;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ const key=s.back>back?'back':'fill',to=s[key]||0,now=key=='back'?back:fill;
+ if(fwd&&s.ms&&to>now){ // animate only one step forward; end in the full static state
+  window.stepperBusy=true;if(key=='fill')back=s.back||0;
+  const t=timer=setInterval(()=>{
+   if(key=='fill'){cur=[fill%R,Math.floor(fill/R)];fill++}else{back++;cur=[path[P-back],P-back]}
+   draw();if((key=='fill'?fill:back)>=to){clearInterval(t);setTimeout(()=>{if(timer===t){cur=null;window.stepperBusy=false;draw()}},s.ms)}},s.ms);
+  draw();return;
+ }
+ fill=s.fill||0;back=s.back||0;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+// reserve the tallest step-list height, so the frame does not resize between steps
+let hmax=0;for(k=0;k<S.length;k++){fill=S[k].fill||0;back=S[k].back||0;draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;fill=0;back=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>
