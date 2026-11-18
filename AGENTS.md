@@ -38,6 +38,8 @@ Until `notes.md` exists, the page shows `summary` and «Текстовый ко�
    - `##` and `###` headings build the contents.
    - Cite sources.
    - Put widgets where interaction explains better than prose.
+   - Formulas: `$…$` inline, `$$…$$` display, KaTeX syntax. They render at build time (needs `node`; the build
+     fails on a TeX error and names the formula). A literal dollar outside code is `\$`.
    - The HTML blocks are listed in README § Konspekt.
 
 3. **Presentation second** (`deck.html`): a shorter telling of the konspekt, using the same widgets.

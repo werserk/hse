@@ -128,6 +128,38 @@ def pack_deck(src, out, style, pdf=False, home=None, name=None, has_pdf=False, t
     return out / "index.html"
 
 
+CODE = re.compile(r"(```.*?```|~~~.*?~~~|`[^`\n]*`)", re.S)
+MATH = re.compile(r"(?<!\\)\$\$(.+?)\$\$|(?<![\\$])\$(?![\s$])([^$\n]+?)(?<![\s\\])\$(?!\d)", re.S)
+
+
+def katex(formulas):
+    """[(tex, display)] → [html], rendered once at build time by the vendored KaTeX (kit/katex, needs node)."""
+    node = shutil.which("node")
+    if not node: sys.exit("formulas need node (KaTeX renders at build time)")
+    r = subprocess.run([node, str(KIT / "katex" / "render.js")], input=json.dumps(formulas), capture_output=True, text=True)
+    if r.returncode: sys.exit("KaTeX: " + r.stderr.strip())
+    return json.loads(r.stdout)
+
+
+def math_out(md):
+    """Swap $…$ / $$…$$ (outside code) for tokens Markdown leaves alone; returns (md, restore(html))."""
+    found = []
+    def take(m):
+        found.append((m.group(1) or m.group(2), m.group(1) is not None))
+        return f"KATEXMATH{len(found) - 1}X"
+    md = "".join(p if CODE.fullmatch(p) else MATH.sub(take, p).replace("\\$", "&#36;") for p in CODE.split(md))
+    if not found: return md, lambda h: h
+    rendered = katex(found)
+    return md, lambda h: re.sub(r"KATEXMATH(\d+)X", lambda m: rendered[int(m.group(1))], h)
+
+
+def katex_css(cfg):
+    """KaTeX CSS for a page with formulas; the fonts live once per site in /assets/katex/fonts/ (absolute URL, so the
+    downloaded copy uses them too; fully offline it falls back to local fonts)."""
+    base = f"https://{cfg['domain']}/assets/katex/fonts/" if cfg.get("domain") else "/assets/katex/fonts/"
+    return read(KIT / "katex" / "katex.min.css").replace("url(fonts/", f"url({base}")
+
+
 def md_to_html(md):
     try:
         import markdown
@@ -149,7 +181,8 @@ def pack_notes(src, out, style, md_name, title, meta="", back=None, acts=(), nam
     acts = [(label, href, download)] resource buttons; without notes.md the page shows `lead` and says the text is pending."""
     src, out = Path(src), Path(out)
     if md_name:
-        body = inline_local(md_to_html(read(src / md_name)), src, style, src / md_name, keys=False)
+        md, restore = math_out(read(src / md_name))
+        body = restore(inline_local(md_to_html(md), src, style, src / md_name, keys=False))
     else:
         body = (f'<p class="nt-lead">{esc(lead)}</p>' if lead else "") + '<p class="nt-pending">Текстовый конспект готовится.</p>'
     copy_media(src, out)
@@ -163,7 +196,7 @@ def pack_notes(src, out, style, md_name, title, meta="", back=None, acts=(), nam
     page_ = f"""<!doctype html><html lang="ru" data-style="{style}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title>
 <style>{read(KIT / 'theme.css')}
-{read(KIT / 'notes.css')}</style></head>
+{read(KIT / 'notes.css')}{katex_css(site_cfg()) if 'class="katex"' in body else ""}</style></head>
 <body class="nt"><nav class="nt-side">{side}</nav><main class="nt-main">{head}<article class="nt-body">{body}</article></main>
 <script>{read(KIT / 'notes.js')}</script></body></html>"""
     (out / "index.html").write_text(page_, encoding="utf-8")
@@ -334,6 +367,7 @@ def build_site(out, style=None, pdf=False):
     (out / "assets").mkdir(parents=True); (out / MARK).write_text("")
     shutil.copy(ROOT / "assets" / "site.css", out / "assets" / "site.css")
     shutil.copy(KIT / "theme.css", out / "assets" / "theme.css")
+    shutil.copytree(KIT / "katex" / "fonts", out / "assets" / "katex" / "fonts")
     courses = load_content()
     head = f'<header class="hero"><h1><a href="/">{esc(cfg["title"])}</a></h1></header>'
     foot = f'<footer class="foot">{esc(cfg.get("footer", ""))}</footer>'

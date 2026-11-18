@@ -27,6 +27,14 @@
 
 ### Шаг 2
 
+Формулы пишутся в синтаксисе KaTeX: строчная $P(a_j = k \mid h)$ и выключная
+
+$$
+\text{cost}(a) = \sum_{j=1}^{p} \mathbb{1}[h_j \ne r^{a_j}_j] + \lambda \sum_{j=2}^{p} \mathbb{1}[a_j \ne a_{j-1}].
+$$
+
+Знак доллара без формулы экранируется: \$5. В `коде` доллар остаётся как есть: `$HOME`.
+
 Виджет во всю ширину колонки:
 
 <iframe class="widget" data-src="widgets/example.html" data-zoom="1.4"></iframe>

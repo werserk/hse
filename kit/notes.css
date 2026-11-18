@@ -48,3 +48,4 @@ details.answer summary { cursor: pointer; font: 600 14px var(--font-sans); color
   .nt-body figure.right { float: none; width: auto; margin: 24px 0; }
 }
 @media print { .nt-side { display: none; } .nt-main { margin: 0; padding: 0; max-width: none; } }
+.nt-body .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; }

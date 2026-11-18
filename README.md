@@ -45,6 +45,9 @@ entry folder) or `"cover": 3` (slide number).
 - `<iframe class="widget" data-src="widgets/x.html">` embeds a widget (arrow keys stay in the widget);
 - `<figure class="right" markdown>` floats a figure beside the text;
 - `<details class="answer" markdown>` hides an answer.
+- `$…$` / `$$…$$` are formulas, rendered to HTML+MathML at build time by the vendored KaTeX 0.19.1 (`kit/katex/`,
+  run with `node`). The page inlines the KaTeX CSS; the fonts are served once per site from `/assets/katex/fonts/`
+  (an absolute URL, so a downloaded copy uses them too; without network it falls back to local fonts).
 
 The page is one self-contained file (also the offline copy). See `kit/starter/notes.md`.
 
