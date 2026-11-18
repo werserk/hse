@@ -1,0 +1,158 @@
+<!-- One DP widget, three figures. The iframe's data-mode picks the figure:
+     piece (first 3 SNPs cell by cell), scan (whole table), back (traceback). -->
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+#tab{position:relative}
+.wide .s{gap:44px}
+.r{display:flex;align-items:center;gap:8px;margin:4px 0}
+.l{width:40px;display:flex;justify-content:flex-end;align-items:center;gap:5px;font:12px var(--font-mono);color:var(--muted-foreground)}
+.l i{font-style:normal;font-size:10px;color:var(--subtle-foreground)}
+.l .A,.l .B{padding:1px 3px;border-radius:3px;color:var(--foreground)}
+.l .A{background:color-mix(in srgb,var(--chart-1) 25%,transparent)}
+.l .B{background:color-mix(in srgb,var(--chart-2) 25%,transparent)}
+.s{display:flex;gap:12px;font-family:var(--font-mono)}
+.s>span{box-sizing:border-box;width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative}
+.idx>span{height:14px;font-size:10px;color:var(--subtle-foreground)}
+.hh>span{background:var(--muted);font-weight:600;font-size:13px}
+.q>span{background:var(--muted);font-size:13px;font-weight:600;color:var(--foreground)}
+.q>span.e{background:transparent;border:1px dashed var(--border)}
+.q>span sub{position:absolute;left:2px;top:1px;font-size:9px;font-weight:400;line-height:1;color:var(--muted-foreground)}
+.q>span sub.mm{color:var(--destructive);font-weight:700}
+.q>span.pA{background:var(--chart-1);color:var(--background)}
+.q>span.pB{background:var(--chart-2);color:var(--background)}
+.q>span.pA sub,.q>span.pB sub{color:var(--background)}
+.s>span.cur{outline:2px solid var(--foreground);outline-offset:1px}
+.s>span.src{outline:2px dashed var(--muted-foreground);outline-offset:1px}
+.p>span{font-size:10px;border:1px dashed var(--border)}
+.p>span:empty,.a>span:empty{border:1px dashed var(--border);background:transparent}
+.a>span{color:var(--background);font-weight:600;font-size:12px}
+.sep{margin:10px 0 10px 48px;border-top:1px solid var(--border)}
+svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt .d strong{font-weight:600;color:var(--foreground)}
+.txt .d .f{display:block;margin-top:6px;font-family:var(--font-mono);font-size:12px;color:var(--foreground)}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+.ar{display:inline-block;width:16px;height:2px;vertical-align:3px;background:var(--muted-foreground)}
+.ar.sw{background:var(--warning)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+const MODE=(window.frameElement&&window.frameElement.dataset.mode)||'piece';
+const N=['A1','A2','B1','B2'],H=['0010001000','0100000010','1111101111','1011111101'],h='0011101010',L=1,R=4,P=10;
+// Loter DP, computed here so the figure and the text cannot disagree; on a tie the path keeps its reference (as Loter does)
+const mis=(i,j)=>+(H[i][j]!=h[j]),Q=[],J=[],M=[];
+for(let i=0;i<R;i++){Q.push([mis(i,0)]);J.push([false])}
+M.push(Math.min(...Q.map(r=>r[0])));
+for(let j=1;j<P;j++){for(let i=0;i<R;i++){const st=Q[i][j-1],sw=M[j-1]+L;Q[i][j]=mis(i,j)+Math.min(st,sw);J[i][j]=sw<st}M.push(Math.min(...Q.map(r=>r[j])))}
+const argmin=j=>Q.map(r=>r[j]).indexOf(M[j]);
+const from=(i,j)=>J[i][j]?argmin(j-1):i; // the cell (row) of column j-1 that cell (i, j) was reached from
+const path=Array(P);path[P-1]=argmin(P-1);for(let j=P-1;j>0;j--)path[j-1]=from(path[j],j);
+const pop=i=>N[i][0];
+// text helpers: cell (i, j) with 1-based indices, its data, and the two options worded from the numbers
+const c=(i,j)=>`Q(${i+1}, ${j+1})`,nm=(i,j)=>`${N[i]}, SNP ${j+1}`;
+const mm=(i,j)=>`у ${N[i]} ${H[i][j]}, у h ${h[j]} → ${mis(i,j)}`;
+const others=(i,j)=>[0,1,2,3].filter(x=>x!=i).map(x=>`из ${N[x]}: ${Q[x][j-1]} + ${L} + ${mis(i,j)} = ${Q[x][j-1]+L+mis(i,j)}`).join('; ');
+const bestOther=(i,j)=>Math.min(...[0,1,2,3].filter(x=>x!=i).map(x=>Q[x][j-1]))+L+mis(i,j);
+const STEPS={
+ piece:{cols:3,S:[
+  {t:'Таблица и индексы',fill:0,d:`Строка i — референс: 1 = A1, 2 = A2, 3 = B1, 4 = B2. Столбец j — SNP. Сверху цель h, в углу клетки — аллель референса на этом SNP (строки H из главы 2, вписанные в таблицу). В клетку (i, j) запишем <strong>Q(i, j)</strong> — цену самого дешёвого пути по SNP 1…j, который на SNP j копирует референс i.`},
+  {t:'Граница: клетка (1, 1)',fill:1,ms:900,focus:[0,0],d:`Путь по одному SNP — это просто один референс: переключений нет. Цена — только несовпадение на SNP 1: ${mm(0,0)}.<span class="f">${c(0,0)} = |h₁ − H₁₁| = ${Q[0][0]}</span>`},
+  {t:'Граница: столбец 1',fill:4,ms:900,d:`Так же для остальных строк. A2: ${mm(1,0)}. B1: ${mm(2,0)}. B2: ${mm(3,0)}. Красная цифра в углу — несовпадение.<span class="f">Q(i, 1) = |h₁ − Hᵢ₁|</span>`},
+  {t:'Клетка (1, 2): остаться',fill:4,focus:[0,1],cand:'stay',d:`Путь, который на SNP 2 копирует A1, мог и на SNP 1 копировать A1 (стрелка слева). Лучшая цена такого начала — ${c(0,0)} = ${Q[0][0]}, переключения нет. Добавляем несовпадение на SNP 2: ${mm(0,1)}.<span class="f">остаться: ${c(0,0)} + ${mis(0,1)} = ${Q[0][0]+mis(0,1)}</span>`},
+  {t:'Клетка (1, 2): переключиться',fill:4,focus:[0,1],cand:'switch',d:`Или на SNP 1 путь копировал другой референс и на SNP 2 переключился на A1: +λ = ${L}. Начало берём лучшее из клеток столбца 1, затем +λ и несовпадение.<span class="f">${others(0,1)}</span><span class="f">переключиться: ${bestOther(0,1)}</span>`},
+  {t:'Клетка (1, 2): меньший вариант',fill:5,ms:900,focus:[0,1],d:`${c(0,1)} = min(${Q[0][0]+mis(0,1)}, ${bestOther(0,1)}) = ${Q[0][1]}. Стрелка <span class="ar"></span> запоминает, откуда пришли: здесь из той же строки.`},
+  {t:'Столбец 2',fill:8,ms:900,d:`То же для остальных клеток столбца 2: два варианта, меньший, стрелка. Переключаться выгодно только из самой дешёвой клетки столбца слева: λ одинаково для всех, поэтому дешевле начало — дешевле путь. Если варианты равны, оставаемся на референсе (так делает и Loter): у B1 остаться ${Q[2][0]+mis(2,1)}, переключиться ${bestOther(2,1)}, стрелка серая.`},
+  {t:'Клетка (3, 3): переключение выгоднее',fill:8,focus:[2,2],cand:'both',d:`Остаться на B1: ${c(2,1)} + ${mis(2,2)} = ${Q[2][1]+mis(2,2)}. Переключиться: лучшее начало в столбце 2 — A1 (${Q[0][1]}), ${Q[0][1]} + ${L} + ${mis(2,2)} = ${bestOther(2,2)}.<span class="f">${c(2,2)} = min(${Q[2][1]+mis(2,2)}, ${bestOther(2,2)}) = ${Q[2][2]}</span>`},
+  {t:'Столбец 3',fill:12,ms:650,focus:[2,2],d:`Переключение победило, стрелка <span class="ar sw"></span> оранжевая и ведёт из A1. Это переключение A1 → B1 из рис. 2.1. Остальные клетки столбца — по тому же правилу.`}]},
+ scan:{cols:P,S:[
+  {t:'Столбцы 1–3 из рис. 3.2',fill:12,d:'Таблица после рис. 3.2. Дальше каждая клетка считается по тому же правилу.'},
+  {t:'Столбец 4',fill:16,ms:650,d:`Для каждой клетки сравниваем два варианта: своя клетка слева или самая дешёвая клетка слева (пунктир) + λ; добавляем несовпадение. Если варианты равны, остаёмся на референсе: так у B1 (${Q[2][2]} против ${M[2]} + ${L}).`},
+  {t:'Столбцы 5–10',fill:R*P,ms:250,d:'Каждый столбец зависит только от предыдущего, поэтому хватает одного прохода слева направо.'},
+  {t:'Ответ: минимум последнего столбца',fill:R*P,focus:[path[P-1],P-1],d:`Минимум последнего столбца — ${M[P-1]}, клетка (${path[P-1]+1}, ${P}), ${N[path[P-1]]}. Это цена самого дешёвого пути по всем SNP, столько же, сколько у пути 1 на рис. 2.2 (2λ при λ = 1).`}]},
+ back:{cols:P,S:[
+  {t:'Старт: минимум последнего столбца',back:1,focus:P-1,d:`Путь кончается в самой дешёвой клетке последнего столбца: ${nm(path[P-1],P-1)}, цена ${M[P-1]}. Дальше идём по стрелкам справа налево.`},
+  {t:'SNP 10 → 9',back:2,ms:900,focus:P-2,d:`В клетку (${path[9]+1}, 10) ведёт серая стрелка из той же строки: на SNP 9 путь тоже копирует ${N[path[8]]}.`},
+  {t:'SNP 9 → 8',back:3,ms:900,focus:P-3,d:`Снова серая стрелка: на SNP 8 — ${N[path[7]]}.`},
+  {t:'SNP 8 → 7: оранжевая стрелка',back:4,ms:900,focus:P-4,d:`В клетку (${path[7]+1}, 8) ведёт оранжевая стрелка из ${N[path[6]]}: здесь путь переключился. На SNP 7 он копирует ${N[path[6]]}.`},
+  {t:'SNP 7 → 1',back:P,ms:450,d:`Дальше так же: серые стрелки по строке ${N[path[3]]}, оранжевая в клетку (${path[2]+1}, 3) из ${N[path[1]]}, серая в (${path[1]+1}, 2).`},
+  {t:'Путь s и происхождение a',back:P,anc:P,ms:250,d:`Получился путь из рис. 2.1: ${path.map(i=>N[i]).join(' ')}. Заменяем референсы популяциями: ответ LAI ${path.map(pop).join('')}.`}]}};
+const {cols,S}=STEPS[MODE];
+let k=0,fill=0,back=0,anc=0,cur=null,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+const done=(i,j)=>MODE=='back'||j*R+i<fill;
+const row=(lab,cls,f)=>`<div class="r"><div class="l">${lab}</div><div class="s ${cls}">${Array.from({length:cols},(_,j)=>f(j)).join('')}</div></div>`;
+function state(){ // the highlighted cell and the arrows to draw
+ const st=S[k];let f=cur||(!window.stepperBusy&&st.focus!=null?st.focus:null);
+ if(MODE=='back'){const j=cur!=null?cur:(!window.stepperBusy&&st.focus!=null?st.focus:null);f=j!=null?[path[j],j]:null}
+ return {f,cand:window.stepperBusy?null:st.cand};
+}
+function fig(){
+ const {f,cand}=state(),onPath=(i,j)=>MODE=='back'&&j>=P-back&&path[j]==i;
+ const srcs=[];if(f&&f[1]>0&&MODE!='back'&&!cand)srcs.push([f[0],f[1]-1],[argmin(f[1]-1),f[1]-1]);
+ if(f&&MODE=='back'&&f[1]<P-1)srcs.push([path[f[1]+1],f[1]+1]);
+ const cls=(i,j)=>[done(i,j)?'':'e',onPath(i,j)?'p'+pop(i):'',f&&f[0]==i&&f[1]==j?'cur':srcs.some(s=>s[0]==i&&s[1]==j)?'src':''].join(' ');
+ let html=row('j','idx',j=>`<span>${j+1}</span>`)+row('h','hh',j=>`<span class="${f&&f[1]==j&&MODE!='back'?'cur':''}">${h[j]}</span>`)+
+  N.map((n,i)=>row(`<i>${i+1}</i><span class="${n[0]}">${n}</span>`,'q',j=>`<span class="${cls(i,j)}"><sub class="${done(i,j)&&mis(i,j)?'mm':''}">${H[i][j]}</sub>${done(i,j)?Q[i][j]:''}</span>`)).join('');
+ if(MODE=='back')html+=`<div class="sep"></div>`+row('s','p',j=>`<span>${j>=P-back?N[path[j]]:''}</span>`)+
+  row('a','a',j=>j<anc?`<span style="background:var(--chart-${pop(path[j])=='A'?1:2})">${pop(path[j])}</span>`:'<span></span>');
+ return `<div id="tab" class="${MODE=='piece'?'wide':''}">${html}</div>`;
+}
+function arrows(){
+ // offset* are layout px relative to #tab, unaffected by the page zoom applied to the widget
+ const T=$('tab'),rows=[...T.querySelectorAll('.s.q')],cell=(i,j)=>rows[i].children[j];
+ const {f,cand}=state(),out=[];
+ const ar=(i0,j0,i1,j1,kind,style)=>{const a=cell(i0,j0),b=cell(i1,j1);
+  out.push({x1:a.offsetLeft+a.offsetWidth+1,y1:a.offsetTop+a.offsetHeight/2,x2:b.offsetLeft-3,y2:b.offsetTop+b.offsetHeight/2,kind,style})};
+ for(let j=1;j<cols;j++)for(let i=0;i<R;i++)if(done(i,j)){
+  const bold=MODE=='back'&&j>=P-back+1&&path[j]==i;
+  ar(from(i,j),j-1,i,j,J[i][j]?'sw':'st',MODE=='back'?(bold?'bold':'faint'):'');
+ }
+ if(cand&&f){const[i,j]=f;
+  if(cand=='stay'||cand=='both')ar(i,j-1,i,j,'st','cand');
+  if(cand=='switch'||cand=='both')for(let x=0;x<R;x++)if(x!=i)ar(x,j-1,i,j,'sw','cand');
+ }
+ const col=k=>k=='sw'?'var(--warning)':'var(--muted-foreground)';
+ T.insertAdjacentHTML('beforeend',`<svg width="${T.offsetWidth}" height="${T.offsetHeight}"><defs>`+
+  ['st','sw'].map(k=>`<marker id="m${k}" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0L6,3L0,6z" style="fill:${col(k)}"/></marker>`).join('')+'</defs>'+
+  out.map(a=>`<line x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" marker-end="url(#m${a.kind})" style="stroke:${col(a.kind)};stroke-width:${a.style=='bold'?2.5:1.5};${a.style=='cand'?'stroke-dasharray:3 2;':''}opacity:${a.style=='faint'?.35:1}"/>`).join('')+'</svg>');
+}
+function draw(){
+ $('fig').innerHTML=fig();arrows();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;cur=null;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ const key=s.anc>anc?'anc':MODE=='back'?'back':'fill',to=s[key]||0,now={fill,back,anc}[key];
+ if(fwd&&s.ms&&to>now){ // animate only one step forward; end in the full static state
+  window.stepperBusy=true;
+  const t=timer=setInterval(()=>{
+   if(key=='fill'){cur=[fill%R,Math.floor(fill/R)];fill++}else if(key=='back'){back++;cur=P-back}else anc++;
+   draw();if((key=='fill'?fill:key=='back'?back:anc)>=to){clearInterval(t);setTimeout(()=>{if(timer===t){cur=null;window.stepperBusy=false;draw()}},s.ms)}},s.ms);
+  draw();return;
+ }
+ fill=s.fill||0;back=s.back||0;anc=s.anc||0;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+// reserve the tallest step-list height, so the frame does not resize between steps
+let hmax=0;for(k=0;k<S.length;k++){fill=S[k].fill||0;back=S[k].back||0;anc=S[k].anc||0;draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;fill=S[0].fill||0;back=S[0].back||0;anc=S[0].anc||0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

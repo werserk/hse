@@ -1,0 +1,120 @@
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+#fig{width:330px}
+.bt{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.kv{display:grid;grid-template-columns:150px 1fr;row-gap:3px;font-size:12px;color:var(--muted-foreground);margin-bottom:12px}
+.kv b{font:600 13px var(--font-mono);color:var(--foreground)}
+#viz{height:330px;position:relative}
+.strips{display:grid;grid-template-columns:repeat(2,max-content);column-gap:28px;row-gap:6px}
+.st{display:flex;gap:3px}
+.st span{box-sizing:border-box;width:26px;height:26px;border-radius:4px;display:flex;align-items:center;justify-content:center;font:600 11px var(--font-mono);color:var(--background)}
+.mini{display:grid;grid-template-columns:repeat(8,max-content);column-gap:8px;row-gap:8px}
+.mini .st{gap:1px}
+.mini .st span{width:10px;height:10px;border-radius:2px}
+.st span:empty{background:transparent;border:1px dashed var(--border)}
+.blocks{display:grid;grid-template-columns:repeat(16,18px);gap:2px}
+.blocks i{width:18px;height:18px;border-radius:2px;border:1px dashed var(--border);box-sizing:border-box}
+.blocks i.on{border:0;background:radial-gradient(circle,var(--foreground) 0.6px,transparent 0.9px) 0 0/2px 2px,var(--muted)}
+.bar{height:10px;border-radius:5px;background:var(--muted);overflow:hidden;margin:4px 0 2px}
+.bar i{display:block;height:100%;background:var(--brand);width:0}
+.big{font:600 22px var(--font-mono);color:var(--foreground);margin:4px 0 2px}
+.cap{font-size:12px;color:var(--muted-foreground);margin-bottom:14px}
+.leg{display:flex;gap:16px;font:11px var(--font-mono);color:var(--muted-foreground);margin-top:12px}
+.leg span{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:3px}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+const SPEED=1e9; // paths per second, generous: the cost of each path is taken as free
+const COL={A1:'var(--chart-1)',A2:'color-mix(in srgb,var(--chart-1) 45%,transparent)',B1:'var(--chart-2)',B2:'color-mix(in srgb,var(--chart-2) 45%,transparent)'};
+// real scale (an example size): 2n reference haplotypes, p SNPs; numbers below are computed from these two
+const RN=200,RP=500000,LOGN=RP*Math.log10(RN),DIG=Math.floor(LOGN)+1,MANT=10**(LOGN-Math.floor(LOGN));
+const LOGY=LOGN-Math.log10(SPEED)-Math.log10(365.25*86400),DPC=RN*RP;
+const sp=n=>n.toLocaleString('ru-RU');
+const sci=(m,e)=>`${m.toFixed(2).replace('.',',')}·10<sup>${sp(e)}</sup>`;
+function dur(s){if(s<1e-6)return `${sp(Math.round(s*1e9))} нс`;if(s<1e-3)return `${(s*1e6).toFixed(1).replace('.',',')} мкс`;if(s<0.1)return `${(s*1e3).toFixed(1).replace('.',',')} мс`;return `${String(s).replace('.',',')} с`}
+// mode decides the picture; total = number of paths; ms = animation length when entering the step forward
+const S=[
+ {t:'Один путь',refs:['A1','B1'],p:3,mode:'strips',show:1,d:'Возьмём референсы A1, B1 и первые 3 SNP. Путь говорит, какой референс копируется на каждом SNP. Первый путь — A1 A1 A1. Перебор выписывает пути по одному и для каждого считает цену.'},
+ {t:'Все пути: 2 референса, 3 SNP',refs:['A1','B1'],p:3,mode:'strips',ms:7200,d:'На каждом SNP путь выбирает один из 2 референсов, и выборы на разных SNP независимы: 2 · 2 · 2 = 2³ = 8 путей.'},
+ {t:'4 референса, 3 SNP',refs:['A1','A2','B1','B2'],p:3,mode:'mini',ms:3200,d:'Добавим A2 и B2. Теперь на каждом SNP 4 варианта: 4³ = 64 пути. Цвет клетки — референс, который копируется на этом SNP.'},
+ {t:'4 референса, 6 SNP',refs:['A1','A2','B1','B2'],p:6,mode:'dots',ms:3000,d:'Ещё 3 SNP умножают число путей на 4³ = 64: 4⁶ = 4096. Строки уже не помещаются, поэтому одна точка — один путь.'},
+ {t:'4 референса, 10 SNP: наш пример',refs:['A1','A2','B1','B2'],p:10,mode:'blocks',ms:3500,d:'Ещё 4 SNP — ещё множитель 4⁴ = 256: 4¹⁰ = 1 048 576 путей. Каждый квадратик — весь рисунок шага 4. Компьютер, который проверяет 10⁹ путей в секунду, переберёт пример за 1 мс.'},
+ {t:`${RN} референсов, ${sp(RP)} SNP`,mode:'real',d:`Реальные размеры, например ${RN/2} человек в панели и ${sp(RP)} SNP. Путей ${RN}<sup>${sp(RP)}</sup> — число из ${sp(DIG)} цифр. Счётчик слева идёт в реальном времени с той же скоростью 10⁹ путей в секунду, а доля перебранного не сдвигается с нуля. Полный перебор займёт больше 10<sup>${sp(Math.floor(LOGY))}</sup> лет; возраст Вселенной — 1,4·10¹⁰ лет.`},
+ {t:'Тот же размер, но DP',mode:'dp',ms:600,d:`Динамическое программирование из следующих разделов заполняет таблицу ${RN} × ${sp(RP)} = 10⁸ клеток, по паре сравнений на клетку. При 10⁹ операций в секунду это доли секунды.`}];
+S.forEach(s=>{if(s.refs)s.total=s.refs.length**s.p});
+let k=0,shown=0,timer=null,tick=null,t0=0;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+// the path with number n (0-based) in lexicographic order
+const pathOf=(n,refs,p)=>Array.from({length:p},(_,j)=>refs[Math.floor(n/refs.length**(p-1-j))%refs.length]);
+function info(s){
+ if(s.mode=='real'||s.mode=='dp')return '';
+ return `<div class="bt">${s.refs.length} референса × ${s.p} SNP</div><div class="kv">
+ <span>путей</span><b>${s.refs.length}<sup>${s.p}</sup> = ${sp(s.total)}</b>
+ <span>перебрано</span><b>${sp(shown)}</b>
+ <span>время при 10⁹ путей/с</span><b>${dur(s.total/SPEED)}</b></div>`;
+}
+function viz(s){
+ const legend=`<div class="leg">${s.refs?s.refs.map(r=>`<em style="font-style:normal"><span style="background:${COL[r]}"></span>${r}</em>`).join(''):''}</div>`;
+ if(s.mode=='strips')return `<div class="strips">${Array.from({length:s.total},(_,n)=>`<div class="st">${pathOf(n,s.refs,s.p).map(r=>n<shown?`<span style="background:${COL[r]}">${r}</span>`:'<span></span>').join('')}</div>`).join('')}</div>`;
+ if(s.mode=='mini')return `<div class="mini">${Array.from({length:s.total},(_,n)=>`<div class="st">${pathOf(n,s.refs,s.p).map(r=>n<shown?`<span style="background:${COL[r]}"></span>`:'<span></span>').join('')}</div>`).join('')}</div>`+legend;
+ if(s.mode=='dots')return `<canvas id="cv" width="320" height="320" style="width:320px;height:320px"></canvas>`;
+ if(s.mode=='blocks')return `<div class="blocks">${Array.from({length:256},(_,b)=>`<i class="${b*4096<shown?'on':''}"></i>`).join('')}</div>`;
+ const brute=`<div class="bt">Перебор</div><div class="big">${sci(MANT,Math.floor(LOGN))}</div><div class="cap">путей, ${sp(DIG)} цифр</div>
+  <div class="kv"><span>перебрано</span><b id="done">0</b><span>доля перебранного</span><b id="frac">0</b></div><div class="bar"><i></i></div><div class="cap">больше 10<sup>${sp(Math.floor(LOGY))}</sup> лет при 10⁹ путей/с</div>`;
+ if(s.mode=='real')return brute;
+ return brute+`<div class="bt" style="margin-top:18px">DP</div><div class="kv"><span>клеток таблицы</span><b>${sp(DPC)}</b></div><div class="bar"><i style="width:${shown*100}%"></i></div><div class="cap">доли секунды при 10⁹ операций/с</div>`;
+}
+function dots(){
+ const c=$('cv');if(!c)return;const x=c.getContext('2d'),cs=getComputedStyle(document.documentElement);
+ x.clearRect(0,0,320,320);
+ for(let n=0;n<4096;n++){x.fillStyle=n<shown?cs.getPropertyValue('--foreground'):cs.getPropertyValue('--muted');x.fillRect((n%64)*5,Math.floor(n/64)*5,3,3)}
+}
+function live(){ // real-time counter at SPEED paths per second
+ const el=$('done');if(!el)return;const c=(performance.now()-t0)/1000*SPEED;
+ el.textContent=sp(Math.round(c));$('frac').innerHTML=c<1?'0':`10<sup>−${sp(Math.ceil(LOGN-Math.log10(c)))}</sup>`;
+}
+function draw(){
+ const s=S[k];$('fig').innerHTML=info(s)+`<div id="viz">${viz(s)}</div>`;dots();live();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function end(s){return s.mode=='dp'?1:s.show??s.total??0}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ clearInterval(tick);tick=null;
+ if(s.mode=='real'||s.mode=='dp'){if(!(fwd&&s.mode=='dp'))t0=performance.now();tick=setInterval(live,50)}
+ if(fwd&&s.ms){ // animate only one step forward; end in the full static state
+  window.stepperBusy=true;const a=performance.now(),E=end(s);shown=0;
+  const t=timer=setInterval(()=>{const f=Math.min(1,(performance.now()-a)/s.ms);
+   // the first step reveals one path at a time; later steps grow smoothly
+   shown=s.mode=='strips'?Math.min(E,Math.floor(f*E)+1):s.mode=='dp'?f:Math.round(f*E);draw();
+   if(f>=1){clearInterval(t);window.stepperBusy=false;draw()}},s.mode=='strips'?100:40);
+  draw();return;
+ }
+ shown=end(s);draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+// reserve the tallest step-list height, so the frame does not resize between steps
+let hmax=0;for(k=0;k<S.length;k++){shown=end(S[k]);draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;shown=end(S[0]);$('steps').style.minHeight=hmax+'px';draw();
+</script>
