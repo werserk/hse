@@ -305,7 +305,7 @@ def build_entry(cfg, c, e, dest, style, pdf):
     for f in files.values():
         if not (d / f).is_file(): sys.exit(f"{d}: download not found: {f}")
     acts = [("▶ Презентация", "slides/index.html", False)] if deck or site else []
-    if doc: acts.append(("Документ", "doc/index.html", False))
+    if doc: acts.append(("▶ Документ", "doc/index.html", False))
     if deck_pdf: acts.append(("PDF", f"slides/{dpdf}", True))
     acts += [(label, f, True) for label, f in files.items()]
     meta = " · ".join(x for x in [e.get("date", ""), e.get("event", "")] if x)
