@@ -111,7 +111,12 @@ body:hover #help { opacity: .8; }
   .slide { display: flex !important; position: relative; width: 1280px; height: 720px; break-after: page; page-break-after: always; overflow: hidden; }
   #notesbox, #bar, #help, button { display: none !important; }
   .ctl input[type=range] { display: none; }
+  html.print-notes .slide, html.print-notes .notes-print { page: notes; }
+  html.print-notes .slide { break-after: auto; page-break-after: auto; border-bottom: 1px solid var(--line-2); }
+  html.print-notes .notes-print { display: block !important; width: 1280px; height: 320px; padding: 28px 72px; font-size: 24px; line-height: 1.45; break-after: page; page-break-after: always; overflow: hidden; }
 }
+.notes-print { display: none; }
+@page notes { size: 1280px 1040px; }
 
 </style>
 </head>
@@ -298,20 +303,20 @@ body:hover #help { opacity: .8; }
   <h2>Что делает λ</h2>
   <h1>Шум и короткий тракт — для λ одно и то же</h1>
   <p>Внутри A-фона кусок, где цель совпадает с B на <b>d</b> информативных SNP. Два варианта: остаться в A — заплатить <b>d</b> несовпадений; уйти в B и вернуться — <b>2λ</b>.</p>
-  <div class="formula" style="font-size:30px">тракт виден ⇔ <b class="acc">d &gt; 2λ</b> &nbsp;&nbsp;<span class="note-tag">наш вывод из eq. (1)</span></div>
+  <div class="formula" style="font-size:30px">вставка B выгоднее ⇔ <b class="acc">d &gt; 2λ</b> &nbsp;&nbsp;<span class="note-tag">наш вывод из eq. (1), одиночная вставка</span></div>
   <div class="w" id="w-short">
     <div class="ctl">λ = <b class="val"></b> <input type="range" min="0" max="6" step="0.25" value="2"> <span class="small">сетка Loter: 1.5 … 5</span></div>
     <svg viewBox="0 0 1120 166" width="1120" height="166"></svg>
     <div class="small stat"></div>
   </div>
-  <div class="src">d — «чистое» число информативных SNP: (несовпадений с A) − (несовпадений с B) внутри куска. Виджет считает настоящий DP на двух гаплотипах A = 0…0, B = 1…1.</div>
-  <aside class="notes">Покрутить λ от 0 до 6. Одиночная ошибка генотипирования — это «тракт» с d = 1: при λ &lt; 0.5 она становится ложным трактом. При λ = 5 нужен перевес больше 10 SNP. Ровно на пороге — ничья, решает правило выбора при равенстве.</aside>
+  <div class="src">d — (несовпадений с A) − (несовпадений с B) внутри куска. Это сравнение двух путей, не общий порог: в общем случае ΔC = −d + λ·ΔS (у края хромосомы ΔS = 1, порог d &gt; λ; соседние вставки сливаются). Виджет — настоящий DP на A = 0…0, B = 1…1.</div>
+  <aside class="notes">Покрутить λ от 0 до 6. Одиночная ошибка генотипирования — это «тракт» с d = 1: при λ &lt; 0.5 она становится ложным трактом. При λ = 5 нужен перевес больше 10 SNP. Ровно на пороге — ничья, решает правило выбора при равенстве. Оговорка: это изолированная вставка внутри A. У края хромосомы нужно одно переключение — порог d &gt; λ; две близкие вставки DP сливает в одну, и каждая может быть короче 2λ; если фон и так переходит A1→A2, вставка B добавляет одно переключение. Общая формула ΔC = −d + λ·ΔS.</aside>
 </section>
 
 <section class="slide">
   <h2>Правило в генетических единицах</h2>
   <h1>Решает плотность SNP</h1>
-  <p>При λ ∈ [1.5, 5] тракту нужно больше <b>3 … 10</b> чистых информативных SNP. Средний SNP-шаг: человек <b>2.7·10⁻³ cM</b> (≈ 370 SNP/cM), Populus <b>9.8·10⁻⁶ cM</b> (≈ 100 000 SNP/cM).</p>
+  <p>При λ ∈ [1.5, 5] одиночной вставке нужно больше <b>3 … 10</b> (то есть ≥ 4 … 11) чистых информативных SNP. Средний SNP-шаг: человек <b>2.7·10⁻³ cM</b> (≈ 370 SNP/cM), Populus <b>9.8·10⁻⁶ cM</b> (≈ 100 000 SNP/cM).</p>
   <div class="w" id="w-density">
     <div class="ctl">μ = <b class="val"></b> <input type="range" min="0" max="6" step="1" value="4"> <span class="small">SNP в среднем куске 100/μ cM, лог-шкала</span></div>
     <svg viewBox="0 0 1136 196" width="1136" height="196"></svg>
@@ -344,7 +349,7 @@ body:hover #help { opacity: .8; }
 <section class="slide">
   <h2>Ошибки фазирования · eq. (5)</h2>
   <h1>Второе DP перераскладывает тракты между гаплотипами</h1>
-  <p>Только при K = 2. Складываем два гаплоидных ответа в диплоидный: d<sub>j</sub> = a<sub>j</sub> + a′<sub>j</sub> ∈ {0, 1, 2}. Затем ищем новую пару a, a′ ∈ {0,1}<sup>p</sup> с <b>a + a′ = d</b> и минимумом</p>
+  <p>Только при K = 2. Складываем два гаплоидных ответа в диплоидный d<sub>j</sub> ∈ {0, 1, 2}. Затем ищем две новые цепочки меток s, s′ (вспомогательные a, a′ ∈ {0,1}<sup>p</sup>, <b>a + a′ = d</b>) с минимумом</p>
   <div class="formula">
     <math display="block"><msup><mi>C</mi><mo>′</mo></msup><mo>=</mo>
       <munderover><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mi>p</mi></munderover><mrow><mo>|</mo><msub><mi>a</mi><mi>j</mi></msub><mo>−</mo><msub><mi>A</mi><mrow><msub><mi>s</mi><mi>j</mi></msub><mi>j</mi></mrow></msub><mo>|</mo></mrow><mo>+</mo>
@@ -353,11 +358,11 @@ body:hover #help { opacity: .8; }
     </math>
   </div>
   <ul>
-    <li>sw — число переключений меток; A<sub>1</sub> = (0,…,0), A<sub>2</sub> = (1,…,1); где d = 0 или 2, выбора нет — решается, на каком гаплотипе лежит «1» при d = 1. Сложность O(p) на особь.</li>
+    <li>sw — число переключений меток; A<sub>1</sub> = (0,…,0), A<sub>2</sub> = (1,…,1). Ответ — x<sub>j</sub> = A<sub>s<sub>j</sub>j</sub>, y<sub>j</sub> = A<sub>s′<sub>j</sub>j</sub>. Исключив a, a′, потеря на SNP равна |d<sub>j</sub> − x<sub>j</sub> − y<sub>j</sub>|: DP торгует расхождением с d против переключений, x + y = d не гарантировано <span class="note-tag">наш вывод</span>. O(p) на особь.</li>
     <li>Проверка: 30% ошибок переключения фазы (CEU–YRI, 5 поколений) → та же диплоидная точность <b>97%</b>, что с истинными фазами.</li>
   </ul>
   <div class="src">Eq. (5) и «Accounting for Phase Errors», Dias-Alves et al. 2018 (во втором слагаемом в тексте статьи индекс s<sub>j</sub>; по смыслу s′<sub>j</sub>).</div>
-  <aside class="notes">Та же идея «несовпадения + λ·переключения», только на уровне меток происхождения. Ошибка фазирования выглядит как тракт, перескочивший на другой гаплотип; DP с ограничением a + a′ = d склеивает его обратно с минимумом переключений.</aside>
+  <aside class="notes">Та же идея «несовпадения + λ·переключения», только на уровне меток происхождения. Ошибка фазирования выглядит как тракт, перескочивший на другой гаплотип; DP склеивает его обратно. Важно: ответ — сами цепочки x, y, и они не обязаны давать ровно d. Пример: d = (0, 2, 0), λ = 1.5 — точное x = y = (0,1,0) стоит 4λ = 6, а x = y = 0 стоит 2 расхождения. Так что второе DP ещё и сглаживает короткие диплоидные всплески.</aside>
 </section>
 
 <section class="slide">
@@ -413,7 +418,7 @@ body:hover #help { opacity: .8; }
   <h1>Где модель упрощает</h1>
   <ul>
     <li><b>Слепота к расстояниям.</b> Переключение стоит λ, будь между SNP 1 п.н. или 1 Мб (в коде есть необязательные веса, по умолчанию выключены).</li>
-    <li><b>Короткие тракты</b> с перевесом ≤ 2λ информативных SNP стираются; на плотных данных бывают ложные короткие куски.</li>
+    <li><b>Короткие тракты</b> теряются: одиночная вставка внутри фона с перевесом &lt; 2λ информативных SNP стирается; на плотных данных бывают ложные короткие куски.</li>
     <li><b>Нужны фазированные данные</b> и для цели, и для референсов.</li>
     <li><b>Панель решает:</b> TSI/LWK, 1 → 100 гаплотипов на популяцию — точность 41% → 98%.</li>
     <li><b>λ без биологического смысла:</b> зависит от мутаций и рекомбинации «сложным образом» — отсюда ансамбль.</li>
@@ -428,7 +433,7 @@ body:hover #help { opacity: .8; }
   <ul style="gap:22px">
     <li><b>LAI = одномерная сегментация.</b> Loter минимизирует несовпадения + λ · переключения донора.</li>
     <li><b>Динамическое программирование</b> находит точный минимум за O(2n · p): внутренний минимум по строкам считается один раз на столбец.</li>
-    <li><b>λ задаёт разрешение:</b> тракт виден, если d &gt; 2λ. Поэтому решает плотность SNP, а выбор λ снимает ансамбль из 160 решений.</li>
+    <li><b>λ задаёт разрешение:</b> одиночная вставка выживает при d &gt; 2λ. Поэтому решает плотность SNP, а выбор λ снимает ансамбль из 160 решений.</li>
   </ul>
   <p class="kicker" style="margin-top:24px">Спасибо! Вопросы?</p>
   <div class="src">Dias-Alves T., Mairal J., Blum M.G.B. (2018) MBE 35(9):2318–2326, doi:10.1093/molbev/msy126 · github.com/bcm-uga/Loter</div>
@@ -737,6 +742,11 @@ window.loterDP = loterDP;
   if (params.get('theme')) saved = params.get('theme');
   if (saved) document.documentElement.dataset.theme = saved;
 
+  if (params.has('notes')) {
+    document.documentElement.classList.add('print-notes');
+    slides.forEach((s, i) => { const n = s.querySelector('.notes'); const d = document.createElement('div');
+      d.className = 'notes-print'; d.innerHTML = `<b>${i + 1}.</b> ` + (n ? n.innerHTML : ''); s.after(d); });
+  }
   const printPrep = () => window.dispatchEvent(new Event('printstate'));
   addEventListener('beforeprint', printPrep);
   if (params.has('print')) printPrep();
