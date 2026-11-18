@@ -104,7 +104,7 @@ def pack_deck(src, out, style, pdf=False, home=None, name=None, has_pdf=False):
     if re.search(r"(?i)</head>", doc):
         doc = re.sub(r"(?i)</head>", lambda _: head + "</head>", doc, count=1)
     else:  # no </head>: keep doctype first and the charset inside the first 1024 bytes
-        at = re.match(r"(?is)\s*(<!doctype[^>]*>)?\s*(<html\b[^>]*>)?\s*(<head\b[^>]*>)?", doc).end()
+        at = re.match(r"(?is)(?:\s|<!--.*?-->)*(<!doctype[^>]*>)?\s*(<html\b[^>]*>)?\s*(<head\b[^>]*>)?", doc).end()
         doc = doc[:at] + '<meta charset="utf-8">\n' + head + doc[at:]
     js = f"<script>{read(KIT / 'deck.js')}</script>\n"
     doc = re.sub(r"(?i)</body>", lambda _: js + "</body>", doc, count=1) if re.search(r"(?i)</body>", doc) else doc + js
@@ -127,6 +127,39 @@ def print_pdf(page, pdf):
                     f"--print-to-pdf={pdf}", page.resolve().as_uri()], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print("pdf", pdf)
+
+
+def shoot(url, png):
+    """Screenshot a 1280×720 page into a 640×360 PNG; False when there is no Chrome."""
+    chrome = find_chrome()
+    if not chrome: return False
+    subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox", "--hide-scrollbars", "--window-size=1280,720",
+                    "--force-device-scale-factor=0.5", "--virtual-time-budget=5000", f"--screenshot={png}", url],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return png.exists()
+
+
+def figure_slide(page):
+    """Number of the first slide that shows a figure (widget, chart, picture), else 1."""
+    slides = re.split(r'<section\b[^>]*class="[^"]*\bslide\b', read(page))[1:]
+    return next((i + 1 for i, sl in enumerate(slides) if re.search(r"<(iframe|svg|img|video|canvas)\b", sl.split("</section>")[0])), 1)
+
+
+def make_cover(e, dest):
+    """Card preview: "cover" in entry.json (a file, or a slide number), else the first figure slide / first PDF page."""
+    d, t, cov = e["dir"], e["type"], e.get("cover")
+    dest.mkdir(parents=True, exist_ok=True)
+    if isinstance(cov, str):
+        name = "cover" + Path(cov).suffix
+        shutil.copy(d / cov, dest / name); return name
+    png = dest / "cover.png"
+    if t in ("deck", "site") and (dest / "index.html").exists():
+        n = cov or figure_slide(dest / "index.html")
+        shoot(f"{(dest / 'index.html').resolve().as_uri()}#{n}", png)
+    elif t == "pdf" and shutil.which("pdftoppm"):
+        subprocess.run(["pdftoppm", "-png", "-singlefile", "-f", "1", "-l", "1", "-scale-to-x", "640", "-scale-to-y", "-1",
+                        str(d / e["file"]), str(dest / "cover")], check=False)
+    return png.name if png.exists() else None
 
 
 # ---------- catalogue: subject sections → material cards → material page ----------
@@ -155,12 +188,14 @@ def page(cfg, title, body, style, cls=""):
 
 
 def card(e):
-    meta = " · ".join(x for x in [e.get("date", ""), e.get("event", "")] if x)
-    inner = (f'<span class="k">{esc(TYPE_LABEL.get(e["type"], e["type"]))}</span><span class="t">{esc(e["title"])}</span>'
-             f'<span class="m">{esc(meta)}</span><span class="s">{esc(e.get("summary", ""))}</span>')
-    if not e.get("href"): return f'<div class="card soon">{inner}<span class="m">скоро</span></div>'
+    meta = " · ".join(x for x in [TYPE_LABEL.get(e["type"], e["type"]), e.get("date", ""), e.get("event", "")] if x)
+    cov = (f'<img src="/{esc(e["course"])}/{esc(e["slug"])}/{esc(e["cover"])}" alt="" loading="lazy">' if e.get("cover_file")
+           else f'<span class="ph">{esc(TYPE_LABEL.get(e["type"], e["type"]))}</span>')
+    cap = f'<span class="t">{esc(e["title"])}</span><span class="m">{esc(meta if e.get("href") else "скоро")}</span>'
+    inner = f'<span class="cv">{cov}</span><span class="cap">{cap}</span>'
+    if not e.get("href"): return f'<div class="card soon">{inner}</div>'
     ext = ' target="_blank" rel="noopener"' if e["type"] == "link" else ""
-    return f'<a class="card" href="{esc(e["href"])}"{ext}>{inner}</a>'
+    return f'<a class="card" href="{esc(e["href"])}"{ext} title="{esc(e.get("summary", ""))}">{inner}</a>'
 
 
 def section(c, heading="h2"):
@@ -222,7 +257,10 @@ def build_site(out, style=None, pdf=False):
     head = f'<header class="hero"><h1><a href="/">{esc(cfg["title"])}</a></h1><p>{esc(cfg.get("intro", ""))}</p></header>'
     foot = f'<footer class="foot">{esc(cfg.get("footer", ""))}</footer>'
     for c in courses:
-        for e in c["entries"]: build_entry(cfg, c, e, out, style, pdf)
+        for e in c["entries"]:
+            build_entry(cfg, c, e, out, style, pdf)
+            if e.get("href") or e.get("cover"):
+                e["cover"] = make_cover(e, out / c["slug"] / e["slug"]); e["cover_file"] = bool(e["cover"])
         (out / c["slug"]).mkdir(exist_ok=True)
         (out / c["slug"] / "index.html").write_text(page(cfg, c["title"], head + f"<main>{section(c, 'h1')}</main>" + foot, style), encoding="utf-8")
     body = head + "<main>" + "".join(section(c) for c in courses) + "</main>" + foot

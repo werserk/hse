@@ -39,6 +39,10 @@ the material page `/<course>/<entry>/`.
 
 `"status": "planned"` shows a dashed «скоро» card and builds nothing. Remove it to publish.
 
+Card preview: the build screenshots the first slide with a figure (deck, site) or the first PDF page
+(needs Chrome and `pdftoppm`). Override with `"cover": "cover.png"` (a file in the entry folder) or
+`"cover": 3` (slide number). Without a preview the card shows its type.
+
 ## Decks
 
 Write `deck.html` with one `<section class="slide">` per slide; see `kit/starter/deck.html`.
