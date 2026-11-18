@@ -54,6 +54,9 @@ Write `deck.html` with one `<section class="slide">` per slide; see `kit/starter
   so the same file works in bb chat and on a slide. The packer inlines it with the theme.
 - Local `<link rel="stylesheet">` and `<script src>` are inlined; other files (images, video) are copied.
   Remote (CDN) scripts, styles and fonts are not inlined: the offline copy needs them bundled locally.
+- Reading view: the same page with `?read` (button «Текст») is an illustrated article: contents on the
+  left, each slide as a live figure, its `<aside class="notes">` as the text below. `[cue]` in notes shows
+  as a muted aside. Write notes as full sentences and both views come from one source.
 - Keys: → / Space / PgDn next, ← / PgUp back, Home/End, F fullscreen, S speaker view; `#n` = slide n.
   A focused widget forwards these keys to the deck, so a clicker keeps working after a click on a
   slider (arrows then move the slide, not the slider; drag it with the mouse).
