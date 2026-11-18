@@ -1,28 +1,33 @@
 <style>
-.w{font-family:var(--font-sans);display:flex;flex-direction:column;gap:10px}
-.row{display:flex;align-items:center;gap:10px}
-.lab{width:150px;color:var(--muted-foreground);font-size:12px;text-align:right}
-.s{display:flex;gap:2px;font-family:var(--font-mono);font-size:13px}
-.s span{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px}
-.A span{background:color-mix(in srgb,var(--chart-1) 30%,transparent)}
-.B span{background:color-mix(in srgb,var(--chart-2) 30%,transparent)}
-.T span{background:var(--muted)}
-.o span.a{background:var(--chart-1);color:var(--background)}
-.o span.b{background:var(--chart-2);color:var(--background)}
-.box{display:flex;gap:6px;align-items:center;margin-left:160px}
-.box div{border:1px solid var(--border);border-radius:var(--radius);padding:4px 10px;font-size:12px}
-.task{font-weight:600;border-color:var(--brand)!important}
-.h{margin-left:160px;font-size:12px;color:var(--subtle-foreground)}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;row-gap:22px;font-family:var(--font-sans);align-items:start}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px 44px}
+.r{display:flex;align-items:center;gap:10px;margin-top:3px}
+.l{width:34px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
+.s{display:flex;gap:3px;font-family:var(--font-mono);font-size:13px}
+.s span{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.idx span{height:14px;font-size:10px;color:var(--subtle-foreground)}
+.A span{background:color-mix(in srgb,var(--chart-1) 28%,transparent)}
+.B span{background:color-mix(in srgb,var(--chart-2) 28%,transparent)}
+.T span{background:var(--muted);font-weight:600}
+.o span{color:var(--background);font-weight:600}
+.o .a{background:var(--chart-1)}.o .b{background:var(--chart-2)}
+.n{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.n b{color:var(--foreground)}
+.n i{font-family:var(--font-mono);font-style:normal;color:var(--foreground)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px}
 </style>
-<div class="w">
-<div class="h">ВХОД 1 · референсная панель (известно, кто откуда)</div>
-<div class="row"><div class="lab">популяция A · A1</div><div class="s A"><span>0</span><span>0</span><span>1</span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span><span>0</span><span>0</span></div></div>
-<div class="row"><div class="lab">популяция A · A2</div><div class="s A"><span>0</span><span>1</span><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span><span>0</span></div></div>
-<div class="row"><div class="lab">популяция B · B1</div><div class="s B"><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>0</span><span>1</span><span>1</span><span>1</span><span>1</span></div></div>
-<div class="row"><div class="lab">популяция B · B2</div><div class="s B"><span>1</span><span>0</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>1</span><span>0</span><span>1</span></div></div>
-<div class="h">ВХОД 2 · гаплотип смешанного человека (происхождение неизвестно)</div>
-<div class="row"><div class="lab">цель h</div><div class="s T"><span>0</span><span>0</span><span>1</span><span>1</span><span>1</span><span>0</span><span>1</span><span>0</span><span>1</span><span>0</span></div></div>
-<div class="box"><div class="task">задача LAI</div><span>← решают:</span><div>RFMix</div><div>Loter</div><div>ELAI</div><div>…</div></div>
-<div class="h">ВЫХОД · метка популяции на каждом SNP</div>
-<div class="row"><div class="lab">происхождение</div><div class="s o"><span class="a">A</span><span class="a">A</span><span class="a">A</span><span class="b">B</span><span class="b">B</span><span class="b">B</span><span class="b">B</span><span class="a">A</span><span class="a">A</span><span class="a">A</span></div></div>
-</div>
+<div class="g" id="g"></div>
+<script>
+const P={A1:'0010001000',A2:'0100000010',B1:'1111101111',B2:'1011111101'},h='0011101010',a='AAABBBBAAA';
+const seq=(s,f)=>[...s].map(f).join('');
+const row=(l,cls,s,f)=>`<div class="r"><div class="l">${l}</div><div class="s ${cls}">${seq(s,f)}</div></div>`;
+const cell=c=>`<span>${c}</span>`;
+const sw=v=>`<span class="sw" style="background:var(--chart-${v})"></span>`;
+document.getElementById('g').innerHTML=
+`<div><div class="t">Вход 1. Референсная панель</div><div class="r"><div class="l">SNP</div><div class="s idx">${Array.from({length:10},(_,j)=>`<span>${j+1}</span>`).join('')}</div></div>${Object.entries(P).map(([k,s])=>row(k,k[0],s,cell)).join('')}</div>
+<div class="n">Гаплотипы людей с <b>известным</b> происхождением.<br>${sw(1)}&nbsp;популяция A &nbsp; ${sw(2)}&nbsp;популяция B</div>
+<div><div class="t">Вход 2. Гаплотип смешанного индивида</div>${row('h','T',h,cell)}</div>
+<div class="n">Строка из 0 и 1 на тех же SNP. Происхождение <b>неизвестно</b>.</div>
+<div><div class="t">Выход. Происхождение на каждом SNP</div>${row('a','o',a,c=>`<span class="${c.toLowerCase()}">${c}</span>`)}</div>
+<div class="n">Метка популяции на каждом SNP. Здесь три куска: A, B, A.</div>`;
+</script>
