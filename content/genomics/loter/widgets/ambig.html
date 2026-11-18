@@ -1,0 +1,37 @@
+<!-- Fig. 4.5: one sum d, two equally cheap splittings into two copies (the AB/BA limit of phase correction). -->
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:22px;font-family:var(--font-sans);align-items:start}
+table{border-collapse:collapse}
+th{font-size:13px;font-weight:600;text-align:left;padding:0 6px 6px}
+td{padding:3px 6px;vertical-align:middle}
+td.l{font-size:12px;color:var(--muted-foreground);text-align:right;white-space:nowrap;padding-left:0}
+tr.sep td{border-top:1px solid var(--border);padding-top:7px}
+.s{display:flex;gap:2px;font-family:var(--font-mono);font-size:12px}
+.s span{width:19px;height:21px;display:flex;align-items:center;justify-content:center;border-radius:3px;font-weight:600}
+.s span.A{background:var(--chart-1);color:var(--background)}
+.s span.B{background:var(--chart-2);color:var(--background)}
+.s span.d{background:var(--muted)}
+.s span.cut{box-shadow:-3px 0 0 var(--foreground)}
+.c{font:600 13px var(--font-mono)}
+.ok{color:var(--success)}
+.n{font-size:12.5px;line-height:1.5;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.n b{color:var(--foreground)}
+</style>
+<div class="g"><table id="t"></table><div class="n" id="n"></div></div>
+<script>
+// d_j = number of copies from B; each splitting is a pair of copies (x, y)
+const d='110011';
+const SPL=[{t:'Разбиение 1',x:'BBAABB',y:'AAAAAA'},{t:'Разбиение 2',x:'BBAAAA',y:'AAAABB'}];
+const sw=s=>[...s].filter((c,j)=>j&&c!=s[j-1]).length;
+const mism=(x,y)=>[...d].reduce((m,v,j)=>m+Math.abs(+v-(x[j]=='B')-(y[j]=='B')),0);
+const seq=s=>`<div class="s">${[...s].map((c,j)=>`<span class="${c}${j&&c!=s[j-1]?' cut':''}">${c}</span>`).join('')}</div>`;
+const dseq=`<div class="s">${[...d].map(c=>`<span class="d">${c}</span>`).join('')}</div>`;
+let r=`<tr><th></th>${SPL.map(s=>`<th>${s.t}</th>`).join('')}</tr>`;
+r+=`<tr><td class="l">сумма d</td>${SPL.map(()=>`<td>${dseq}</td>`).join('')}</tr>`;
+r+=`<tr><td class="l">копия 1</td>${SPL.map(s=>`<td>${seq(s.x)}</td>`).join('')}</tr>`;
+r+=`<tr><td class="l">копия 2</td>${SPL.map(s=>`<td>${seq(s.y)}</td>`).join('')}</tr>`;
+r+=`<tr class="sep"><td class="l">расхождение с d</td>${SPL.map(s=>`<td class="c">${mism(s.x,s.y)}</td>`).join('')}</tr>`;
+r+=`<tr><td class="l">переключения</td>${SPL.map(s=>`<td class="c">${sw(s.x)+sw(s.y)} → ${sw(s.x)+sw(s.y)}λ <span class="ok">✓</span></td>`).join('')}</tr>`;
+document.getElementById('t').innerHTML=r;
+document.getElementById('n').innerHTML=`Оба разбиения дают ту же сумму d и стоят одинаково: <b>${sw(SPL[0].x)+sw(SPL[0].y)}λ</b>.<br><br>На SNP 3–4 d = 0: обе копии A, и данные не говорят, какая из них понесёт следующий кусок B.`;
+</script>

@@ -1,0 +1,23 @@
+<!-- Fig. 5.4: median ancestry-tract length, truth vs Loter (paper, "Length of Ancestry Tracts"), log cM axis.
+     Labels: how many SNPs the true median tract holds (median length / mean SNP spacing from the Discussion). -->
+<style>
+svg text{font:11px var(--font-sans);fill:var(--muted-foreground)}
+svg text.lab{fill:var(--foreground);font-size:12px}
+svg text.v{font:11px var(--font-mono);fill:var(--muted-foreground)}
+</style>
+<svg id="s" width="740" height="215"></svg>
+<script>
+const STEP={h:2.7e-3,p:9.8e-6};
+const R=[{lab:'Тополь, 10 поколений',sp:'p',t:4.26,l:2.31},{lab:'Человек, 10 поколений',sp:'h',t:9.03,l:12.20},{lab:'Тополь, 200 поколений',sp:'p',t:0.45,l:0.56},{lab:'Тополь, 500 поколений',sp:'p',t:0.17,l:0.33}];
+const X0=170,X1=540,LO=-1,HI=Math.log10(20),x=v=>X0+(Math.log10(v)-LO)/(HI-LO)*(X1-X0);
+let s=`<circle cx="${X0}" cy="12" r="5" style="fill:none;stroke:var(--foreground);stroke-width:2"/><text x="${X0+10}" y="16">истина</text><circle cx="${X0+80}" cy="12" r="5" style="fill:var(--foreground)"/><text x="${X0+90}" y="16">Loter</text>`;
+const fmtK=n=>n>=1e4?`${Math.round(n/1e3)} тыс.`:Math.round(n).toLocaleString('ru-RU');
+R.forEach((r,i)=>{const y=46+i*36;
+ s+=`<text class="lab" x="${X0-16}" y="${y+4}" text-anchor="end">${r.lab}</text>`;
+ s+=`<line x1="${x(r.t)}" y1="${y}" x2="${x(r.l)}" y2="${y}" style="stroke:var(--border);stroke-width:3"/>`;
+ s+=`<circle cx="${x(r.l)}" cy="${y}" r="5" style="fill:var(--foreground)"/><circle cx="${x(r.t)}" cy="${y}" r="5" style="fill:var(--background);stroke:var(--foreground);stroke-width:2"/>`;
+ s+=`<text class="v" x="${X1+14}" y="${y+4}">×${(r.l/r.t).toFixed(2)} · ${fmtK(r.t/STEP[r.sp])} SNP</text>`});
+for(const v of [0.1,0.2,0.5,1,2,5,10,20])s+=`<line x1="${x(v)}" y1="182" x2="${x(v)}" y2="187" style="stroke:var(--border)"/><text x="${x(v)}" y="200" text-anchor="middle">${v}</text>`;
+s+=`<line x1="${X0}" y1="182" x2="${X1}" y2="182" style="stroke:var(--border)"/><text x="${(X0+X1)/2}" y="214" text-anchor="middle">медианная длина куска, cM (лог-шкала)</text>`;
+document.getElementById('s').innerHTML=s;
+</script>

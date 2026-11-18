@@ -1,0 +1,42 @@
+<!-- Fig. 4.1: answer of one DP on the full panel of the Fig. 4.2 example for each of the eight λ.
+     Data (A, B, h, TRUE) are the same as in ens.html. Dashed cells: equally cheap paths disagree there. -->
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:22px;font-family:var(--font-sans);align-items:start}
+.r{display:flex;align-items:center;gap:8px;margin:2px 0}
+.l{width:62px;text-align:right;font-size:12px;color:var(--muted-foreground);white-space:nowrap}
+.s{display:flex;gap:2px;font-family:var(--font-mono);font-size:10px}
+.s span{width:15px;height:17px;display:flex;align-items:center;justify-content:center;border-radius:2px;color:var(--background);font-weight:600;box-sizing:border-box}
+.s span.t{outline:2px dashed var(--foreground);outline-offset:-2px}
+.idx span{color:var(--muted-foreground);font-weight:400;background:none}
+.sep{height:6px}
+.n{font-size:12.5px;line-height:1.5;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.n b{color:var(--foreground)}
+</style>
+<div class="g"><div id="f"></div><div class="n" id="n"></div></div>
+<script>
+const A=['101001001011110010100101','100000110011110011100101','101011111010110010000101','100100110001110011100101'],
+B=['011111001100001100010010','011101001100001100011010','001001001110011110111010','010111001100001101011010'],
+h='100000111100001100000101',TRUE='AAAAAAAABBBBBBBBBBAAAAAA',P=24,LAMS=[1.5,2,2.5,3,3.5,4,4.5,5];
+const H=[...A,...B],lab=[...A.map(()=>'A'),...B.map(()=>'B')],mis=(i,j)=>+(H[i][j]!=h[j]);
+// forward DP (chapter 3) with backtrace, plus a backward pass to find SNPs where optimal paths disagree on the label
+function solve(lam){const F=[H.map((_,i)=>mis(i,0))],J=[];
+ for(let j=1;j<P;j++){const q=F[j-1],m=Math.min(...q),am=q.indexOf(m);J.push(q.map(v=>m+lam<v?am:-1));F.push(H.map((_,i)=>mis(i,j)+Math.min(q[i],m+lam)))}
+ let i=F[P-1].indexOf(Math.min(...F[P-1]));const path=[i];for(let j=P-2;j>=0;j--){if(J[j][i]>=0)i=J[j][i];path.unshift(i)}
+ const G=Array(P);G[P-1]=H.map(()=>0);for(let j=P-2;j>=0;j--){const nx=H.map((_,k)=>G[j+1][k]+mis(k,j+1)),m=Math.min(...nx);G[j]=H.map((_,k)=>Math.min(nx[k],m+lam))}
+ const opt=Math.min(...F[P-1]);
+ const tie=[...Array(P).keys()].map(j=>new Set(H.map((_,k)=>k).filter(k=>Math.abs(F[j][k]+G[j][k]-opt)<1e-9).map(k=>lab[k])).size>1);
+ return {a:path.map(k=>lab[k]).join(''),tie}}
+const S=LAMS.map(l=>({l,...solve(l)}));
+const cell=(c,t)=>`<span class="${t?'t':''}" style="background:var(--chart-${c=='A'?1:2})">${c}</span>`;
+let f=`<div class="r"><div class="l">SNP</div><div class="s idx">${[...Array(P).keys()].map(j=>`<span>${j+1}</span>`).join('')}</div></div>`;
+f+=S.map(s=>`<div class="r"><div class="l">λ = ${s.l}</div><div class="s">${[...s.a].map((c,j)=>cell(c,s.tie[j])).join('')}</div></div>`).join('');
+f+=`<div class="sep"></div><div class="r"><div class="l">истина</div><div class="s">${[...TRUE].map(c=>cell(c,0)).join('')}</div></div>`;
+document.getElementById('f').innerHTML=f;
+const endB=a=>a.lastIndexOf('B')+1,small=S.filter(s=>endB(s.a)<P),big=S.filter(s=>endB(s.a)==P);
+const tieS=s=>s.tie.map((t,j)=>t?j+1:0).filter(Boolean);
+const grp={};S.forEach(s=>{const t=tieS(s);if(!t.length)return;const k=t.length>2?`SNP ${t[0]}–${t[t.length-1]}`:`SNP ${t.join(' и ')}`;(grp[k]=grp[k]||[]).push(s.l)});
+const tieText=Object.entries(grp).map(([k,ls])=>`${k} при λ = ${ls.length>1?`${ls[0]}…${ls[ls.length-1]}`:ls[0]}`).join(', ');
+document.getElementById('n').innerHTML=`Каждая строка — один прогон DP на всей панели (4 референса A, 4 референса B).<br><br>
+При λ = ${small[0].l}…${small[small.length-1].l} кусок B кончается на SNP ${endB(small[0].a)}, на один SNP дальше истины. При λ = ${big[0].l} и ${big[big.length-1].l} второй разрез дороже, чем несовпадения после него, и B тянется до конца.<br><br>
+<b>Пунктир</b> — SNP, где другой путь той же цены даёт другую метку: ${tieText}.`;
+</script>
