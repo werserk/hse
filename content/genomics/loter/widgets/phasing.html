@@ -1,37 +1,62 @@
 <style>
-.w{display:grid;grid-template-columns:auto 1fr;gap:22px;font-family:var(--font-sans);align-items:start}
-.rows{display:flex;flex-direction:column;gap:8px}
-.r{display:flex;align-items:center;gap:10px}
-.l{width:110px;text-align:right;font-size:12px;color:var(--muted-foreground)}
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px}
+.fig{padding:10px 0;border-top:1px solid var(--border);transition:opacity .25s}
+.fig.off{opacity:0}
+.txt{padding:10px 6px 10px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px;align-content:start}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+.r{display:flex;align-items:center;gap:10px;margin:4px 0}
+.l{width:118px;text-align:right;font-size:12px;color:var(--muted-foreground)}
 .s{display:flex;gap:3px;font-family:var(--font-mono);font-size:14px}
-.s span{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all .3s}
+.s span{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px}
 .m span{background:color-mix(in srgb,var(--chart-1) 25%,transparent)}
 .p span{background:color-mix(in srgb,var(--chart-2) 25%,transparent)}
-.g span{background:var(--muted);font-weight:600}
+.o span{background:var(--muted)}
+.gt span{background:var(--muted);font-weight:600}
+.s span.hl{outline:2px solid var(--foreground);outline-offset:-2px}
 .s span.q{background:transparent;outline:1.5px dashed var(--warning);outline-offset:-2px;color:var(--warning)}
-.g span.het{outline:1.5px solid var(--warning);outline-offset:-2px}
-.sep{margin-left:120px;border-top:1px solid var(--border)}
-.side{font-size:13px;line-height:1.5;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px;min-height:130px}
-.side b{display:block;font-size:15px;color:var(--foreground);margin-bottom:4px}
+.s span.het{outline:1.5px solid var(--warning);outline-offset:-2px}
+.s span.err{outline:2px solid var(--destructive);outline-offset:-2px}
 </style>
 <div class="w">
-<div class="rows">
-<div class="r"><div class="l">копия от матери</div><div class="s m" id="hm"></div></div>
-<div class="r"><div class="l">копия от отца</div><div class="s p" id="hp"></div></div>
-<div class="sep"></div>
-<div class="r"><div class="l">генотип</div><div class="s g" id="g"></div></div>
-</div>
-<div class="side" id="n"></div>
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g" id="g"></div>
 </div>
 <script>
 const M=[0,1,1,0,1,0,0,1],P=[0,0,1,1,1,0,1,0],G=M.map((x,i)=>x+P[i]);
-const het=G.filter(x=>x==1).length;let raw=true;
-const $=id=>document.getElementById(id);
-function row(id,H){$(id).innerHTML=H.map((x,i)=>raw||G[i]!=1?`<span>${x}</span>`:`<span class="q">?</span>`).join('')}
-function draw(){row('hm',M);row('hp',P);
- $('g').innerHTML=G.map(x=>`<span class="${!raw&&x==1?'het':''}">${x}</span>`).join('');
- $('n').innerHTML=raw?'<b>Что есть в клетке</b>Два гаплотипа, по одному на каждую копию хромосомы. Генотип на каждом SNP — их сумма: 0, 1 или 2.'
- :`<b>Что видит генотипирование</b>Только сумму. Где 0 или 2, обе копии восстанавливаются однозначно. Где 1 (здесь ${het} места), единица может стоять в любой копии: ${2**(het-1)} вариантов.`}
-function loop(){draw();raw=!raw;setTimeout(loop,3500)}
-loop();
+const H1=[0,1,1,0,1,0,1,0],H2=[0,0,1,1,1,0,0,1]; // phasing result: copies swapped from SNP 7 on
+const het=G.filter(x=>x==1).length;
+const S=[
+ ['Две копии','В клетке два гаплотипа: копия хромосомы от матери и от отца.'],
+ ['Сложение','Генотип на каждом SNP — сумма двух копий: 0, 1 или 2.'],
+ ['Что видит прибор',`Только сумму. Где 0 или 2, обе копии ясны. Где 1 (здесь ${het} места), единица может стоять в любой копии: ${2**(het-1)} вариантов.`],
+ ['Фазирование','Beagle или SHAPEIT выбирают один вариант по похожим гаплотипам других людей. Здесь с 7-го SNP копии перепутаны: switch error (красные клетки).']];
+let k=0,scan=-1,timer=null;
+const $=id=>document.getElementById(id),cells=(H,f)=>H.map(f).join('');
+const row=(lab,cls,html)=>`<div class="r"><div class="l">${lab}</div><div class="s ${cls}">${html}</div></div>`;
+const hl=i=>i==scan?'hl':'';
+function fig(i){
+ if(i==0)return row('от матери','m',cells(M,(x,j)=>`<span class="${hl(j)}">${x}</span>`))+row('от отца','p',cells(P,(x,j)=>`<span class="${hl(j)}">${x}</span>`));
+ if(i==1)return row('генотип = сумма','gt',cells(G,(x,j)=>`<span class="${hl(j)}">${k==1&&scan>=0&&j>scan?'':x}</span>`));
+ if(i==2)return row('генотип','gt',cells(G,x=>`<span class="${x==1?'het':''}">${x}</span>`))+row('копия 1','o',cells(G,x=>x==1?'<span class="q">?</span>':`<span>${x/2}</span>`))+row('копия 2','o',cells(G,x=>x==1?'<span class="q">?</span>':`<span>${x/2}</span>`));
+ return row('копия 1','m',cells(H1,(x,j)=>`<span class="${x!=M[j]?'err':''}">${x}</span>`))+row('копия 2','p',cells(H2,(x,j)=>`<span class="${x!=P[j]?'err':''}">${x}</span>`));
+}
+function draw(){
+ $('g').innerHTML=S.map(([t,d],i)=>`<div class="fig ${i>k?'off':''}">${fig(i)}</div><div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${t}</b>${d}</span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){clearInterval(timer);scan=-1;const from=k;k=Math.max(0,Math.min(S.length-1,i));
+ if(k==1&&from==0){scan=0;timer=setInterval(()=>{scan++;if(scan>=G.length){clearInterval(timer);scan=-1}draw()},260)}draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+draw();
 </script>

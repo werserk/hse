@@ -18,7 +18,10 @@ and Evolution*, 2018). Loter определяет, от какой исходн�
 одной копии называется **гаплотипом**. Обычное генотипирование видит на каждом SNP только
 сумму двух копий, **генотип** 0, 1 или 2.
 
-<iframe class="widget" data-src="widgets/phasing.html" data-zoom="1.1"></iframe>
+<figure markdown>
+<iframe class="widget" data-src="widgets/phasing.html" data-zoom="1.05"></iframe>
+<figcaption>Рис. 1.1. Гаплотипы, генотип и фазирование.</figcaption>
+</figure>
 
 Там, где генотип 0 или 2, обе копии восстанавливаются однозначно. Там, где 1, неизвестно, у какой
 копии стоит единица. Восстановление двух гаплотипов по генотипам называется **фазированием**. Его
@@ -39,7 +42,10 @@ and Evolution*, 2018). Loter определяет, от какой исходн�
 приходится один кроссинговер за одну передачу. Поэтому каждое поколение добавляет примерно один
 новый разрез на 100 cM, а старые разрезы остаются.
 
-<iframe class="widget" data-src="widgets/tracts.html" data-zoom="1.1"></iframe>
+<figure markdown>
+<iframe class="widget" data-src="widgets/tracts.html" data-zoom="1.05"></iframe>
+<figcaption>Рис. 1.2. Разрезы накапливаются с поколениями; ▼ — разрезы, появившиеся после предыдущей строки.</figcaption>
+</figure>
 
 После *t* поколений на 100 cM приходится около *t* разрезов, и средний кусок одного
 происхождения имеет длину порядка 100/*t* cM. Отсюда главное следствие для всего доклада:
@@ -56,7 +62,10 @@ and Evolution*, 2018). Loter определяет, от какой исходн�
 **Local Ancestry Inference** (LAI, вывод локального происхождения) — это задача. Её решают разные
 методы: RFMix, LAMP-LD, HAPMIX, ELAI, Loter.
 
-<iframe class="widget" data-src="widgets/lai-task.html" data-zoom="1.1"></iframe>
+<figure markdown>
+<iframe class="widget" data-src="widgets/lai-task.html" data-zoom="1.05"></iframe>
+<figcaption>Рис. 1.3. Задача LAI: входы и выход.</figcaption>
+</figure>
 
 | | что это | пример |
 |---|---|---|
