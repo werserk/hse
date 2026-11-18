@@ -1,0 +1,44 @@
+<!-- Fig. 5.1: the same 6-SNP piece in a dense and in a sparse region; Loter's answer depends only on SNP order. -->
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:20px;font-family:var(--font-sans);align-items:start}
+table{border-collapse:collapse}
+th{font-size:13px;font-weight:600;text-align:left;padding:0 0 6px 6px}
+th small{display:block;font-weight:400;color:var(--muted-foreground);font-size:12px}
+td{padding:4px 6px;vertical-align:middle}
+td.l{font-size:12px;color:var(--muted-foreground);text-align:right;white-space:nowrap;padding-left:0}
+tr.sep td{border-top:1px solid var(--border);padding-top:8px}
+.s{display:flex;gap:2px;align-items:center;font-family:var(--font-mono);font-size:12px}
+.s span{width:15px;height:21px;display:flex;align-items:center;justify-content:center;border-radius:3px}
+.h span{background:var(--muted);font-weight:600}
+.s span.A{background:var(--chart-1);color:var(--background);font-weight:600}
+.s span.B{background:var(--chart-2);color:var(--background);font-weight:600}
+svg text{font:10px var(--font-mono);fill:var(--muted-foreground)}
+.len{font:600 13px var(--font-mono);color:var(--foreground)}
+.n{font-size:12.5px;line-height:1.5;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.n b{color:var(--foreground)}
+</style>
+<div class="g">
+<table id="t"></table>
+<div class="n" id="n"></div>
+</div>
+<script>
+// the same target in two regions: A background, a run of SNPs that match B; reference A is all 0, reference B all 1
+const h='000111111000',P=h.length,L=2,d=[...h].filter(c=>c=='1').length;
+const C=[{t:'Плотный участок',step:0.0027,note:'шаг между SNP 0.0027 cM'},{t:'Редкий участок',step:0.5,note:'шаг между SNP 0.5 cM'}];
+const AX=6,W=P*17-2; // common cM axis 0…6 cM for both columns
+const fmt=x=>x<0.1?x.toFixed(3):x.toFixed(1);
+// Loter's answer for one run of d B-matching SNPs inside A: the run stays iff d > 2λ (chapter 2)
+const ans=d>2*L?h.replace(/./g,x=>x=='1'?'B':'A'):'A'.repeat(P);
+const axis=c=>{const x=v=>8+v/AX*(W-16);let s=`<svg width="${W}" height="34"><line x1="8" y1="14" x2="${W-8}" y2="14" style="stroke:var(--border)"/>`;
+ for(let k=0;k<=AX;k+=2)s+=`<line x1="${x(k)}" y1="11" x2="${x(k)}" y2="17" style="stroke:var(--border)"/><text x="${x(k)}" y="30" text-anchor="middle">${k}</text>`;
+ for(const j of [...Array(P).keys()].sort((a,b)=>h[a]-h[b]))s+=`<line x1="${x(0.5+j*c.step)}" y1="5" x2="${x(0.5+j*c.step)}" y2="14" style="stroke:var(--chart-${h[j]=='1'?2:1});stroke-width:1.5"/>`;
+ return s+'</svg>'};
+const seq=(s,cls)=>`<div class="s ${cls}">${[...s].map(c=>`<span class="${cls?'':c}">${c}</span>`).join('')}</div>`;
+let r=`<tr><th></th>${C.map(c=>`<th>${c.t}<small>${c.note}</small></th>`).join('')}</tr>`;
+r+=`<tr><td class="l">положение, cM</td>${C.map(c=>`<td>${axis(c)}</td>`).join('')}</tr>`;
+r+=`<tr><td class="l">цель h</td>${C.map(()=>`<td>${seq(h,'h')}</td>`).join('')}</tr>`;
+r+=`<tr><td class="l">ответ Loter<br>λ = ${L}</td>${C.map(()=>`<td>${seq(ans,'')}</td>`).join('')}</tr>`;
+r+=`<tr class="sep"><td class="l">длина куска B<br>(${d} SNP × шаг)</td>${C.map(c=>`<td><span class="len">${fmt(d*c.step)} cM</span></td>`).join('')}</tr>`;
+document.getElementById('t').innerHTML=r;
+document.getElementById('n').innerHTML=`Референс A — все 0, B — все 1. Цель совпадает с B на <b>d = ${d}</b> SNP подряд.<br><br>Кусок остаётся, если <b>d &gt; 2λ</b>: ${d} &gt; ${2*L}.<br><br>Расстояния в этом правиле нет: ответ одинаков, хотя куски различаются по длине в ${Math.round(C[1].step/C[0].step)} раз.`;
+</script>

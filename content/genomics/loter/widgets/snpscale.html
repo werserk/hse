@@ -1,0 +1,25 @@
+<!-- Fig. 5.2: SNPs in an average ancestry piece (100/t cM) against Loter's threshold 2λ = 3…10 SNPs, log scale. -->
+<style>
+.w{font-family:var(--font-sans)}
+svg text{font:11px var(--font-sans);fill:var(--muted-foreground)}
+svg text.lab{fill:var(--foreground);font-size:12px}
+svg text.v{font:600 12px var(--font-mono);fill:var(--foreground)}
+</style>
+<div class="w"><svg id="s" width="720" height="210"></svg></div>
+<script>
+// mean distance between SNPs from the paper's Discussion; an average piece after t generations is about 100/t cM (chapter 1)
+const STEP={human:2.7e-3,populus:9.8e-6};
+const R=[{lab:'Человек, t = 10',sp:'human',t:10},{lab:'Человек, t = 500',sp:'human',t:500},{lab:'Тополь, t = 500',sp:'populus',t:500}]
+ .map(r=>({...r,n:100/r.t/STEP[r.sp]}));
+const X0=150,X1=700,LO=0,HI=5,x=v=>X0+(Math.log10(v)-LO)/(HI-LO)*(X1-X0);
+const lamMin=1.5,lamMax=5;
+let s=`<rect x="${x(2*lamMin)}" y="8" width="${x(2*lamMax)-x(2*lamMin)}" height="150" style="fill:var(--warning);opacity:.18"/>`;
+s+=`<text x="${(x(2*lamMin)+x(2*lamMax))/2}" y="22" text-anchor="middle" style="fill:var(--foreground)">порог 2λ</text><text x="${(x(2*lamMin)+x(2*lamMax))/2}" y="36" text-anchor="middle">${2*lamMin}…${2*lamMax} SNP</text>`;
+R.forEach((r,i)=>{const y=52+i*36;
+ s+=`<text class="lab" x="${X0-10}" y="${y+14}" text-anchor="end">${r.lab}</text>`;
+ s+=`<rect x="${X0}" y="${y}" width="${x(r.n)-X0}" height="20" rx="3" style="fill:var(--muted-foreground)"/>`;
+ s+=`<text class="v" x="${x(r.n)+6}" y="${y+14}">≈ ${Math.round(r.n).toLocaleString('ru-RU')}</text>`});
+for(let k=LO;k<=HI;k++){s+=`<line x1="${x(10**k)}" y1="160" x2="${x(10**k)}" y2="166" style="stroke:var(--border)"/><text x="${x(10**k)}" y="180" text-anchor="middle">${k==0?'1':k==1?'10':'10'}${k>1?`<tspan dy="-5" font-size="8">${k}</tspan>`:''}</text>`}
+s+=`<line x1="${X0}" y1="160" x2="${X1}" y2="160" style="stroke:var(--border)"/><text x="${(X0+X1)/2}" y="202" text-anchor="middle">SNP в среднем куске, лог-шкала</text>`;
+document.getElementById('s').innerHTML=s;
+</script>
