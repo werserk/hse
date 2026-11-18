@@ -1,47 +1,81 @@
 <style>
-.w{display:grid;grid-template-columns:auto 1fr;gap:28px;font-family:var(--font-sans);align-items:start}
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
 .r{display:flex;align-items:center;gap:10px;margin:3px 0}
-.l{width:120px;text-align:right;font-size:12px;color:var(--muted-foreground)}
+.l{width:24px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
 .s{display:flex;gap:3px;font-family:var(--font-mono);font-size:13px}
-.s span{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px;color:var(--subtle-foreground)}
-.a span{background:color-mix(in srgb,var(--chart-1) 12%,transparent)}
-.b span{background:color-mix(in srgb,var(--chart-2) 12%,transparent)}
-.a span.on{background:var(--chart-1);color:var(--background);font-weight:600}
-.b span.on{background:var(--chart-2);color:var(--background);font-weight:600}
-.h span{background:var(--muted);color:var(--foreground);font-weight:600}
-.o span{color:var(--background);font-weight:600}
-.sep{margin:8px 0 8px 130px;border-top:1px solid var(--border)}
-.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
-.side b{color:var(--foreground)}
-.sw{display:inline-block;width:3px;height:14px;background:var(--warning);vertical-align:-2px;margin:0 3px}
-.s i{width:0;position:relative}
-.s i::after{content:'';position:absolute;left:-2.5px;top:-4px;bottom:-4px;width:2px;background:var(--warning)}
+.s span{box-sizing:border-box;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:background .3s,color .3s}
+.idx span{height:14px;font-size:10px;color:var(--subtle-foreground)}
+.A span{background:color-mix(in srgb,var(--chart-1) 22%,transparent)}
+.B span{background:color-mix(in srgb,var(--chart-2) 22%,transparent)}
+.A span.on{background:var(--chart-1);color:var(--background);font-weight:600}
+.B span.on{background:var(--chart-2);color:var(--background);font-weight:600}
+.h span{background:var(--muted);font-weight:600}
+.p span{font-size:11px;color:var(--foreground);border:1px dashed var(--border)}
+.p span:empty,.a span:empty{border:1px dashed var(--border);background:transparent}
+.a span{color:var(--background);font-weight:600}
+.s span.cur{outline:2px solid var(--foreground);outline-offset:-2px}
+.s span{position:relative}
+.s span.sw::before{content:'';position:absolute;left:-3px;top:-3px;bottom:-3px;width:2px;background:var(--warning)}
+.sep{margin:10px 0 10px 34px;border-top:1px solid var(--border)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+.mk{display:inline-block;width:2px;height:12px;background:var(--warning);vertical-align:-1px;margin:0 2px}
 </style>
 <div class="w">
-<div>
-<div id="refs"></div>
-<div class="sep"></div>
-<div class="r"><div class="l">цель h</div><div class="s h" id="h"></div></div>
-<div class="r"><div class="l">путь s</div><div class="s" id="sp" style="font-size:11px"></div></div>
-<div class="r"><div class="l">происхождение a</div><div class="s o" id="anc"></div></div>
-</div>
-<div class="side">
-<b>Путь s</b> — какой референс копируется на каждом SNP (закрашенные клетки).<br><br>
-Несовпадений с h: <b id="mm"></b><br>
-Переключений (<span class="sw"></span>): <b id="sw"></b><br><br>
-<b>C(s) = <span id="c"></span></b><br><br>
-Происхождение a<sub>j</sub> — популяция того референса, который копируется на SNP j.
-</div>
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
 </div>
 <script>
-const H={A1:'0010001000',A2:'0100000010',B1:'1111101111',B2:'1011111101'},h='0011101010';
+const H={A1:'0010001000',A2:'0100000010',B1:'1111101111',B2:'1011111101'},h='0011101010',P=10;
 const path=['A1','A1','B1','B1','B1','B1','B1','A2','A2','A2'];
+// per step: how many SNPs of the path are filled (cov) and of the ancestry (anc); ms per SNP when animating forward
+const S=[
+ {t:'Референсы и цель',cov:0,anc:0,d:'Сверху четыре референсных гаплотипа: A1, A2 из популяции A, B1, B2 из популяции B. Под чертой цель h. Модель объясняет h как склейку кусков референсов.'},
+ {t:'SNP 1–2: копируем A1',cov:2,anc:0,ms:900,d:'На SNP 1–2 цель совпадает с A1. В строку s записываем, какой референс копируется: A1, A1.'},
+ {t:'SNP 3–7: переключение на B1',cov:7,anc:0,ms:650,d:'Дальше A1 расходится с целью: на SNP 4 у A1 стоит 0, у h стоит 1. B1 совпадает с h на SNP 3–7, и путь переходит на B1. Переход отмечен чертой <span class="mk"></span>.'},
+ {t:'SNP 8–10: переключение на A2',cov:10,anc:0,ms:650,d:'На SNP 8 B1 расходится с целью (1 против 0). A2 совпадает с h на SNP 8–10: второе переключение.'},
+ {t:'Путь s',cov:10,anc:0,d:'Строка s — путь копирования. Он ни разу не расходится с целью и переключается два раза.'},
+ {t:'Происхождение a',cov:10,anc:10,ms:250,d:'Каждый референс заменяем его популяцией: A1, A2 дают A; B1, B2 дают B. Получается ответ задачи LAI: три куска A, B, A.'}];
+let k=0,cov=0,anc=0,cur=-1,timer=null;
 const $=id=>document.getElementById(id);
-const sw=j=>j>0&&path[j]!=path[j-1];
-$('refs').innerHTML=Object.entries(H).map(([n,r])=>`<div class="r"><div class="l">${n[0]=='A'?'популяция A':'популяция B'} · ${n}</div><div class="s ${n[0].toLowerCase()}">${[...r].map((c,j)=>(sw(j)?'<i></i>':'')+`<span class="${path[j]==n?'on':''}">${c}</span>`).join('')}</div></div>`).join('');
-$('h').innerHTML=[...h].map((c,j)=>(sw(j)?'<i></i>':'')+`<span>${c}</span>`).join('');
-$('sp').innerHTML=path.map((p,j)=>(sw(j)?'<i></i>':'')+`<span>${p}</span>`).join('');
-$('anc').innerHTML=path.map((p,j)=>(sw(j)?'<i></i>':'')+`<span style="background:var(--chart-${p[0]=='A'?1:2})">${p[0]}</span>`).join('');
-const mm=path.filter((p,j)=>H[p][j]!=h[j]).length,ns=path.filter((p,j)=>sw(j)).length;
-$('mm').textContent=mm;$('sw').textContent=ns;$('c').textContent=`${mm} + ${ns}λ`;
+const sw=j=>j>0&&j<cov&&path[j]!=path[j-1];
+const line=(lab,cls,f)=>`<div class="r"><div class="l">${lab}</div><div class="s ${cls}">${Array.from({length:P},(_,j)=>sw(j)?f(j).replace('<span class="','<span class="sw ').replace('<span>','<span class="sw">').replace('<span style','<span class="sw" style'):f(j)).join('')}</div></div>`;
+function draw(){
+ const c=j=>j==cur?'cur':'';
+ $('fig').innerHTML=
+  `<div class="r"><div class="l"></div><div class="s idx">${Array.from({length:P},(_,j)=>`<span>${j+1}</span>`).join('')}</div></div>`+
+  Object.entries(H).map(([n,r])=>line(n,n[0],j=>`<span class="${j<cov&&path[j]==n?'on':''} ${path[j]==n?c(j):''}">${r[j]}</span>`)).join('')+
+  `<div class="sep"></div>`+
+  line('h','h',j=>`<span class="${c(j)}">${h[j]}</span>`)+
+  line('s','p',j=>`<span>${j<cov?path[j]:''}</span>`)+
+  line('a','a',j=>j<anc?`<span style="background:var(--chart-${path[j][0]=='A'?1:2})">${path[j][0]}</span>`:'<span></span>');
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearInterval(timer);cur=-1;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ if(fwd&&s.ms&&(s.cov>cov||s.anc>anc)){
+  const key=s.anc>anc?'anc':'cov',end=s[key];
+  const tick=()=>{if(key=='cov'){cur=cov;cov++}else{cur=-1;anc++}draw();if((key=='cov'?cov:anc)>=end){clearInterval(timer);setTimeout(()=>{if(timer===t){cur=-1;draw()}},s.ms)}};
+  const t=timer=setInterval(tick,s.ms);draw();return;
+ }
+ cov=s.cov;anc=s.anc;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+draw();
 </script>
