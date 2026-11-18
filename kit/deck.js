@@ -1,6 +1,7 @@
 // Deck engine: keys/clicker/swipe navigation, .step reveals, #n hash, fit-to-window,
 // speaker view (S) synced by postMessage (works from file:// too), fullscreen (F), downloads.
 (() => {
+  if (document.body.dataset.mode === 'read') return;  // reading view (read.js) owns the page
   const body = document.body;
   body.classList.add('deck-body');
   const slides = [...document.querySelectorAll('section.slide')];
@@ -52,6 +53,7 @@
     ui.innerHTML =
       (home ? `<a href="${home}" title="Каталог">⌂</a>` : '') +
       `<button data-a="prev" title="Назад (←)">‹</button><button data-a="next" title="Вперёд (→)">›</button>` +
+      `<button data-a="read" title="Текст доклада с иллюстрациями">Текст</button>` +
       `<button data-a="speaker" title="Режим докладчика (S)">S</button><button data-a="full" title="Полный экран (F)">⛶</button>` +
       (pdf ? `<a href="${pdf}" download title="Скачать PDF">PDF</a>` : '') +
       `<a href="${location.pathname.split('/').pop() || 'index.html'}" download="${meta('file') || 'deck.html'}" title="Скачать офлайн-HTML">HTML</a>`;
@@ -59,6 +61,7 @@
       const a = e.target.closest('button')?.dataset.a;
       if (a === 'prev') prev(); else if (a === 'next') next();
       else if (a === 'speaker') openSpeaker(); else if (a === 'full') full();
+      else if (a === 'read') location.href = `${location.pathname}?read#${cur + 1}`;
     });
     body.appendChild(ui);
     const doFit = () => {

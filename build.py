@@ -106,7 +106,7 @@ def pack_deck(src, out, style, pdf=False, home=None, name=None, has_pdf=False):
     else:  # no </head>: keep doctype first and the charset inside the first 1024 bytes
         at = re.match(r"(?is)(?:\s|<!--.*?-->)*(<!doctype[^>]*>)?\s*(<html\b[^>]*>)?\s*(<head\b[^>]*>)?", doc).end()
         doc = doc[:at] + '<meta charset="utf-8">\n' + head + doc[at:]
-    js = f"<script>{read(KIT / 'deck.js')}</script>\n"
+    js = f"<script>{read(KIT / 'read.js')}</script>\n<script>{read(KIT / 'deck.js')}</script>\n"
     doc = re.sub(r"(?i)</body>", lambda _: js + "</body>", doc, count=1) if re.search(r"(?i)</body>", doc) else doc + js
     (out / "index.html").write_text(doc, encoding="utf-8")
     if pdf: print_pdf(out / "index.html", out / f"{name}.pdf")
