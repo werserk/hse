@@ -83,5 +83,7 @@ function go(i){
 }
 $('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
 document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
-draw();
+// reserve the tallest step-list height, so the frame does not resize between steps
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
 </script>
