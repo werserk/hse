@@ -49,7 +49,10 @@ Write `deck.html` with one `<section class="slide">` per slide; see `kit/starter
   file styled only with bb inline-vis tokens (`var(--foreground)`, `var(--chart-1)`, `var(--brand)`, …),
   so the same file works in bb chat and on a slide. The packer inlines it with the theme.
 - Local `<link rel="stylesheet">` and `<script src>` are inlined; other files (images, video) are copied.
+  Remote (CDN) scripts, styles and fonts are not inlined: the offline copy needs them bundled locally.
 - Keys: → / Space / PgDn next, ← / PgUp back, Home/End, F fullscreen, S speaker view; `#n` = slide n.
+  A focused widget forwards these keys to the deck, so a clicker keeps working after a click on a
+  slider (arrows then move the slide, not the slider; drag it with the mouse).
 
 Build one deck (offline folder + PDF) and open it from disk:
 

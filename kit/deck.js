@@ -21,7 +21,8 @@
     const d = e.data || {};
     if (d.type === 'widget-height') {
       for (const f of document.querySelectorAll('iframe.widget')) if (f.contentWindow === e.source) f.style.height = `${d.h}px`;
-    } else if (d.type === 'deck' && e.source === peer) { go(d.i, d.step, false); }
+    } else if (d.type === 'widget-key') { key(d.key); }
+    else if (d.type === 'deck') { if (!peer || peer.closed) peer = e.source; if (e.source === peer) go(d.i, d.step, false); }
     else if (d.type === 'deck-hello') { peer = e.source; send(); }
   });
 
@@ -112,14 +113,19 @@
   }
   function full() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); }
 
-  addEventListener('keydown', (e) => {
-    if (e.target.closest?.('input, textarea, select')) return;
-    const k = e.key;
-    if (['ArrowRight', 'ArrowDown', ' ', 'PageDown', 'Enter'].includes(k)) { e.preventDefault(); next(); }
-    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) { e.preventDefault(); prev(); }
+  // Navigation keys; widgets forward theirs (PageUp/PageDown always, so a clicker keeps working after a click in a widget).
+  function key(k) {
+    if (['ArrowRight', 'ArrowDown', ' ', 'PageDown', 'Enter'].includes(k)) next();
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) prev();
     else if (k === 'Home') go(0); else if (k === 'End') go(slides.length - 1);
     else if (k === 'f' || k === 'F' || k === 'а' || k === 'А') full();
     else if ((k === 's' || k === 'S' || k === 'ы' || k === 'Ы') && !speaker) openSpeaker();
+    else return false;
+    return true;
+  }
+  addEventListener('keydown', (e) => {
+    if (e.target.closest?.('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (key(e.key)) e.preventDefault();
   });
   let tx = null;
   addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
