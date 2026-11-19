@@ -17,6 +17,7 @@ body.nt { margin: 0; background: var(--background); color: var(--foreground); fo
 .nt-toc a:hover { color: var(--foreground) !important; }
 .nt-toc a.on { border-left-color: var(--brand); color: var(--foreground) !important; background: var(--surface-recessed); }
 .nt-main { margin-left: 280px; max-width: 900px; padding: 56px 64px 120px; }
+.nt-kick { margin: 0 0 12px; font: 600 13px/1 var(--font-mono); letter-spacing: .08em; color: var(--brand); }
 .nt-head h1 { font: 600 44px/1.12 var(--font-heading); margin: 0 0 10px; }
 .nt-meta { margin: 0 0 8px; font: 14px/1.5 var(--font-sans); color: var(--subtle-foreground); }
 .nt-lead { font-size: 1.15em; }

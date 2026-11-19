@@ -37,6 +37,8 @@ title, nothing else.
 Card preview: the build screenshots the presentation's first slide with a figure, the document's first page, or
 the konspekt's first screen (needs Chrome and `pdftoppm`). Override it with `"cover": "cover.png"` (a file in the
 entry folder) or `"cover": 3` (slide number).
+`"number": "01"` puts the material's number above its title on the card and on its page («01 · НИС АДНЖ»);
+keep it out of `title`.
 
 ## Konspekt
 

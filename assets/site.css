@@ -37,6 +37,7 @@ a.card:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .cv { display: block; aspect-ratio: 16 / 9; background: var(--surface-recessed); border-bottom: 1px solid var(--border); overflow: hidden; }
 .cv img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
 .card .t { padding: 11px 14px 13px; font: 600 17px/1.3 var(--font-heading); }
+.card .t .no { display: block; margin-bottom: 6px; font: 600 12px/1 var(--font-mono); letter-spacing: .08em; color: var(--brand); }
 .card.soon { background: transparent; border-style: dashed; }
 .card.soon .cv { background: transparent; border-bottom-style: dashed; }
 .card.soon .t { color: var(--muted-foreground); }

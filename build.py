@@ -176,7 +176,7 @@ def link(label, href, dl=False, attrs=""):
     return f'<a{attrs} href="{esc(href)}"{d}>{esc(label)}</a>'
 
 
-def pack_notes(src, out, style, md_name, title, meta="", back=None, acts=(), name=None, lead=""):
+def pack_notes(src, out, style, md_name, title, meta="", back=None, acts=(), name=None, lead="", kicker=""):
     """Konspekt, the material's own page: Markdown (+ HTML, widgets) → one self-contained page with contents on the left.
     acts = [(label, href, download)] resource buttons; without notes.md the page shows `lead` and says the text is pending."""
     src, out = Path(src), Path(out)
@@ -192,7 +192,7 @@ def pack_notes(src, out, style, md_name, title, meta="", back=None, acts=(), nam
     buttons = "".join(link(label, href, dl, ' class="go"' if label.startswith("▶") else "") for label, href, dl in acts)
     side = ((f'<a class="nt-back" href="{esc(back[0])}">← {esc(back[1])}</a>' if back else "") +
             f'<div class="nt-title">{esc(title)}</div><div class="nt-act">{buttons}</div><ol class="nt-toc">{toc}</ol>')
-    head = f'<header class="nt-head"><h1>{esc(title)}</h1>' + (f'<p class="nt-meta">{esc(meta)}</p>' if meta else "") + "</header>"
+    head = '<header class="nt-head">' + (f'<p class="nt-kick">{esc(kicker)}</p>' if kicker else "") + f'<h1>{esc(title)}</h1>' + (f'<p class="nt-meta">{esc(meta)}</p>' if meta else "") + "</header>"
     page_ = f"""<!doctype html><html lang="ru" data-style="{style}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title>
 <style>{read(KIT / 'theme.css')}
@@ -300,9 +300,9 @@ def page(cfg, title, body, style, cls=""):
 
 
 def card(e):
-    """A card is a preview and the title, nothing else (owner, 2026-11-18)."""
+    """A card is a preview and the title, with the material's number above it (owner, 2026-11-18, 2026-11-19)."""
     cov = f'<img src="/{esc(e["course"])}/{esc(e["slug"])}/{esc(e["cover"])}" alt="" loading="lazy">' if e.get("cover_file") else ""
-    inner = f'<span class="cv">{cov}</span><span class="t">{esc(e["title"])}</span>'
+    inner = f'<span class="cv">{cov}</span><span class="t">' + (f'<span class="no">{esc(e["number"])}</span>' if e.get("number") else "") + f'{esc(e["title"])}</span>'
     if not e.get("href"): return f'<div class="card soon" title="Скоро">{inner}</div>'
     ext = ' target="_blank" rel="noopener"' if e.get("type") == "link" else ""
     return f'<a class="card" href="{esc(e["href"])}"{ext}>{inner}</a>'
@@ -341,8 +341,10 @@ def build_entry(cfg, c, e, dest, style, pdf):
     if doc: acts.append(("▶ Документ", "doc/index.html", False))
     if deck_pdf: acts.append(("PDF", f"slides/{dpdf}", True))
     acts += [(label, f, True) for label, f in files.items()]
-    meta = " · ".join(x for x in [e.get("date", ""), e.get("event", "")] if x)
-    pack_notes(d, dest, style, md, e["title"], meta, course, acts, slug, lead=e.get("summary", ""))
+    no = e.get("number", "")
+    kicker = " · ".join(x for x in [no, e.get("event", "")] if x) if no else ""
+    meta = " · ".join(x for x in [e.get("date", ""), "" if no else e.get("event", "")] if x)
+    pack_notes(d, dest, style, md, e["title"], meta, course, acts, slug, lead=e.get("summary", ""), kicker=kicker)
     for f in set(files.values()) | ({doc} if doc else set()): shutil.copy(d / f, dest)
     up = [(label, f"../{f}", True) for label, f in files.items()]
     if deck:
