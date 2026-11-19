@@ -1,0 +1,31 @@
+<!-- Fig. 11.1: z'' + Q z = 0 with Q = 1 - 1/(4x^2) (the normal form of the Bessel equation, chapter 11) against the comparison solution sin(alpha (x - 1)), alpha = sqrt(3)/2; z is integrated here with RK4. -->
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start;font-family:var(--font-sans)}
+svg text{font:12px var(--font-sans);fill:var(--foreground)}
+svg .ax{font:11px var(--font-mono);fill:var(--muted-foreground)}
+.n{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px;max-width:290px}
+.n b{color:var(--foreground)}.n p{margin:0 0 9px}
+.t{font-size:14px;font-weight:600;margin:0 0 8px;color:var(--foreground)}
+</style>
+<div class="g"><div><div class="t">Нули z и нули эталона v</div><svg id="s" width="460" height="230"></svg></div><div class="n" id="n"></div></div>
+<script>
+const Q=x=>1-1/(4*x*x),al=Math.sqrt(3)/2,X0=1,X1=12,W=460,H=230,L=14,YM=1.5;
+const px=v=>L+(v-X0)/(X1-X0)*(W-L-8), py=v=>H/2-v/YM*(H/2-14);
+// z(1) = 1, z'(1) = 0 ... any nontrivial data; RK4
+let x=X0,z=1,w=0;const dt=0.005,zs=[[x,z]];
+const F=(x,z,w)=>[w,-Q(x)*z];
+while(x<X1){const k1=F(x,z,w),k2=F(x+dt/2,z+dt/2*k1[0],w+dt/2*k1[1]),k3=F(x+dt/2,z+dt/2*k2[0],w+dt/2*k2[1]),k4=F(x+dt,z+dt*k3[0],w+dt*k3[1]);
+ z+=dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);w+=dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);x+=dt;zs.push([x,z])}
+const zeros=[];for(let i=1;i<zs.length;i++)if(zs[i-1][1]*zs[i][1]<0)zeros.push(zs[i][0]);
+const vz=[];for(let k=0;;k++){const t=X0+k*Math.PI/al;if(t>X1)break;vz.push(t)}
+const A=zs.map(p=>px(p[0]).toFixed(1)+','+py(p[1]).toFixed(1)).join(' ');
+const Bv=[];for(let t=X0;t<=X1;t+=0.05)Bv.push(px(t).toFixed(1)+','+py(Math.sin(al*(t-X0))).toFixed(1));
+let s=`<line x1="${px(X0)}" y1="${py(0)}" x2="${px(X1)}" y2="${py(0)}" style="stroke:var(--border)"/>`;
+s+=`<polyline fill="none" style="stroke:var(--chart-2);stroke-width:1.6;stroke-dasharray:5 3" points="${Bv.join(' ')}"/>`;
+s+=`<polyline fill="none" style="stroke:var(--chart-1);stroke-width:2" points="${A}"/>`;
+for(const t of vz)s+=`<circle cx="${px(t)}" cy="${py(0)}" r="3.5" style="fill:var(--background);stroke:var(--chart-2);stroke-width:2"/>`;
+for(const t of zeros)s+=`<circle cx="${px(t)}" cy="${py(0)}" r="3.5" style="fill:var(--chart-1)"/>`;
+for(let v=2;v<=12;v+=2)s+=`<text class="ax" x="${px(v)}" y="${H-4}" text-anchor="middle">${v}</text>`;
+document.getElementById('s').innerHTML=s;
+document.getElementById('n').innerHTML=`<p><span style="color:var(--chart-1);font-weight:600">Сплошная</span> — решение z уравнения z″ + Qz = 0, Q = 1 − 1/(4x²) (начальные данные z(1) = 1, z′(1) = 0). <span style="color:var(--chart-2);font-weight:600">Пунктир</span> — эталон v = sin(α(x − 1)) для z″ + α²z = 0, α = √3/2.</p><p>Нули эталона стоят через π/α ≈ ${(Math.PI/al).toFixed(2)}. Между каждыми двумя соседними нулями v у z есть нуль: на (1, 12] нулей у z — ${zeros.length}, у v — ${vz.length-1}.</p>`;
+</script>

@@ -1,0 +1,33 @@
+<!-- Fig. 8.1: x' = a y + x r^2, y' = -a x + y r^2: the linear part is a centre, the full system has r' = r^3. Trajectories computed from r(t) = r0 / sqrt(1 - 2 r0^2 t), theta = theta0 - a t. -->
+<style>
+.row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;font-family:var(--font-sans)}
+svg text{font:12px var(--font-sans);fill:var(--foreground)}
+svg .ax{font:11px var(--font-mono);fill:var(--muted-foreground)}
+.t{font-size:14px;font-weight:600;margin:0 0 2px;color:var(--foreground)}
+.c{font-size:13px;line-height:1.5;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:12px;margin-top:6px}
+.c b{color:var(--foreground)}
+</style>
+<div class="row" id="r"></div>
+<script>
+const S=190,C=S/2,K=C-8; // plot radius K pixels for r = 1
+const P=(r,th)=>[C+K*r*Math.cos(th),C-K*r*Math.sin(th)];
+function path(r0,th0,a,rmax=1){ // follow r(t) until r reaches rmax
+ const T=(1/(r0*r0)-1/(rmax*rmax))/2,pts=[];
+ for(let i=0;i<=200;i++){const t=T*i/200,r=r0/Math.sqrt(1-2*r0*r0*t),th=th0-a*t;pts.push(P(r,th).map(v=>v.toFixed(1)).join(','))}
+ return pts.join(' ')}
+const poly=(p,st)=>`<polyline fill="none" style="${st}" points="${p}"/>`;
+const frame=(body)=>`<svg width="${S}" height="${S}"><line x1="0" y1="${C}" x2="${S}" y2="${C}" style="stroke:var(--border)"/><line x1="${C}" y1="0" x2="${C}" y2="${S}" style="stroke:var(--border)"/>${body}<circle cx="${C}" cy="${C}" r="3.5" style="fill:var(--foreground)"/></svg>`;
+const st='stroke:var(--chart-1);stroke-width:1.6';
+// 1: the linear part: circles, rotation by theta' = -a (clockwise for a>0)
+let lin='';for(const r of [0.25,0.5,0.75,0.95])lin+=`<circle cx="${C}" cy="${C}" r="${K*r}" fill="none" style="${st}"/>`;
+{const x=C+K*0.5;lin+=`<polygon points="${x},${C+9} ${x-5},${C-1} ${x+5},${C-1}" style="fill:var(--chart-1)"/>`}
+// 2: a = 1, outward spirals
+let sp='';for(const [r0,th0] of [[0.18,0],[0.18,Math.PI/2],[0.18,Math.PI],[0.18,3*Math.PI/2],[0.3,0.8],[0.3,0.8+Math.PI]])sp+=poly(path(r0,th0,1),st);
+// 3: a = 0, rays
+let rays='';for(let k=0;k<8;k++){const th=k*Math.PI/4+0.2,a=P(0.12,th),b=P(0.95,th),m=P(0.6,th);rays+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" style="${st}"/><circle cx="${m[0]}" cy="${m[1]}" r="2.4" style="fill:var(--chart-1)"/>`}
+const cell=(t,b,c)=>`<div><div class="t">${t}</div>${frame(b)}<div class="c">${c}</div></div>`;
+document.getElementById('r').innerHTML=
+ cell('Линейная часть, a ≠ 0',lin,'Собственные значения ±ia: <b>центр</b>, замкнутые окружности. Это не ответ для полной системы.')+
+ cell('Полная система, a = 1',sp,'ṙ = r³ &gt; 0 добавляет разлёт к вращению θ̇ = −a: <b>раскручивающиеся спирали</b> (по часовой стрелке).')+
+ cell('Полная система, a = 0',rays,'θ̇ = 0, ṙ = r³: <b>лучи</b> от начала координат, движение только наружу.');
+</script>
