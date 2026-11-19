@@ -1,0 +1,42 @@
+<!-- Fig. 5.1 (static): memory levels of one CPU core and where Loter's arrays fall by size.
+     Levels: typical orders for a current x86 server core (L1d 32-48 KB ~1 ns, L2 1-2 MB ~4 ns, L3 tens of MB ~15 ns,
+     RAM ~90 ns), not measured on the benchmark machine. Array sizes are computed below for N = 2000, p = 50 000,
+     2n = 372 from Loter's dtypes (bcm-uga/Loter @ 5c91354: graph.cpp cost float32 + path int32; S uint32; counts float64). -->
+<style>
+.w{font-family:var(--font-sans);display:grid;grid-template-columns:auto 1fr;column-gap:26px;align-items:start}
+svg{display:block;overflow:visible}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .lv{font-size:12px;font-weight:600;fill:var(--foreground)}
+svg .ar{font-size:11.5px;fill:var(--foreground)}
+svg .grid{stroke:var(--border)}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground);font-weight:600}
+.side p{margin:0 0 10px}
+.side p:last-child{margin:0}
+</style>
+<div class="w"><div id="fig"></div><div class="side" id="side"></div></div>
+<script>
+const N=2000,p=50000,n2=372;
+// memory levels: upper size bound in bytes, access time (order), label
+const LV=[[48e3,'L1','~1 нс'],[2e6,'L2','~4 нс'],[64e6,'L3','~15 нс'],[1e11,'RAM','~90 нс']];
+// Loter arrays at N = 2000: [bytes, label]
+const A=[[n2*4,'столбец DP'],[n2*p,'панель'],[n2*p*8,'таблицы DP'],[2*N*p*4,'матрица путей'],[2*2*N*p*8,'счётчики голосов']];
+const L=40,T=40,W=420,x0=3,x1=10.3,BH=34;
+const X=b=>L+(Math.log10(b)-x0)/(x1-x0)*W;
+const fmt=b=>b<1e6?(b/1e3).toFixed(1).replace('.',',')+' КБ':b<1e9?Math.round(b/1e6)+' МБ':(b/1e9).toFixed(1).replace('.',',')+' ГБ';
+let s=`<svg width="${L+W+10}" height="${T+BH+130}">`,lo=1e3;
+LV.forEach(([hi,nm,t],i)=>{const a=X(lo),b=X(Math.min(hi,10**x1));
+ s+=`<rect x="${a}" y="${T}" width="${b-a-2}" height="${BH}" rx="3" fill="color-mix(in srgb,var(--foreground) ${6+i*5}%,transparent)"/>`+
+  `<text class="lv" x="${a+6}" y="${T+15}">${nm}</text><text x="${a+6}" y="${T+28}">${t}</text>`;lo=hi;});
+for(const [b,t] of [[1e3,'1 КБ'],[1e6,'1 МБ'],[1e9,'1 ГБ']])s+=`<text x="${X(b)}" y="${T-26}" text-anchor="middle">${t}</text><line class="grid" x1="${X(b)}" x2="${X(b)}" y1="${T-20}" y2="${T}"/>`;
+s+=`<text x="${L+W}" y="${T-26}" text-anchor="end">размер →</text>`;
+// one row per array, ordered by size; labels sit left of their leader line (first one right), so no line crosses a label
+A.forEach(([b,t],i)=>{const x=X(b),y=T+BH+24+i*21,st=i==0;
+ s+=`<line x1="${x}" x2="${x}" y1="${T+BH+5}" y2="${y-4}" stroke="var(--chart-2)" stroke-width="1.3"/><circle cx="${x}" cy="${T+BH+5}" r="3.5" fill="var(--chart-2)"/>`+
+  `<text x="${st?x+7:x-7}" y="${y}" text-anchor="${st?'start':'end'}"><tspan class="ar">${t}</tspan> · ${fmt(b)}</text>`;});
+document.getElementById('fig').innerHTML=s+'</svg>';
+document.getElementById('side').innerHTML=
+ `<p><b>Предыдущий столбец DP</b> только что записан и лежит в L1. <b>Панель</b> читается подряд, столбец за столбцом.</p>`+
+ `<p><b>Таблицы DP</b> заводятся заново на каждый гаплотип когорты и в кэш не помещаются: каждая клетка пишет в RAM 8 байт.</p>`+
+ `<p><b>Матрица путей</b> не помещается ни в один кэш. Перевод в метки читает её целиком ${n2} раз за прогон, и время прохода задаёт скорость памяти.</p>`;
+</script>

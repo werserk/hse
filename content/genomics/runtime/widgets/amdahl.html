@@ -1,53 +1,34 @@
-<!doctype html><meta charset="utf-8">
-<!-- Widget: speedup limits on p cores. Amdahl: S(p) = 1/((1-f) + f/p) <= 1/(1-f).
-     Memory-bus ceiling: if a pass is DRAM-bound, cores share one bus: S <= B_node/B_core ~ 10-20 (typical orders, not measured).
-     The paper ran everything on one core, so no speedup was measured. -->
+<!-- Fig. 5.2 (static): Amdahl's law S(c) = 1 / ((1 - f) + f / c) for three parallel fractions f.
+     f = 0.5 is the estimate for Loter (C++ DP parallel via OpenMP over cohort haplotypes, graph.cpp:121-123;
+     Python relabel pass sequential, assumed to take about half the time); the paper ran Loter on one core (-n 1). -->
 <style>
-.w{font-family:var(--font-sans,sans-serif);color:var(--foreground,#111);display:flex;flex-direction:column;gap:10px;--a:var(--foreground,#1c1b19);--b:var(--chart-2,#2b5b8c);--bus:var(--success,#2E7D32)}
-.ctl{display:flex;align-items:center;gap:10px;font-size:13px}
-.ctl input{flex:1;accent-color:var(--brand,#1F4E8C)}
-.ctl b{font-variant-numeric:tabular-nums;min-width:90px}
-svg{width:100%;height:230px;display:block;overflow:visible}
-svg text{font-size:10px;fill:var(--muted-foreground,#6B6B6B);font-family:inherit}
-.e{font-size:13px;line-height:1.6;background:var(--surface-recessed,#f4f4f4);border-radius:var(--radius,6px);padding:12px 16px}
-.f{font-family:var(--font-mono,monospace);font-size:12px}
-.n{font-size:11px;color:var(--subtle-foreground,#888)}
+.w{font-family:var(--font-sans);display:grid;grid-template-columns:auto 1fr;column-gap:26px;align-items:start}
+svg{display:block;overflow:visible}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .grid{stroke:var(--border)}
+svg .cl{font-size:11.5px;font-weight:600}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground);font-weight:600}
+.side p{margin:0 0 10px}
+.side p:last-child{margin:0}
 </style>
-<div class="w">
-<div class="ctl"><span>ядер</span><input id="s" type="range" min="1" max="64" value="16"><b id="pv"></b></div>
-<svg id="sv" viewBox="0 0 600 230"></svg>
-<div class="e" id="ex"></div>
-<div class="n">Закон Амдала: доля f работы параллельна, остальное идёт последовательно. Потолок шины — типичные порядки (≈100–300 ГБ/с на узел, 10–20 ГБ/с на ядро), не замер. В статье всё считали на одном ядре.</div>
-</div>
+<div class="w"><div id="fig"></div><div class="side" id="side"></div></div>
 <script>
-(()=>{
-const ns="http://www.w3.org/2000/svg",sv=document.getElementById('sv'),L=36,R=470,TOP=8,B=200,PM=64,SM=40;
-const X=p=>L+(R-L)*(p-1)/(PM-1),Y=v=>B-(B-TOP)*(v-1)/(SM-1);
-function el(t,a){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);sv.appendChild(e);return e;}
-const S=(f,p)=>1/((1-f)+f/p);
-el('line',{x1:L,y1:B,x2:R,y2:B,stroke:'var(--border,#ccc)'});el('line',{x1:L,y1:TOP,x2:L,y2:B,stroke:'var(--border,#ccc)'});
-for(const p of [1,8,16,32,48,64]){el('text',{x:X(p),y:B+13,'text-anchor':'middle'}).textContent=p;}
-for(const v of [1,10,20,30,40]){el('text',{x:L-5,y:Y(v)+3,'text-anchor':'end'}).textContent=v+'×';}
-el('text',{x:R,y:B+26,'text-anchor':'end'}).textContent='ядер p';
-el('rect',{x:L,y:Y(20),width:R-L,height:Y(10)-Y(20),fill:'var(--bus)','fill-opacity':0.12});
-el('text',{x:X(36),y:Y(11.5),style:'fill:var(--bus)'}).textContent='потолок шины 10–20×';
-el('line',{x1:X(1),y1:Y(1),x2:X(SM),y2:Y(SM),stroke:'var(--muted-foreground,#999)','stroke-dasharray':'2 3'});
-el('text',{x:X(SM)+4,y:Y(SM)+10}).textContent='идеал';
-const CUR=[[0.99,'var(--a)',2.2],[0.95,'var(--a)',1.2],[0.5,'var(--b)',2]];
-for(const [f,c,w] of CUR){let d='';for(let p=1;p<=PM;p++)d+=(p>1?'L':'M')+X(p).toFixed(1)+' '+Y(Math.min(SM,S(f,p))).toFixed(1);
-  el('path',{d,fill:'none',stroke:c,'stroke-width':w,'stroke-dasharray':f==0.5?'5 3':''});
-  el('text',{x:R+6,y:Y(S(f,PM))+3,style:'fill:'+c}).textContent='f = '+String(f).replace('.',',')+(f==0.5?' (Loter?)':'');}
-const cur=el('line',{y1:TOP,y2:B,stroke:'var(--foreground,#111)','stroke-dasharray':'2 3'});
-const dots=CUR.map(([f,c])=>el('circle',{r:4,fill:'none',stroke:c,'stroke-width':1.5}));
-const fx=x=>x.toFixed(1).replace('.',',');
-const s=document.getElementById('s');
-function upd(){const p=+s.value;document.getElementById('pv').textContent='p = '+p;
-  cur.setAttribute('x1',X(p));cur.setAttribute('x2',X(p));
-  CUR.forEach(([f],i)=>{dots[i].setAttribute('cx',X(p));dots[i].setAttribute('cy',Y(S(f,p)));});
-  document.getElementById('ex').innerHTML='<span class="f">S(p) = 1 / ((1−f) + f/p) ≤ 1/(1−f)</span><br>'+
-   'На '+p+' ядрах: f = 0,99 → <b>'+fx(S(.99,p))+'×</b> (предел 100×), f = 0,95 → <b>'+fx(S(.95,p))+'×</b> (предел 20×).<br>'+
-   'Если проход упирается в память, все ядра делят одну шину: выше ~10–20× не подняться'+(Math.min(S(.95,p),p)>10?' — <b>уже упираемся</b>.':'.')+'<br>'+
-   '<span style="color:var(--b)">Loter</span>: динамика на C++ параллельна (OpenMP по гаплотипам), а перекраска на Python — нет. Если она того же порядка, f ≈ 0,5 и S ≤ 2 (оценка по коду).';}
-s.addEventListener('input',upd);upd();
-})();
+const S=(f,c)=>1/((1-f)+f/c);
+const F=[[0.99,'var(--foreground)'],[0.9,'color-mix(in srgb,var(--foreground) 55%,transparent)'],[0.5,'var(--chart-2)']];
+const CM=32,SM=32,L=34,T=10,W=330,H=200;
+const X=c=>L+(c-1)/(CM-1)*W, Y=v=>T+H-(v-1)/(SM-1)*H;
+const dec=v=>(Math.round(v*10)/10).toString().replace('.',',');
+let s=`<svg width="${L+W+110}" height="${T+H+34}">`;
+for(const v of [1,8,16,24,32])s+=`<line class="grid" x1="${L}" x2="${L+W}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end">${v}×</text>`;
+for(const c of [1,8,16,24,32])s+=`<text x="${X(c)}" y="${T+H+15}" text-anchor="middle">${c}</text>`;
+s+=`<text x="${L+W}" y="${T+H+30}" text-anchor="end">ядер c</text>`;
+s+=`<line x1="${X(1)}" y1="${Y(1)}" x2="${X(SM)}" y2="${Y(SM)}" stroke="var(--muted-foreground)" stroke-dasharray="2 3"/><text x="${X(SM)+4}" y="${Y(SM)+4}">c×</text>`;
+for(const [f,col] of F){let d='';for(let c=1;c<=CM;c++)d+=(c>1?'L':'M')+X(c).toFixed(1)+' '+Y(S(f,c)).toFixed(1);
+ s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="2"/>`+
+  `<text class="cl" x="${L+W+6}" y="${Y(S(f,CM))+4}" style="fill:${col}">f = ${String(f).replace('.',',')}: ${dec(S(f,CM))}×</text>`;}
+document.getElementById('fig').innerHTML=s+'</svg>';
+document.getElementById('side').innerHTML=
+ `<p><b>f</b> — доля времени, которую можно поделить между ядрами. Остальное идёт на одном ядре при любом их числе, поэтому ускорение не превышает 1/(1 − f).</p>`+
+ `<p>Справа — ускорение на ${CM} ядрах. При f = 0,5 потолок 2×, и уже на 8 ядрах получается ${dec(S(0.5,8))}×.</p>`;
 </script>
