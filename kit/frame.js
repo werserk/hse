@@ -2,7 +2,7 @@
 // The resource keeps the keyboard (focus returns after a header click; keys pressed on the header are handed over),
 // ⛶ / F put the resource itself in fullscreen, and #n is passed in and copied back so a reload keeps the slide.
 (() => {
-  const f = document.querySelector('.fr-view'), base = f.dataset.src, local = !/^https?:/.test(base);
+  const f = document.querySelector('.fr-view'), base = f.dataset.src, local = !/^https?:/.test(base) && !/\.pdf(#|$)/i.test(base);   // a PDF keeps its own #view
   f.src = base + (local ? location.hash : '');
   const inner = () => { try { return f.contentWindow.document && f.contentWindow; } catch (e) { return null; } };
   const focus = () => { try { f.contentWindow.focus(); } catch (e) {} };

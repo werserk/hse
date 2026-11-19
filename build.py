@@ -102,9 +102,9 @@ def copy_media(src, out, skip=()):
     (out / MARK).write_text("")
 
 
-def pack_deck(src, out, style, pdf=False, home=None, name=None, has_pdf=False, title=None, back=None, notes=None, tabs=None, skip=()):
-    """deck.html → one offline HTML. home/back = (url, label) for the header's back link; notes = konspekt URL;
-    tabs = [(label, href, active, external)] format switcher of the case, shown in the header instead of «Конспект» and «PDF»."""
+def pack_deck(src, out, style, pdf=False, home=None, name=None, has_pdf=False, title=None, chrome=None, skip=()):
+    """deck.html → one offline HTML. `chrome` = the case's shared header (case_chrome); without a case a plain one with the
+    title and a link to `home`."""
     src, out = Path(src), Path(out)
     doc = read(src / "deck.html")
     name = name or src.name
@@ -115,11 +115,11 @@ def pack_deck(src, out, style, pdf=False, home=None, name=None, has_pdf=False, t
             else f'<!doctype html><html data-style="{style}">' + re.sub(r"(?is)^\s*<!doctype[^>]*>", "", doc)
     doc = inline_local(doc, src, style, src / "deck.html")
     copy_media(src, out, skip)
-    metas = {"file": f"{name}.html", "pdf": f"{name}.pdf" if pdf or has_pdf else None, "title": title,
-             "back": back[0] if back else home, "back-label": back[1] if back else None, "notes": notes,
-             "tabs": json.dumps(tabs, ensure_ascii=False) if tabs else None}
+    metas = {"file": f"{name}.html", "pdf": f"{name}.pdf" if pdf or has_pdf else None}
     head = "".join(f'<meta name="deck:{k}" content="{esc(v)}">\n' for k, v in metas.items() if v)
-    head += f"<style>{read(KIT / 'theme.css')}\n{read(KIT / 'deck.css')}</style>\n"
+    ttl = title or (re.search(r"(?is)<title>(.*?)</title>", doc) or [0, src.name])[1].strip()
+    head += f'<template id="deck-chrome"><div class="cs-wrap">{chrome or plain_chrome(ttl, home or "/")}</div></template>\n'
+    head += f"<style>{read(KIT / 'theme.css')}\n{read(KIT / 'head.css')}\n{read(KIT / 'deck.css')}</style>\n"
     if re.search(r"(?i)</head>", doc):
         doc = re.sub(r"(?i)</head>", lambda _: head + "</head>", doc, count=1)
     else:  # no </head>: keep doctype first and the charset inside the first 1024 bytes
@@ -202,39 +202,69 @@ def ru_date(s):
 def tab_href(f, prefix): return f["href"] if f["ext"] else prefix + f["href"]
 
 
+def tab_link(f, prefix, cls="", extra=""):
+    new = f["ext"] or f.get("blank")  # an outside link, or a page for a second screen: a new tab
+    on = ' class="%s"' % cls if cls else ""
+    return (f'<a{on} href="{esc(tab_href(f, prefix))}"{" target=_blank rel=noopener" if new else ""}{extra}>'
+            f'{esc(f["label"])}{" ↗" if new else ""}</a>')
+
+
+def case_top(c): return f'<nav class="cs-top"><a href="{f"/#{c["slug"]}" if c["slug"] else "/"}">← Материалы</a></nav>'
+
+
+def case_chrome(e, c, active, prefix):
+    """The header shared by every page of a case except its overview card: back link, number · subject · date, title and the
+    switcher between the materials. `prefix` leads from the page to the case folder. Slides and documents use it too."""
+    cs = c["slug"]
+    kick = " · ".join(x for x in [esc(e.get("number", "")),
+                                  f'<a href="{f"/#{cs}" if cs else "/"}" title="{esc(c.get("full", ""))}">{esc(c["title"])}</a>' if cs else ""] if x)
+    event = e.get("event") if e.get("event") != c["title"] else ""
+    st = e.get("status")
+    meta = "".join(f"<span>{esc(x)}</span>" for x in [ru_date(e.get("date", "")), event] if x) + \
+           (f'<span class="cs-pill {esc(st)}">{esc(STATUS.get(st, st))}</span>' if st else "")
+    tabs = "".join(tab_link(f, prefix, "cs-tab on" if f["key"] == active else "cs-tab", " data-speaker" if f["key"] == "speaker" else "") for f in e["formats"])
+    return (f'{case_top(c)}<header class="cs-head"><p class="cs-kick">{kick}{meta}</p><h1>{esc(e["title"])}</h1></header>'
+            f'<nav class="cs-tabs">{tabs}</nav>')
+
+
+def plain_chrome(title, home="/"):
+    """The same header for a deck or document that is not part of a case (build.py deck)."""
+    return f'<nav class="cs-top"><a href="{esc(home)}">← Материалы</a></nav><header class="cs-head"><h1>{esc(title)}</h1></header>'
+
+
 def case_page(e, c, active, main, style, cover, prefix="", side="", css="", js=""):
     """A page of a case. The overview (active="overview", at the case's URL) has the branded card: cover, number, subject,
-    title, date, status, summary, and below it the choice of materials. A material's page has a compact header and the
-    switcher between the materials; slides and documents (full window) have the same switcher in their header, see case_tabs."""
-    cs, ov = c["slug"], active == "overview"
-    course_url = f"/#{cs}" if cs else "/"
-    kick = " · ".join(x for x in [esc(e.get("number", "")),
-                                  f'<a href="{course_url}" title="{esc(c.get("full", ""))}">{esc(c["title"])}</a>' if cs else ""] if x)
-    event = e.get("event") if e.get("event") != c["title"] else ""
-    meta = "".join(f"<span>{esc(x)}</span>" for x in [ru_date(e.get("date", "")), event] if x)
-    st = e.get("status")
-    pill = f'<span class="cs-pill {esc(st)}">{esc(STATUS.get(st, st))}</span>' if st else ""
-    if ov:
+    title, date, status, summary, and below it the choice of materials. A material's page has the shared header (case_chrome)."""
+    cs = c["slug"]
+    if active == "overview":
+        course_url = f"/#{cs}" if cs else "/"
+        kick = " · ".join(x for x in [esc(e.get("number", "")),
+                                      f'<a href="{course_url}" title="{esc(c.get("full", ""))}">{esc(c["title"])}</a>' if cs else ""] if x)
+        event = e.get("event") if e.get("event") != c["title"] else ""
+        meta = "".join(f"<span>{esc(x)}</span>" for x in [ru_date(e.get("date", "")), event] if x)
+        st = e.get("status")
+        pill = f'<span class="cs-pill {esc(st)}">{esc(STATUS.get(st, st))}</span>' if st else ""
         lead = f'<p class="cs-lead">{esc(e["summary"])}</p>' if e.get("summary") else ""
         cv = f'<span class="cs-cv"><img src="{esc(prefix + cover)}" alt="" onerror="this.parentNode.remove()"></span>' if cover else ""
-        head = (f'<header class="cs-card">{cv}<div class="cs-info"><p class="cs-kick">{kick}</p><h1>{esc(e["title"])}</h1>'
-                f'<div class="cs-meta">{meta}{pill}</div>{lead}</div></header>')
-        tabs = ""
+        head = case_top(c) + (f'<header class="cs-card">{cv}<div class="cs-info"><p class="cs-kick">{kick}</p><h1>{esc(e["title"])}</h1>'
+                              f'<div class="cs-meta">{meta}{pill}</div>{lead}</div></header>')
     else:
-        head = f'<header class="cs-head"><p class="cs-kick">{kick}</p><h1>{esc(e["title"])}</h1><div class="cs-meta">{meta}{pill}</div></header>'
-        tabs = '<nav class="cs-tabs">' + "".join(
-            f'<a class="cs-tab{" on" if f["key"] == active else ""}" href="{esc(tab_href(f, prefix))}"'
-            f'{" target=_blank rel=noopener" if f["ext"] else ""}>{esc(f["label"])}{" ↗" if f["ext"] else ""}</a>' for f in e["formats"]) + "</nav>"
+        head = case_chrome(e, c, active, prefix)
     return f"""<!doctype html><html lang="ru" data-style="{style}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(e["title"])}{" — " + esc(c["title"]) if cs else ""}</title>
 <script>if(/[?&]bare(&|$)/.test(location.search))document.documentElement.classList.add("bare")</script>
 <script>/* in the head: a widget reports its height once it loads, possibly before the end of the page is parsed */
 addEventListener("message",e=>{{if(e.data?.type!=="widget-height")return;for(const f of document.querySelectorAll("iframe.widget"))if(f.contentWindow===e.source)f.style.height=e.data.h+"px"}})</script>
 <style>{read(KIT / 'theme.css')}
+{read(KIT / 'head.css')}
 {read(KIT / 'case.css')}{css}</style></head>
-<body class="cs"><div class="cs-wrap"><nav class="cs-top"><a href="{course_url}">← Материалы</a></nav>
-{head}{tabs}
+<body class="cs"><div class="cs-wrap">{head}
 <div class="cs-body{" has-side" if side else ""}">{side}<main class="cs-main">{main}</main></div></div>{js}</body></html>"""
+
+
+def file_size(f):
+    kb = Path(f).stat().st_size / 1024
+    return f"{kb / 1024:.1f} МБ".replace(".", ",") if kb >= 1024 else f"{kb:.0f} КБ"
 
 
 def plural(n, forms):
@@ -259,13 +289,12 @@ def overview_main(e, p, dest, toc, widgets, text=""):
     elif p["site"]: info["slides"] = "Презентация"
     pdf = dest / "slides" / p["dpdf"] if p["deck_pdf"] else dest / p["doc"] if p["doc"] and p["doc"].lower().endswith(".pdf") else None
     if pdf and pdf.exists():
-        kb = pdf.stat().st_size / 1024
-        info["pdf"] = "Печатная версия · " + (f"{kb / 1024:.1f} МБ".replace(".", ",") if kb >= 1024 else f"{kb:.0f} КБ")
+        info["pdf"] = "Печатная версия · " + file_size(pdf)
     if p["doc"]: info["doc"] = "Документ · " + Path(p["doc"]).suffix.lstrip(".").upper()
     if p["code"]: info["code"] = "Внешний репозиторий" if p["code"]["ext"] else "Исходники · " + plural(len([x for x in p["code"]["dir"].rglob("*") if x.is_file()]), ("файл", "файла", "файлов"))
     if p["video"]: info["video"] = {"file": "Видеофайл", "embed": "Запись, встроенная на страницу", "link": "Ссылка на видео"}[p["video"]["kind"]]
     mats = [f for f in e["formats"] if f["key"] != "overview"]
-    tiles = "".join(f'<a class="mt{" main" if i == 0 else ""}" href="{esc(tab_href(f, ""))}"{" target=_blank rel=noopener" if f["ext"] else ""}><b>{esc(f["label"])}{" ↗" if f["ext"] else ""}</b>'
+    tiles = "".join(f'<a class="mt{" main" if i == 0 else ""}" href="{esc(tab_href(f, ""))}"{" target=_blank rel=noopener" if f["ext"] or f.get("blank") else ""}><b>{esc(f["label"])}{" ↗" if f["ext"] or f.get("blank") else ""}</b>'
                     f'<span>{esc(info.get(f["key"], ""))}</span></a>' for i, f in enumerate(mats))
     out = f'<div class="ov-text nt-body">{text}</div>' if text else ""
     out += f'<h2 class="cs-h2">Материалы</h2><div class="mts">{tiles}</div>' if tiles else '<p class="empty">Материалов пока нет.</p>'
@@ -277,29 +306,22 @@ def overview_main(e, p, dest, toc, widgets, text=""):
     return out
 
 
-def case_tabs(e, active, prefix="../", skip=()):
-    """The switcher for pages with the compact header: [(label, href, active, external)]."""
-    return [(f["label"], tab_href(f, prefix), f["key"] == active, f["ext"]) for f in e["formats"] if f["key"] not in skip]
-
-
 FULL_SVG = ('<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6">'
             '<path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>')
 
 
-def pack_frame(out, style, title, src, back=None, tabs=(), links=()):
-    """A resource that is not our deck (a prebuilt site, a PDF/PPTX viewer) under the same header as the decks:
-    back to the catalogue, title, the case's format switcher, fullscreen, downloads. links = [(label, href, download)]."""
-    nav = "".join(f'<a class="dt-tab{" on" if on else ""}" href="{esc(h)}"{" target=_blank rel=noopener" if ext else ""}>{esc(t)}</a>'
-                  for t, h, on, ext in tabs)
-    acts = f'<button type="button" data-a="full" title="Полный экран">{FULL_SVG}</button>' + "".join(link(*x) for x in links)
-    top = ((f'<a class="dt-back" href="{esc(back[0])}">← {esc(back[1])}</a>' if back else "") +
-           f'<span class="dt-title">{esc(title)}</span><nav class="dt-tabs">{nav}</nav><span class="dt-act">{acts}</span>')
+def pack_frame(out, style, title, src, chrome, label="", links=()):
+    """A resource that is not our deck (a prebuilt site, a PDF, a PPTX viewer) inside the case's shared header (`chrome`):
+    a bar with what it is and its downloads, the resource below, F / ⛶ for fullscreen. links = [(label, href, download)]."""
+    acts = "".join(link(*x) for x in links) + f'<button type="button" data-a="full" title="Во весь экран (F)">{FULL_SVG}<span>Во весь экран</span></button>'
     (out / "index.html").write_text(f"""<!doctype html><html lang="ru" data-style="{style}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title>
 <style>{read(KIT / 'theme.css')}
+{read(KIT / 'head.css')}
 {read(KIT / 'deck.css')}</style></head>
-<body class="deck-body frame"><header class="deck-top">{top}</header>
-<iframe class="fr-view" data-src="{esc(src)}" title="{esc(title)}" allow="fullscreen" allowfullscreen></iframe>
+<body class="deck-body frame"><div class="cs-wrap">{chrome}</div>
+<div class="fr-box"><div class="fr-bar"><b>{esc(label)}</b><span class="sp"></span>{acts}</div>
+<iframe class="fr-view" data-src="{esc(src)}" title="{esc(title)}" allow="fullscreen" allowfullscreen></iframe></div>
 <script>{read(KIT / 'frame.js')}</script></body></html>""", encoding="utf-8")
 
 
@@ -409,14 +431,14 @@ def inspect_case(e, pdf):
     if md: fm.append(("notes", "Конспект", "notes/index.html", False))
     if deck or site: fm.append(("slides", "Слайды", "slides/index.html", False))
     if deck and re.search(r'<aside\b[^>]*class="[^"]*\bnotes\b', read(d / "deck.html")):
-        fm.append(("speaker", "Режим спикера", "slides/index.html?speaker", False))
-    if deck_pdf: fm.append(("pdf", "PDF", f"slides/{dpdf}", False))
+        fm.append(("speaker", "Режим спикера", "slides/index.html?speaker", False, True))  # for a second screen: a new tab
+    if deck_pdf: fm.append(("pdf", "PDF", "pdf/index.html", False))
     if doc: fm.append(("doc", "PDF" if doc.lower().endswith(".pdf") and not deck_pdf else "Документ", "doc/index.html", False))
     if code: fm.append(("code", "Код", code["href"], code["ext"]))
     if video: fm.append(("video", "Видео", video["href"], video["ext"]))
     return {"md": md, "deck": deck, "site": site, "doc": doc, "dpdf": dpdf, "committed": committed, "deck_pdf": deck_pdf,
             "files": files, "code": code, "video": video,
-            "formats": [dict(zip(("key", "label", "href", "ext"), f)) for f in fm]}
+            "formats": [dict(zip(("key", "label", "href", "ext", "blank"), f)) for f in fm]}
 
 
 # ---------- catalogue: sections by subject, case cards ----------
@@ -517,32 +539,35 @@ def video_page(e, c, p, dest, style, cover):
 
 def build_entry(cfg, c, e, dest, style, pdf):
     """Every case: the overview /<course>/<slug>/ (card, choice of materials) plus a page per material that needs one:
-    notes/ (notes.md), slides/ (deck.html, or a prebuilt site/), doc/ ("file"), code/, video/; downloads ("downloads", committed *.pdf).
-    Slides and documents keep the shared header, now with the same switcher."""
+    notes/ (notes.md), slides/ (deck.html, or a prebuilt site/), pdf/ (the printed deck), doc/ ("file"), code/, video/;
+    downloads ("downloads", committed *.pdf). Every page has the same header and switcher (case_chrome)."""
     if not e.get("href") or e.get("type") == "link": return
     d, slug = e["dir"], e["slug"]
     p = inspect_case(e, pdf)
     e["formats"], e["files"] = p["formats"], p["files"]
-    cs = c["slug"]
-    back = (f"/#{cs}" if cs else "/", c["title"])
     code_dir = {p["code"]["name"]} if p["code"] and "dir" in p["code"] else set()
     deck_skip = code_dir | ({p["video"]["src"]} if p["video"] and p["video"]["kind"] == "file" and not URL.match(p["video"]["src"]) else set())
     copy_media(d, dest, code_dir)
     for f in set(p["files"].values()) | ({p["doc"]} if p["doc"] else set()): shutil.copy(d / f, dest)
     up = [(label, f"../{f}", True) for label, f in p["files"].items()]
+    chrome = lambda active, prefix="../": case_chrome(e, c, active, prefix)
     if p["deck"]:
         pack_deck(d, dest / "slides", style, pdf=pdf and not p["committed"], name=slug, has_pdf=p["committed"],
-                  title=e["title"], back=back, notes="../notes/index.html" if p["md"] else None,
-                  tabs=case_tabs(e, "slides", skip=("speaker",)), skip=deck_skip)
+                  title=e["title"], chrome=chrome("slides"), skip=deck_skip)
         if p["committed"]: shutil.copy(d / p["dpdf"], dest / "slides")
     if p["site"]:
         shutil.copytree(d / "site", dest / "slides" / "site")
-        pack_frame(dest / "slides", style, e["title"], "site/index.html", back, case_tabs(e, "slides"), up)
+        pack_frame(dest / "slides", style, e["title"], "site/index.html", chrome("slides"), "Презентация", up)
+    if p["deck_pdf"]:  # the printed deck, read inside the site
+        (dest / "pdf").mkdir()
+        f = dest / "slides" / p["dpdf"]
+        pack_frame(dest / "pdf", style, e["title"], f"../slides/{p['dpdf']}#view=FitH", chrome("pdf"),
+                   f"{p['dpdf']} · {file_size(f)}", [("Скачать", f"../slides/{p['dpdf']}", True)])
     if p["doc"]:
         (dest / "doc").mkdir()
-        if p["doc"].lower().endswith(".pdf"): src = f"../{p['doc']}"
+        if p["doc"].lower().endswith(".pdf"): src = f"../{p['doc']}#view=FitH"
         else: src = "https://view.officeapps.live.com/op/embed.aspx?src=" + urllib.parse.quote(f"https://{cfg['domain']}/{e['course']}/{slug}/{p['doc']}", safe="")
-        pack_frame(dest / "doc", style, e["title"], src, back, case_tabs(e, "doc"), [("Скачать", f"../{p['doc']}", True)])
+        pack_frame(dest / "doc", style, e["title"], src, chrome("doc"), f"{p['doc']} · {file_size(d / p['doc'])}", [("Скачать", f"../{p['doc']}", True)])
     toc, widgets = [], 0
     if p["md"]:  # the konspekt lives in notes/, one level down: links written for the case folder get "../"
         body, toc = konspekt(d, style, p["md"], up="../")

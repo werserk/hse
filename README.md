@@ -12,7 +12,7 @@ site.json                          site title, domain, style (paper | hse | coal
 content/<course>/course.json       {"title", "full" (shown in the ? badge), "order"}
 content/<course>/<case>/entry.json  a case; schema below
 build.py                           site + deck builder (stdlib; Chrome for PDF)
-kit/                               theme.css (tokens), deck.css/js (slides), frame.js (header over a site/document),
+kit/                               theme.css (tokens), head.css (case header), deck.css/js (slides), frame.js (header over a site/document),
                                    notes.css/js (konspekt), starter/ (template for `build.py new`)
 AGENTS.md                          how to make a material (workflow for agents)
 assets/                            catalogue CSS/JS
@@ -30,8 +30,10 @@ its own: `/<course>/` redirects to its section on the home page.
 A case lives at `/<course>/<case>/` and its page is the **overview**: the branded card (cover, number, subject, title, date,
 status, summary), a tile per material with what it holds («22 слайда», «19 виджетов · 5 разделов»), the konspekt's contents,
 files and links. An optional `overview.md` (Markdown, as the konspekt) is shown above the tiles. Only the materials that
-exist get a tile. Each material has its own URL; its page has a compact header and the switcher
-(Обзор · Конспект · Слайды …); slides and documents keep the full-window header with the same switcher.
+exist get a tile. Each material has its own URL, and **every page has the same header**: back arrow, number · subject, date,
+status, the title underlined, and the switcher (Обзор · Конспект · Слайды …). `kit/head.css` styles it and `case_chrome()` in
+`build.py` renders it once for every page type (konspekt, slides, PDF, document, code, video). Slides and the PDF are read inside
+the page, under that header; a tab marked ↗ (speaker mode, outside links) opens a new window.
 Old links `/<course>/<case>/#anchor` (konspekt sections) forward to `notes/#anchor`.
 
 | Material (tab) | Appears when | URL under `/<course>/<case>/` |
@@ -39,8 +41,8 @@ Old links `/<course>/<case>/#anchor` (konspekt sections) forward to `notes/#anch
 | Обзор | always | `/` |
 | Конспект | `notes.md` (or `"notes"`) | `notes/` |
 | Слайды | `deck.html` or a prebuilt `site/` | `slides/` |
-| Режим спикера | the deck has `<aside class="notes">` | `slides/?speaker` |
-| PDF | CI prints the deck, or a committed `<case>.pdf`; or `"file"` is a PDF | `slides/<case>.pdf`, `doc/` |
+| Режим спикера | the deck has `<aside class="notes">` | `slides/?speaker` (a separate window, kept in sync with the slides tab) |
+| PDF | CI prints the deck, or a committed `<case>.pdf`; or `"file"` is a PDF | `pdf/` (the browser's viewer in the page; the file is `slides/<case>.pdf`), or `doc/` |
 | Документ | `"file"` is a PPTX or another document | `doc/` |
 | Код | a `code/` folder (or `"code": "<folder>"`), or `"code": "https://…"` | `code/` (files with their text), or the link |
 | Видео | `"video"` | `video/` (a player or an embed), or the link |
@@ -95,8 +97,9 @@ Write `deck.html` with one `<section class="slide">` per slide; see `kit/starter
   so the same file works in bb chat and on a slide. The packer inlines it with the theme.
 - Local `<link rel="stylesheet">` and `<script src>` are inlined; other files (images, video) are copied.
   Remote (CDN) scripts, styles and fonts are not inlined: the offline copy needs them bundled locally.
-- Header: back to the subject's section on the home page, title, the case's switcher (Конспект, Слайды, PDF, Код, …), slide
-  counter (click or **O** = list of slides), Докладчик, fullscreen, HTML. In fullscreen it hides and shows when the mouse reaches the top. `?bare` hides it.
+- Layout: the shared case header on top, the slide (16:9, fits the window) under it, and the controls under the slide: ‹ counter › (click or
+  **O** = list of slides), fullscreen, HTML. Fullscreen (**F**, or `?bare`) shows the slide alone; the header slides in when the mouse reaches the top.
+  The speaker tab opens a separate window (it has «← Обзор»).
 - Keys: → / Space / PgDn next, ← / PgUp back, Home/End, F fullscreen, S speaker view, O slide list; `#n` = slide n.
   A focused widget forwards these keys to the deck, so a clicker keeps working after a click on a
   slider (arrows then move the slide, not the slider; drag it with the mouse).

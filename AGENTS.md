@@ -6,7 +6,7 @@ This repo is public and every push to `main` deploys https://hse.werserk.dev. Bu
 
 A catalogue card is a **case** («кейс»). The items inside it are its **materials**: a **konspekt** (the text, its page) plus
 slides, speaker mode, PDF, document, code, video. The case's own page is the **overview**: the card and a tile per material
-it has. Each material opens on its own page under a header with the same switcher (Обзор · Конспект · Слайды …);
+it has. Each material opens on its own page under the same header (`case_chrome()` in `build.py`, styles in `kit/head.css`) with the same switcher (Обзор · Конспект · Слайды …, PDF at `pdf/`); change the header there only, never per page type;
 full schema of `entry.json`: README § Cases and materials.
 
 ```
@@ -61,7 +61,7 @@ Optional fields add materials: `"video"` (file or YouTube/Rutube link), `"code"`
    Open `/tmp/<entry>/index.html` (the overview) and check:
    - the tiles are the materials the case has; the konspekt (`notes/`) reads on its own and its contents work;
    - on the slides: «Конспект» and «Обзор» in the header go back; PgDn/PgUp move slides, also after a click inside a widget; S opens the speaker view; O lists the slides;
-   - the PDF has one page per slide.
+   - the PDF has one page per slide and opens at `pdf/` under the same header; the speaker tab (↗) opens a window that follows the slides.
 
    For regression scripts with Playwright, pass `screen=` larger than the viewport. Otherwise the page counts as fullscreen and hides the header.
 

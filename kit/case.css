@@ -1,30 +1,18 @@
-/* Case page: branded card, format switcher, the format's content below. Tokens from theme.css. */
+/* Case page: the overview's card and materials, the format's content (konspekt, code, video) below the shared header (head.css). */
 * { box-sizing: border-box; }
 html { scroll-padding-top: 24px; }
 body.cs { margin: 0; background: var(--background); color: var(--foreground); font: 16px/1.5 var(--font-sans); }
-.cs a { color: var(--brand); text-decoration: none; }
-.cs-wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px 100px; }
-.cs-top { padding: 22px 0 0; font-size: 14px; }
-.cs-top a { color: var(--muted-foreground); }
-.cs-top a:hover { color: var(--foreground); }
+body.cs .cs-wrap { padding-bottom: 100px; }
 .cs-card { display: flex; gap: 30px; align-items: center; margin-top: 16px; padding: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
 .cs-cv { flex: 0 0 340px; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-recessed); }
 .cs-cv img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
 .cs-info { flex: 1; min-width: 0; }
-.cs-kick { margin: 0 0 10px; font: 600 13px/1 var(--font-mono); letter-spacing: .08em; color: var(--brand); }
 .cs-card h1 { display: inline-block; margin: 0 0 12px; padding: 0 28px 6px 0; border-bottom: 2px solid var(--foreground); font: 600 34px/1.15 var(--font-heading); }  /* the catalogue's underlined heading */
 .cs-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 14px; color: var(--muted-foreground); }
 .cs-meta span + span:not(.cs-pill)::before { content: "·"; margin-right: 14px; }
-.cs-pill { padding: 1px 10px; border: 1px solid var(--muted-foreground); border-radius: 99px; font-size: 12.5px; }
-.cs-pill.ready { color: var(--success); border-color: var(--success); }
-.cs-pill.draft { color: var(--warning); border-color: var(--warning); }
 .cs-lead { margin: 12px 0 0; color: var(--muted-foreground); font-size: 15px; }
 .cs-files { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; font-size: 14px; }
 .cs-files a:hover { text-decoration: underline; }
-/* material pages: compact header; overview: the choice of materials */
-.cs-head { padding-top: 22px; }
-.cs-head .cs-kick { margin-bottom: 8px; }
-.cs-head h1 { display: inline-block; margin: 0 0 10px; padding: 0 28px 6px 0; border-bottom: 2px solid var(--foreground); font: 600 30px/1.15 var(--font-heading); }
 .cs-h2 { display: block; width: fit-content; margin: 34px 0 16px; padding: 0 28px 6px 0; border-bottom: 2px solid var(--foreground); font: 600 22px/1.2 var(--font-heading); }
 .cs-main:has(.mts) { max-width: none; }
 .cs-main > .cs-h2:first-child { margin-top: 0; }
@@ -38,10 +26,6 @@ body.cs { margin: 0; background: var(--background); color: var(--foreground); fo
 .ov-toc li { margin-bottom: 6px; break-inside: avoid; }
 .ov-toc a:hover { text-decoration: underline; }
 .ov-text { max-width: 820px; margin-bottom: 8px; }
-.cs-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 18px; border-bottom: 1px solid var(--border); }
-.cs-tab { margin-bottom: -1px; padding: 10px 16px; border-bottom: 2px solid transparent; font-size: 15px; color: var(--muted-foreground) !important; }
-.cs-tab:hover { color: var(--foreground) !important; }
-.cs-tab.on { border-bottom-color: var(--brand); color: var(--foreground) !important; font-weight: 600; }
 .cs-body { display: block; padding-top: 28px; }
 .cs-body.has-side { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 36px; }
 .cs-main { min-width: 0; max-width: 820px; }
@@ -61,7 +45,7 @@ body.cs { margin: 0; background: var(--background); color: var(--foreground); fo
 .cf pre { margin: 0; padding: 14px 16px; overflow: auto; border: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); background: var(--card); font: 13.5px/1.5 var(--font-mono); }
 .cf-note { padding: 16px; border: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); color: var(--muted-foreground); }
 @media (max-width: 900px) {
-  .cs-wrap { padding: 0 18px 80px; }
+  body.cs .cs-wrap { padding-bottom: 80px; }
   .cs-card { flex-direction: column; align-items: stretch; gap: 18px; }
   .cs-cv { flex: none; }
   .cs-card h1 { font-size: 28px; }
@@ -70,8 +54,8 @@ body.cs { margin: 0; background: var(--background); color: var(--foreground); fo
   .cs-body.has-side > :first-child { position: static; max-height: none; }
   .nt-toc { display: none; }
 }
-@media print { .cs-top, .cs-card, .cs-head, .cs-tabs, .nt-toc { display: none; } .cs-wrap { padding: 0; } .cs-body.has-side { display: block; } }
+@media print { .cs-card, .nt-toc { display: none; } .cs-wrap { padding: 0; } .cs-body.has-side { display: block; } }
 
 /* ?bare (card previews): just the reading column */
-.bare .cs-top, .bare .cs-head, .bare .cs-tabs, .bare .nt-toc { display: none; }
+.bare .cs-wrap > .cs-top, .bare .cs-wrap > .cs-head, .bare .cs-wrap > .cs-tabs, .bare .nt-toc { display: none; }
 .bare .cs-body.has-side { display: block; }

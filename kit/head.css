@@ -1,0 +1,21 @@
+/* The header every page of a case shares (overview, konspekt, slides, PDF, code, video): back link, number · subject · date,
+   title, switcher between the materials. Tokens from theme.css. */
+.cs-wrap { box-sizing: border-box; max-width: 1160px; margin: 0 auto; padding: 0 28px; font: 16px/1.5 var(--font-sans); color: var(--foreground); }
+.cs-wrap a { color: var(--brand); text-decoration: none; }
+.cs-top { padding: 18px 0 0; font-size: 14px; }
+.cs-top a { color: var(--muted-foreground); }
+.cs-top a:hover { color: var(--foreground); }
+.cs-kick { margin: 0 0 10px; font: 600 13px/1 var(--font-mono); letter-spacing: .08em; color: var(--brand); }
+.cs-kick span { margin-left: 10px; font: 400 14px var(--font-sans); letter-spacing: 0; color: var(--muted-foreground); }
+.cs-kick .cs-pill { margin-left: 10px; }
+.cs-pill { padding: 1px 10px; border: 1px solid var(--muted-foreground); border-radius: 99px; font: 400 12.5px var(--font-sans); letter-spacing: 0; color: var(--muted-foreground); }
+.cs-pill.ready { color: var(--success); border-color: var(--success); }
+.cs-pill.draft { color: var(--warning); border-color: var(--warning); }
+.cs-head { padding-top: 12px; }
+.cs-head h1 { display: inline-block; margin: 0; padding: 0 28px 5px 0; border-bottom: 2px solid var(--foreground); font: 600 28px/1.15 var(--font-heading); }
+.cs-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 12px; border-bottom: 1px solid var(--border); }
+.cs-tab { margin-bottom: -1px; padding: 9px 16px; border-bottom: 2px solid transparent; font-size: 15px; color: var(--muted-foreground) !important; }
+.cs-tab:hover { color: var(--foreground) !important; }
+.cs-tab.on { border-bottom-color: var(--brand); color: var(--foreground) !important; font-weight: 600; }
+@media (max-width: 900px) { .cs-wrap { padding: 0 18px; } .cs-head h1 { font-size: 24px; } .cs-tabs { flex-wrap: nowrap; overflow-x: auto; } .cs-tab { white-space: nowrap; padding: 9px 12px; } }
+@media print { .cs-top, .cs-head, .cs-tabs { display: none; } }

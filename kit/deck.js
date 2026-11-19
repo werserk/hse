@@ -1,5 +1,5 @@
 // Deck engine: keys/clicker/swipe navigation, .step reveals, #n hash, fit-to-window,
-// header with slide list (O), speaker view (S) synced by postMessage (works from file:// too), fullscreen (F), downloads.
+// the case's header above the slides, controls under them, slide list (O), speaker window (S) synced by postMessage (works from file:// too), fullscreen (F).
 (() => {
   const body = document.body;
   body.classList.add('deck-body');
@@ -45,60 +45,61 @@
   const next = () => (step < steps(cur).length ? go(cur, step + 1) : cur < slides.length - 1 && go(cur + 1, 0));
   const prev = () => (step > 0 ? go(cur, step - 1) : cur > 0 && go(cur - 1, steps(cur - 1).length));
 
-  let bar = null, nextStage = null, notesEl = null, clockEl = null, t0 = null, counter = null, toc = null;
+  let bar = null, view = null, nextStage = null, notesEl = null, clockEl = null, t0 = null, counter = null, toc = null;
   const titleOf = (s, i) => (s.querySelector('h1, h2')?.textContent || `Слайд ${i + 1}`).replace(/\s+/g, ' ').trim();
   const h = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
   if (!speaker) {
-    // Header: back to the course, title, slide list, actions. Hidden in fullscreen; there it shows when the mouse is at the top.
-    const top = h('header', 'deck-top'), back = meta('back'), notes = meta('notes'), pdf = meta('pdf');
+    // The case's header (from <template id="deck-chrome">), then the viewer: the slides, and under them the controls.
+    // Fullscreen (F, ?bare, a window as big as the screen) drops the header and the controls; the header returns when the mouse is at the top.
+    const tpl = document.getElementById('deck-chrome');
+    const chrome = h('div', 'deck-chrome'); if (tpl) chrome.append(tpl.content);
     const btn = (a, text, title) => { const b = Object.assign(h('button', '', text), { title, type: 'button' }); b.dataset.a = a; return b; };
     const link = (href, text, dl) => { const x = h('a', '', text); x.href = href; if (dl) x.download = dl; return x; };
-    if (back) top.append(link(back, `← ${meta('back-label') || 'Материалы'}`));
-    top.lastChild?.classList.add('dt-back');
-    top.append(h('span', 'dt-title', meta('title') || document.title));
-    const tabs = meta('tabs') ? JSON.parse(meta('tabs')) : null;   // the case's format switcher: [label, href, active, external]
-    if (tabs) {
-      const nav = h('nav', 'dt-tabs');
-      for (const [label, href, on, ext] of tabs) { const a = link(href, label); if (on) a.className = 'on'; if (ext) { a.target = '_blank'; a.rel = 'noopener'; } nav.append(a); }
-      top.append(nav);
-    }
+    const ctl = h('div', 'dt-bar');
     const nav = h('span', 'dt-nav'); counter = btn('toc', '', 'Список слайдов (O)'); counter.className = 'dt-n';
     nav.append(btn('prev', '‹', 'Назад (←)'), counter, btn('next', '›', 'Вперёд (→)'));
-    const act = h('span', 'dt-act');
-    if (notes && !tabs) act.append(Object.assign(link(notes, 'Конспект'), { className: 'dt-notes' }));
     const fsb = btn('full', '', 'Полный экран (F)');
-    fsb.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>';
-    act.append(btn('speaker', 'Докладчик', 'Режим докладчика (S)'), fsb);
-    if (pdf && !tabs) act.append(link(pdf, 'PDF', pdf));
-    act.append(link(location.pathname.split('/').pop() || 'index.html', 'HTML', meta('file') || 'deck.html'));
-    top.append(nav, act);
+    fsb.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg><span>Во весь экран</span>';
+    ctl.append(nav, h('span', 'sp'), fsb, link(location.pathname.split('/').pop() || 'index.html', 'HTML', meta('file') || 'deck.html'));
     toc = h('ol', 'deck-toc');
     slides.forEach((s, i) => { const li = h('li'); li.append(btn('go', `${i + 1}. ${titleOf(s, i)}`, '')); li.firstChild.dataset.i = i; toc.append(li); });
+    ctl.append(toc);
     bar = h('div', 'deck-bar');
-    body.append(top, toc, stage, bar);
+    view = h('div', 'deck-view'); view.append(stage, bar);
+    body.prepend(chrome); body.append(view, ctl);
     addEventListener('click', (e) => {
+      if (e.target.closest('a[data-speaker]')) { e.preventDefault(); toggleToc(false); openSpeaker(); return; }   // the speaker window follows this one
       const b = e.target.closest('button[data-a]');
       if (!b) { if (!e.target.closest('.deck-toc')) body.classList.remove('toc-on'); return; }
       const a = b.dataset.a;
       if (a === 'prev') prev(); else if (a === 'next') next(); else if (a === 'toc') toggleToc();
       else if (a === 'go') go(+b.dataset.i);
-      else if (a === 'speaker') { toggleToc(false); openSpeaker(); } else if (a === 'full') { toggleToc(false); full(); }
+      else if (a === 'full') { toggleToc(false); full(); }
       b.blur();
     });
     const doFit = () => {
       const fs = !!document.fullscreenElement || bare || (innerHeight >= screen.height - 1 && innerWidth >= screen.width - 1);  // ?bare: no header (card previews, embedding)
       body.classList.toggle('fs', fs);
-      const th = fs ? 0 : top.offsetHeight, k = Math.min(innerWidth / 1280, (innerHeight - th) / 720);
-      stage.style.top = `${th + (innerHeight - th) / 2}px`;
-      stage.style.transform = `translate(-50%,-50%) scale(${k})`;
+      let w, hh, x = 0, y = 0;
+      if (fs) {
+        const k = Math.min(innerWidth / 1280, innerHeight / 720); w = 1280 * k; hh = 720 * k; x = (innerWidth - w) / 2; y = (innerHeight - hh) / 2;
+        view.style.width = view.style.height = ''; ctl.style.width = '';
+      } else {   // as wide as the header allows, and no taller than what is left of the window under it
+        const wrap = chrome.firstElementChild, room = innerHeight - chrome.offsetHeight - ctl.offsetHeight - 16 - 20;
+        const avail = wrap ? wrap.clientWidth - 2 * parseFloat(getComputedStyle(wrap).paddingLeft) : innerWidth - 32;
+        w = Math.max(280, Math.min(avail, (room * 16) / 9));
+        hh = (w * 9) / 16;
+        view.style.width = `${w}px`; view.style.height = `${hh}px`; ctl.style.width = `${w}px`;
+      }
+      stage.style.transform = `translate(${x}px,${y}px) scale(${w / 1280})`;
     };
     addEventListener('resize', doFit); addEventListener('fullscreenchange', () => { body.classList.remove('top-on', 'toc-on'); doFit(); }); doFit();
-    addEventListener('mousemove', (e) => body.classList.toggle('top-on', e.clientY < 56 || !!e.target.closest?.('.deck-top, .deck-toc')));
+    addEventListener('mousemove', (e) => body.classList.toggle('top-on', e.clientY < 56 || !!e.target.closest?.('.deck-chrome, .deck-toc')));
   } else {
     body.classList.add('speaker');
     const root = document.createElement('div'); root.className = 'spk';
-    const home = meta('tabs') ? JSON.parse(meta('tabs'))[0] : null;   // the case's overview, so the speaker view is not a dead end
-    root.innerHTML = `<div class="spk-head">${home ? `<a class="spk-back" href="${home[1]}">← ${home[0]}</a>` : ''}<b class="spk-n"></b><span class="spk-clock"></span><span>← → листать · таймер стартует с первого перехода</span></div>
+    const home = document.getElementById('deck-chrome')?.content.querySelector('.cs-tab');   // the case's overview, so the speaker view is not a dead end
+    root.innerHTML = `<div class="spk-head">${home ? `<a class="spk-back" href="${home.getAttribute('href')}">← ${home.textContent}</a>` : ''}<b class="spk-n"></b><span class="spk-clock"></span><span>← → листать · таймер стартует с первого перехода</span></div>
       <div class="spk-cur"></div><div class="spk-side"><div class="spk-next"></div><div class="spk-notes"></div></div>`;
     body.appendChild(root);
     root.querySelector('.spk-cur').appendChild(stage);

@@ -1,7 +1,8 @@
 /* Deck shell: 1280×720 slides scaled to the window; print = one slide per page. */
 html, body { margin: 0; height: 100%; }
-body.deck-body { overflow: hidden; background: var(--background); }
-.deck-stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform-origin: center; }
+body.deck-body { background: var(--background); color: var(--foreground); font-family: var(--font-sans); }
+body.deck-body.fs { overflow: hidden; }
+.deck-stage { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; }
 .spk .deck-stage { transform-origin: 0 0; }
 .slide {
   position: absolute; inset: 0; box-sizing: border-box; padding: 56px 72px 48px;
@@ -29,38 +30,39 @@ body.deck-body { overflow: hidden; background: var(--background); }
 .slide .notes { display: none; }
 iframe.widget { width: 100%; border: 0; display: block; background: transparent; min-height: 120px; }
 
-.deck-bar { position: fixed; left: 0; bottom: 0; height: 3px; background: var(--brand); transition: width .2s; }
-/* Header: back, title, slide list, actions. In fullscreen it hides and returns when the mouse is at the top. */
-.deck-top {
-  position: fixed; left: 0; right: 0; top: 0; z-index: 10; display: flex; align-items: center; gap: 16px; height: 46px;
-  padding: 0 16px; box-sizing: border-box; border-bottom: 1px solid var(--border); background: var(--background);
-  font: 14px/1 var(--font-sans); color: var(--muted-foreground); transition: transform .2s;
-}
-body.fs .deck-top { transform: translateY(-100%); }
-body.fs.top-on .deck-top, body.fs.toc-on .deck-top { transform: none; }
-.deck-top a, .deck-top button { font: inherit; color: inherit; text-decoration: none; white-space: nowrap; }
-.deck-top svg { display: block; }
-.deck-top button { background: none; border: 0; padding: 6px 8px; border-radius: var(--radius); cursor: pointer; }
-.deck-top a:hover, .deck-top button:hover { color: var(--foreground); background: var(--surface-recessed); }
-.dt-back { padding: 6px 4px; }
-.dt-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 16px/1.2 var(--font-heading); color: var(--foreground); }
-.dt-nav, .dt-act { display: flex; align-items: center; gap: 2px; }
-.dt-act a { padding: 6px 8px; border-radius: var(--radius); }
-.dt-nav .dt-n { font-family: var(--font-mono); min-width: 74px; border: 1px solid var(--border); }
-.deck-toc {
-  position: fixed; top: 52px; left: 50%; transform: translateX(-50%); z-index: 11; display: none;
-  width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 72px); overflow: auto; margin: 0; padding: 6px; list-style: none;
-  background: var(--popover, var(--background)); border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, .35); font: 15px/1.35 var(--font-sans);
-}
+/* The viewer: the slides under the case's header (.deck-chrome), the controls (.dt-bar) under the slides. */
+.deck-view { position: relative; box-sizing: border-box; width: min(1104px, calc(100% - 56px)); aspect-ratio: 16 / 9; margin: 16px auto 0; overflow: hidden;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--background); }
+.deck-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--brand); transition: width .2s; }
+.dt-bar { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 6px; width: min(1104px, calc(100% - 56px)); margin: 8px auto 20px; padding: 0 2px;
+  font: 14px/1 var(--font-sans); color: var(--muted-foreground); }
+.dt-bar .sp, .fr-bar .sp { flex: 1; }
+.dt-bar a, .dt-bar button, .fr-bar a, .fr-bar button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 9px; border: 0; border-radius: var(--radius); background: none; font: inherit; color: inherit; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.dt-bar a:hover, .dt-bar button:hover, .fr-bar a:hover, .fr-bar button:hover { color: var(--foreground); background: var(--surface-recessed); }
+.dt-bar svg, .fr-bar svg { display: block; }
+.dt-nav { display: flex; align-items: center; gap: 2px; }
+.dt-nav .dt-n { font-family: var(--font-mono); min-width: 74px; justify-content: center; border: 1px solid var(--border); background: var(--card); color: var(--foreground); }
+.deck-toc { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 11; display: none; width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 72px); overflow: auto; margin: 0; padding: 6px; list-style: none;
+  background: var(--popover, var(--background)); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 12px 32px -12px rgba(0, 0, 0, .35); font: 15px/1.35 var(--font-sans); }
 body.toc-on .deck-toc { display: block; }
 .deck-toc button { display: block; width: 100%; text-align: left; padding: 7px 10px; border: 0; background: none; color: var(--foreground); font: inherit; border-radius: var(--radius); cursor: pointer; }
 .deck-toc button:hover { background: var(--surface-recessed); }
 .deck-toc button.on { color: var(--brand); font-weight: 600; }
-/* Frame: a prebuilt site or a document under the same header */
-body.frame { overflow: hidden; }
-.fr-view { position: fixed; left: 0; top: 46px; width: 100%; height: calc(100% - 46px); border: 0; display: block; background: var(--background); }
-@media (max-width: 720px) { .dt-title, .dt-act a:not(.dt-notes), .dt-act [data-a="speaker"] { display: none; } }
+/* fullscreen: the viewer is the window; the header (and the list of slides) comes back when the mouse is at the top */
+body.fs .deck-view { position: fixed; inset: 0; width: auto; margin: 0; border: 0; border-radius: 0; aspect-ratio: auto; }
+body.fs .dt-bar { position: static; width: 0; height: 0; margin: 0; padding: 0; overflow: visible; }
+body.fs .dt-bar > :not(.deck-toc) { display: none; }
+body.fs .deck-toc { position: fixed; top: 20px; left: 50%; bottom: auto; transform: translateX(-50%); }
+body.fs .deck-chrome { position: fixed; left: 0; right: 0; top: 0; z-index: 10; background: var(--background); border-bottom: 1px solid var(--border); padding-bottom: 6px; transform: translateY(-100%); transition: transform .2s; }
+body.fs.top-on .deck-chrome { transform: none; }
+/* Frame: a prebuilt site, a PDF or a document inside the header, with a bar for what it is and its downloads */
+body.frame { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+body.frame .cs-wrap { flex: none; width: 100%; box-sizing: border-box; }
+.fr-box { flex: 1; min-height: 0; display: flex; flex-direction: column; box-sizing: border-box; width: min(1104px, calc(100% - 56px)); margin: 16px auto 20px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--card); }
+.fr-bar { display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 14px; border-bottom: 1px solid var(--border); background: var(--surface-recessed); font-size: 13.5px; color: var(--muted-foreground); }
+.fr-bar b { font-weight: 500; color: var(--foreground); }
+.fr-view { flex: 1; min-height: 0; width: 100%; border: 0; display: block; background: var(--background); }
+@media (max-width: 900px) { .deck-view, .dt-bar, .fr-box { width: calc(100% - 36px); } .dt-bar span:not(.dt-nav):not(.sp), .fr-bar button span { display: none; } }
 
 /* Speaker view */
 body.speaker { overflow: auto; }
@@ -80,13 +82,8 @@ body.speaker { overflow: auto; }
   .deck-stage { position: static; transform: none !important; width: auto; height: auto; }
   .slide { display: flex !important; position: relative; width: 1280px; height: 720px; break-after: page; page-break-after: always; }
   .slide .step { visibility: visible; }
-  .deck-top, .deck-toc, .deck-bar { display: none !important; }
+  .deck-chrome, .dt-bar, .deck-bar { display: none !important; }
+  .deck-view { position: static; width: auto !important; height: auto !important; border: 0; overflow: visible; margin: 0; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
-/* Format switcher of the case in the header of slides and documents. */
-.dt-tabs { display: flex; align-items: center; gap: 2px; }
-.dt-tabs a { padding: 6px 10px; border-radius: var(--radius); }
-.dt-tabs a.on { color: var(--foreground); font-weight: 600; background: var(--surface-recessed); }
-@media (max-width: 1100px) { .dt-title { display: none; } .dt-tabs { flex: 1; min-width: 0; overflow-x: auto; } .dt-nav, .dt-act { flex: none; } }
-@media (max-width: 720px) { .dt-tabs a { padding: 6px; } .dt-back { max-width: 1.3em; overflow: hidden; } }
 .spk-back { color: var(--brand); text-decoration: none; }
