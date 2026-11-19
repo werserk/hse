@@ -1,0 +1,78 @@
+
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.note{font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.lab{font:12px var(--font-mono);color:var(--muted-foreground)}
+.idx{font-size:10px;color:var(--subtle-foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+[data-s]{opacity:0;transition:opacity var(--dur,0ms) ease}
+[data-s].on{opacity:1}
+svg text{font-family:var(--font-sans)}
+.mono{font-family:var(--font-mono)}
+.ok{color:var(--success)}.bad{color:var(--destructive)}
+</style>
+
+<div class="w"><div class="g"><div id="fig"></div><div class="side" id="side"></div></div></div>
+<script>
+
+const $=id=>document.getElementById(id);
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+function frac(x,maxd=400){ // continued-fraction reconstruction of a rational from a float
+ if(Math.abs(x-Math.round(x))<1e-9)return String(Math.round(x));
+ let h1=1,h0=0,k1=0,k0=1,b=x;
+ for(let i=0;i<30;i++){const a=Math.floor(b);[h1,h0]=[a*h1+h0,h1];[k1,k0]=[a*k1+k0,k1];
+  if(Math.abs(x-h1/k1)<1e-10||k1>maxd)break;b=1/(b-a)}
+ return h1+'/'+k1}
+function solve(A,b){const n=b.length,M=A.map((r,i)=>[...r,b[i]]);
+ for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;[M[c],M[p]]=[M[p],M[c]];
+  for(let r=0;r<n;r++)if(r!==c){const f=M[r][c]/M[c][c];for(let j=c;j<=n;j++)M[r][j]-=f*M[c][j]}}
+ return M.map((r,i)=>r[n]/r[i])}
+function arrowQ(x1,y1,cx,cy,x2,y2,col,w=1.6,dash=''){
+ const dx=x2-cx,dy=y2-cy,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,s=7;
+ const bx=x2-ux*s,by=y2-uy*s,px=-uy*s*.5,py=ux*s*.5;
+ return `<path d="M${x1} ${y1}Q${cx} ${cy} ${bx} ${by}" fill="none" stroke="${col}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''}/><polygon points="${x2},${y2} ${bx+px},${by+py} ${bx-px},${by-py}" fill="${col}"/>`}
+
+const N={1:[80,64],2:[80,186],3:[290,64],4:[290,186],5:[470,125]};
+const R=20;
+let s='';
+// class frames
+s+=`<rect x="30" y="20" width="100" height="212" rx="12" fill="none" stroke="var(--muted-foreground)" stroke-dasharray="5 4"/><text x="80" y="246" text-anchor="middle" font-size="12" fill="var(--muted-foreground)">проходной {1, 2}</text>`;
+s+=`<rect x="240" y="20" width="100" height="212" rx="12" fill="color-mix(in srgb,var(--chart-1) 14%,transparent)" stroke="var(--chart-1)"/><text x="290" y="246" text-anchor="middle" font-size="12" fill="var(--chart-1)">замкнутый, d = 1 · {3, 4}</text>`;
+s+=`<rect x="420" y="85" width="100" height="80" rx="12" fill="color-mix(in srgb,var(--chart-2) 14%,transparent)" stroke="var(--chart-2)"/><text x="470" y="182" text-anchor="middle" font-size="12" fill="var(--chart-2)" >поглощающее {5}</text>`;
+const col='var(--muted-foreground)';
+function lineArrow(a,b,off,lab,lx,ly,color=col,t=.5){
+ const [x1,y1]=N[a],[x2,y2]=N[b];const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,nx=-uy*off,ny=ux*off;
+ return arrowQ(x1+ux*R+nx,y1+uy*R+ny,(x1+x2)/2+nx,(y1+y2)/2+ny,x2-ux*R+nx,y2-uy*R+ny,color,1.5)+`<text x="${x1+(x2-x1)*t+nx*2.3+(lx||0)}" y="${y1+(y2-y1)*t+ny*2.3+(ly||0)+4}" text-anchor="middle" font-size="12" fill="${color}">${lab}</text>`}
+function loop(a,dir,lab){const [x,y]=N[a];const sx=dir=='u'?0:0;
+ const top=dir=='u';return arrowQ(x-10,y+(top?-R+2:R-2),x,y+(top?-R-34:R+34),x+10,y+(top?-R+2:R-2),col,1.5)+`<text x="${x+22}" y="${y+(top?-R-18:R+24)}" font-size="12" fill="${col}">${lab}</text>`}
+s+=lineArrow(1,2,8,'1/2',0,0)+lineArrow(2,1,8,'1/2',0,0);
+s=s.replace(/$/,'');
+s+=lineArrow(1,3,0,'1/4',0,-8);
+s+=lineArrow(1,5,0,'1/4',0,-8,col,.8);
+s+=lineArrow(2,4,0,'1/4',0,10);
+s+=lineArrow(3,4,8,'1/3')+lineArrow(4,3,8,'1/2');
+s+=loop(1,'u','1/4')+loop(3,'u','2/3')+loop(4,'d','1/2')+loop(5,'u','1');
+for(const i in N){const [x,y]=N[i];const c=i<3?'var(--foreground)':(i<5?'var(--chart-1)':'var(--chart-2)');
+ s+=`<circle cx="${x}" cy="${y}" r="${R}" fill="var(--card)" stroke="${c}" stroke-width="1.6"/><text x="${x}" y="${y+5}" text-anchor="middle" font-size="14" font-weight="600" fill="var(--foreground)">${i}</text>`}
+$('fig').innerHTML=`<div class="ttl">Граф цепи на пяти состояниях</div><svg width="560" height="262" viewBox="0 0 560 262">${s}</svg>`;
+$('side').innerHTML=`<b>Класс</b> — состояния, достижимые друг из друга. <b>Замкнутый</b>: стрелок наружу нет, цепь остаётся в нём навсегда. <b>Проходной</b>: из него есть выход наружу, цепь рано или поздно уходит.<br><br>{1, 2} проходной: из 1 есть стрелки в 3 и 5. {3, 4} замкнутый, у него есть петли, значит период 1. {5} замкнутый из одного состояния.<br><br><b>Стационарное</b> — на каждом замкнутом классе своё: на {3, 4} это π = (3/5, 2/5), на {5} это (1). Общее — их смесь.`;
+</script>

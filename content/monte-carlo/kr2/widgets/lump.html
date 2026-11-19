@@ -1,0 +1,124 @@
+
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.note{font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.lab{font:12px var(--font-mono);color:var(--muted-foreground)}
+.idx{font-size:10px;color:var(--subtle-foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+[data-s]{opacity:0;transition:opacity var(--dur,0ms) ease}
+[data-s].on{opacity:1}
+svg text{font-family:var(--font-sans)}
+.mono{font-family:var(--font-mono)}
+.ok{color:var(--success)}.bad{color:var(--destructive)}
+</style>
+
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig" style="position:relative"></div><div id="steps"></div></div>
+</div>
+
+<style>
+.mx{border-collapse:separate;border-spacing:3px;font:13px var(--font-mono);margin-top:6px}
+.mx td,.mx th{box-sizing:border-box;width:44px;height:26px;text-align:center;border-radius:4px;padding:0}
+.mx th{font-weight:400;font-size:11px;color:var(--subtle-foreground)}
+.mx td.a{background:color-mix(in srgb,var(--chart-1) 22%,transparent)}
+.mx td.b{background:color-mix(in srgb,var(--chart-2) 22%,transparent)}
+.mx td.hl{outline:2px solid var(--brand);outline-offset:-2px;font-weight:600}
+.mx td.sm{width:64px;background:none;color:var(--brand);font-weight:600}
+.mx td.sm.x{color:var(--destructive)}
+.his{font-size:13px;line-height:1.6;min-height:70px;position:relative}
+.his div{position:absolute;left:0;white-space:nowrap}
+</style>
+<script>
+
+const $=id=>document.getElementById(id);
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+function frac(x,maxd=400){ // continued-fraction reconstruction of a rational from a float
+ if(Math.abs(x-Math.round(x))<1e-9)return String(Math.round(x));
+ let h1=1,h0=0,k1=0,k0=1,b=x;
+ for(let i=0;i<30;i++){const a=Math.floor(b);[h1,h0]=[a*h1+h0,h1];[k1,k0]=[a*k1+k0,k1];
+  if(Math.abs(x-h1/k1)<1e-10||k1>maxd)break;b=1/(b-a)}
+ return h1+'/'+k1}
+function solve(A,b){const n=b.length,M=A.map((r,i)=>[...r,b[i]]);
+ for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;[M[c],M[p]]=[M[p],M[c]];
+  for(let r=0;r<n;r++)if(r!==c){const f=M[r][c]/M[c][c];for(let j=c;j<=n;j++)M[r][j]-=f*M[c][j]}}
+ return M.map((r,i)=>r[n]/r[i])}
+function arrowQ(x1,y1,cx,cy,x2,y2,col,w=1.6,dash=''){
+ const dx=x2-cx,dy=y2-cy,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,s=7;
+ const bx=x2-ux*s,by=y2-uy*s,px=-uy*s*.5,py=ux*s*.5;
+ return `<path d="M${x1} ${y1}Q${cx} ${cy} ${bx} ${by}" fill="none" stroke="${col}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''}/><polygon points="${x2},${y2} ${bx+px},${by+py} ${bx-px},${by-py}" fill="${col}"/>`}
+
+const MODE=(window.frameElement&&window.frameElement.dataset.mode)||'good';
+const F=(n,d)=>n/d;
+const P=MODE=='good'?
+ [[1/2,1/6,1/6,1/6],[1/3,1/3,1/6,1/6],[1/4,1/12,1/3,1/3],[1/12,1/4,1/2,1/6]]:
+ [[1/2,1/4,1/4],[1/6,1/6,2/3],[1/3,1/3,1/3]];
+const blk=MODE=='good'?['a','a','b','b']:['a','a','b'];
+const n=P.length,tgt=MODE=='good'?'a':'b'; // we sum the entries of each row that lead into block `tgt`
+const sums=P.map(r=>r.reduce((s,v,j)=>s+(blk[j]==tgt?v:0),0));
+let mx='<table class="mx"><tr><th></th>'+blk.map((c,j)=>`<th>${j+1}</th>`).join('')+`<th>в ${tgt=='a'?'A':'B'}</th></tr>`;
+for(let i=0;i<n;i++){
+ mx+=`<tr><th>${i+1}</th>`+P[i].map((v,j)=>`<td class="${blk[j]} ${(blk[j]==tgt&&i<(MODE=='good'?1:2))?'hl':''}">${frac(v)}</td>`).join('')+
+ `<td class="sm ${MODE=='good'?'':'x'}" data-s="${MODE=='good'?(i==0?1:2):(i<2?1:9)}">${i==0||i==1||MODE=='good'?'= '+frac(sums[i]):''}</td></tr>`}
+mx+='</table>';
+let extra='';
+if(MODE=='good'){
+ const Q=[[sums[0],1-sums[0]],[sums[2],1-sums[2]]];
+ extra=`<div class="ttl" data-s="3" style="margin-top:12px">Матрица Q для Y: вход в блок = общая сумма</div><div class="mono" data-s="3" style="font-size:14px">A → A ${frac(Q[0][0])}, A → B ${frac(Q[0][1])}<br>B → A ${frac(Q[1][0])}, B → B ${frac(Q[1][1])}</div>`;
+}else{
+ const q0=[1/3,1/3,1/3];
+ const hid=(from)=>{const w=[0,1].map(j=>from.reduce((s,i)=>s+q0[i]*P[i][j],0));const t=w[0]+w[1];return w.map(x=>x/t)};
+ const hAA=hid([0,1]),hBA=hid([2]);
+ const pAA=hAA[0]*P[0][2]+hAA[1]*P[1][2],pBA=hBA[0]*P[0][2]+hBA[1]*P[1][2];
+ extra=`<div class="ttl" data-s="2" style="margin-top:12px">Две истории с одним Y<sub>1</sub> = A</div><div class="his mono"><div data-s="2">(A, A): X₁ ~ (${frac(hAA[0])}, ${frac(hAA[1])}) ⇒ P(Y₂ = B) = ${frac(pAA)}</div><div data-s="2" style="top:24px">(B, A): X₁ ~ (${frac(hBA[0])}, ${frac(hBA[1])}) ⇒ P(Y₂ = B) = ${frac(pBA)}</div><div data-s="3" style="top:52px" class="${pAA!=pBA?'bad':''}">${frac(pAA)} ≠ ${frac(pBA)} ⇒ Y не цепь при этом старте</div></div>`;
+}
+const ttl=MODE=='good'?'Блоки A = {1, 2}, B = {3, 4}: суммы по строке':'Блоки A = {1, 2}, B = {3}: суммы по строке';
+$('fig').innerHTML=`<div class="ttl">${ttl}</div>${mx}${extra}`;
+const S=MODE=='good'?[
+ {t:'Матрица и блоки',stage:0,ms:900,d:'Состояния склеены в блоки A = {1, 2} и B = {3, 4}. Столбцы покрашены по блокам.'},
+ {t:'Строка 1: сколько уходит в A',stage:1,ms:900,d:'Складываем клетки строки 1 в столбцах блока A: ½ + ⅙ = ⅔. Это вероятность следующего Y = A, если сейчас X = 1.'},
+ {t:'Остальные строки',stage:2,ms:500,d:'Строка 2 даёт ⅓ + ⅓ = ⅔. Строки 3 и 4 дают ¼ + 1/12 = ⅓ и 1/12 + ¼ = ⅓. Внутри каждого блока суммы равны.'},
+ {t:'Вывод',stage:3,ms:700,d:'Равенство внутри блока значит, что вероятность следующего Y зависит только от текущего Y, при любом старте. Матрица Q внизу — это и есть цепь Y.'}]:[
+ {t:'Матрица и блоки',stage:0,ms:900,d:'Блок B состоит из одного состояния 3, блок A = {1, 2}. Смотрим, сколько вероятности уходит в B из строк блока A.'},
+ {t:'Суммы в B не совпадают',stage:1,ms:900,d:'Из 1 в B уходит ¼, из 2 — ⅔. Значит, общей матрицы Q для всех стартов нет. Но это ещё не доказывает, что Y — не цепь: нужны две конкретные истории.'},
+ {t:'Две истории, один Y₁',stage:2,ms:500,d:'Распределение скрытого X₁ зависит от того, как мы пришли в A. Если Y₀ = A, X₁ чаще 1; если Y₀ = B, то X₀ = 3 и X₁ делится поровну.'},
+ {t:'Разные продолжения',stage:3,ms:700,d:'Для (A, A) вероятность P(Y₂ = B) одна, для (B, A) другая. Одно и то же настоящее Y₁ = A даёт разное будущее в зависимости от прошлого: Y не марковская.'}];
+
+// stepper engine: every element of the figure exists from the start; steps only fade them in (data-s = first stage shown, data-u = stage at which it hides)
+let k=0;window.stepperBusy=false;let busyT=null;
+function stageApply(i,anim){
+ const s=S[i],f=$('fig');k=i;
+ f.style.setProperty('--dur',(anim?(s.ms||600):0)+'ms');
+ f.querySelectorAll('[data-s]').forEach(e=>{const on=+e.dataset.s<=s.stage&&(e.dataset.u===undefined||s.stage<+e.dataset.u);e.classList.toggle('on',on)});
+ if(window.onStage)window.onStage(s.stage);
+ $('steps').innerHTML=S.map((q,j)=>`<div class="txt ${j==i?'on':j<i?'done':''}" data-i="${j}"><span class="n">${j+1}</span><span><b>${q.t}</b><span class="d">${q.d}</span></span></div>`).join('');
+ $('prev').disabled=i==0;$('next').disabled=i==S.length-1;$('cnt').textContent=`шаг ${i+1} из ${S.length}`;
+ clearTimeout(busyT);if(anim){window.stepperBusy=true;busyT=setTimeout(()=>{window.stepperBusy=false},(s.ms||600)+80)}else window.stepperBusy=false;
+}
+function go(i){i=Math.max(0,Math.min(S.length-1,i));stageApply(i,i==k+1)}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+function initStepper(){let hmax=0;for(let i=0;i<S.length;i++){stageApply(i,false);hmax=Math.max(hmax,$('steps').offsetHeight)}
+ $('steps').style.minHeight=hmax+'px';stageApply(0,false)}
+
+initStepper();
+</script>

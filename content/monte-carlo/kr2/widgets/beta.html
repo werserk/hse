@@ -1,0 +1,71 @@
+
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.note{font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.lab{font:12px var(--font-mono);color:var(--muted-foreground)}
+.idx{font-size:10px;color:var(--subtle-foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+[data-s]{opacity:0;transition:opacity var(--dur,0ms) ease}
+[data-s].on{opacity:1}
+svg text{font-family:var(--font-sans)}
+.mono{font-family:var(--font-mono)}
+.ok{color:var(--success)}.bad{color:var(--destructive)}
+</style>
+
+<style>.pn{display:inline-block;vertical-align:top;width:240px;margin-right:24px}.vd{font-size:13px;margin-top:6px;line-height:1.5}</style>
+<div class="w" id="fig"></div>
+<script>
+
+const $=id=>document.getElementById(id);
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+function frac(x,maxd=400){ // continued-fraction reconstruction of a rational from a float
+ if(Math.abs(x-Math.round(x))<1e-9)return String(Math.round(x));
+ let h1=1,h0=0,k1=0,k0=1,b=x;
+ for(let i=0;i<30;i++){const a=Math.floor(b);[h1,h0]=[a*h1+h0,h1];[k1,k0]=[a*k1+k0,k1];
+  if(Math.abs(x-h1/k1)<1e-10||k1>maxd)break;b=1/(b-a)}
+ return h1+'/'+k1}
+function solve(A,b){const n=b.length,M=A.map((r,i)=>[...r,b[i]]);
+ for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;[M[c],M[p]]=[M[p],M[c]];
+  for(let r=0;r<n;r++)if(r!==c){const f=M[r][c]/M[c][c];for(let j=c;j<=n;j++)M[r][j]-=f*M[c][j]}}
+ return M.map((r,i)=>r[n]/r[i])}
+function arrowQ(x1,y1,cx,cy,x2,y2,col,w=1.6,dash=''){
+ const dx=x2-cx,dy=y2-cy,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,s=7;
+ const bx=x2-ux*s,by=y2-uy*s,px=-uy*s*.5,py=ux*s*.5;
+ return `<path d="M${x1} ${y1}Q${cx} ${cy} ${bx} ${by}" fill="none" stroke="${col}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''}/><polygon points="${x2},${y2} ${bx+px},${by+py} ${bx-px},${by-py}" fill="${col}"/>`}
+
+const a=3,b=6; // posterior Beta(3,6)
+const fact=n=>n<=1?1:n*fact(n-1);
+const Bf=(a-1>=0)?fact(a-1)*fact(b-1)/fact(a+b-1):1;
+const f=p=>Math.pow(p,a-1)*Math.pow(1-p,b-1)/Bf, g=p=>p*p;
+const mean=a/(a+b);
+let EG=0;const NS=2000;for(let i=0;i<NS;i++){const p=(i+.5)/NS;EG+=g(p)*f(p)/NS}
+const W=230,H=150,L=28,Bt=22;
+const sx=p=>L+p*(W-L-6),fmax=Math.max(...Array.from({length:101},(_,i)=>f(i/100))),sy=(v,m)=>H-Bt-v/m*(H-Bt-12);
+function curve(fn,m,x0=0,x1=1){let d='';for(let i=0;i<=100;i++){const p=x0+(x1-x0)*i/100;d+=(i?'L':'M')+sx(p).toFixed(1)+' '+sy(fn(p),m).toFixed(1)}return d}
+function axes(){return `<path d="M${L} ${H-Bt}H${W}" stroke="var(--border)"/><text x="${sx(0)}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--subtle-foreground)">0</text><text x="${sx(1)}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--subtle-foreground)">1</text>`}
+// panel A: g(p)*f(p) area
+const m=fmax;
+let A=`<svg width="${W}" height="${H}">${axes()}<path d="${curve(p=>g(p)*f(p),m)}L${sx(1)} ${sy(0,m)}L${sx(0)} ${sy(0,m)}Z" fill="var(--brand)" opacity=".55"/><path d="${curve(f,m)}" fill="none" stroke="var(--chart-1)" stroke-width="2"/><path d="${curve(p=>g(p)*m,m)}" fill="none" stroke="var(--muted-foreground)" stroke-dasharray="3 3"/></svg>`;
+// panel B: point g(mean)
+let B=`<svg width="${W}" height="${H}">${axes()}<path d="${curve(p=>g(p)*m,m)}" fill="none" stroke="var(--muted-foreground)" stroke-dasharray="3 3"/><path d="M${sx(mean)} ${sy(0,m)}V${sy(g(mean)*m,m)}" stroke="var(--destructive)" stroke-width="2"/><circle cx="${sx(mean)}" cy="${sy(g(mean)*m,m)}" r="4" fill="var(--destructive)"/><text x="${sx(mean)+6}" y="${sy(0,m)-4}" font-size="10" fill="var(--destructive)">E p</text></svg>`;
+$('fig').innerHTML=`<div class="pn"><div class="ttl">Среднее по апостериорной плотности</div>${A}<div class="vd ok">✓ E[p² | D] = ∫ p²·f(p | D) dp = ${frac(EG)}<br><span class="note">жирная кривая — плотность Beta(3, 6), пунктир — g(p) = p² (масштаб условный), заливка — их произведение</span></div></div><div class="pn"><div class="ttl">Подстановка среднего</div>${B}<div class="vd bad">✗ g(E p) = (${frac(mean)})² = ${frac(g(mean))}<br><span class="note">одна точка кривой g вместо среднего по всей плотности</span></div></div>`;
+</script>
