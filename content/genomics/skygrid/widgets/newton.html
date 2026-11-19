@@ -1,0 +1,50 @@
+<!doctype html><meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 12px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:1.4fr 1fr;column-gap:24px;align-items:start}
+svg text{font:11px var(--font-mono);fill:var(--muted-foreground)}svg .ax{stroke:var(--border);fill:none}
+.txt{padding:8px 4px 8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}.txt .d{display:none}.txt.done{color:var(--muted-foreground)}.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}.txt.on b{color:var(--brand)}
+.f{font-family:var(--font-mono);font-size:12px;color:var(--foreground);display:block;margin-top:4px}
+</style>
+<div class="w"><div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><svg id="fig" viewBox="0 0 400 240" width="100%"></svg><div id="steps"></div></div></div>
+<script>
+// one grid cell, no prior: f(γ) = −cγ − SS·e^(−γ), c = 1, SS = 1.8 (cell 2 of the toy tree)
+const c=1,SS=1.8,f=g=>-c*g-SS*Math.exp(-g),f1=g=>-c+SS*Math.exp(-g),f2=g=>-SS*Math.exp(-g);
+const mode=Math.log(SS/c),fm=f(mode),newton=g=>g-f1(g)/f2(g);
+const X=g=>30+(g+1.5)/5*350,Y=v=>205-v*180;
+const dens=g=>Math.exp(f(g)-fm), gauss=(g,g0)=>Math.exp(f(g0)+f1(g0)*(g-g0)+f2(g0)*(g-g0)**2/2-fm);
+const path=fn=>{let d='';for(let i=0;i<=200;i++){const g=-1.5+i*.025,v=Math.min(fn(g),1.35);d+=(i?'L':'M')+X(g).toFixed(1)+' '+Y(v).toFixed(1)}return d};
+const it=[0];for(let i=0;i<4;i++)it.push(newton(it[i]));
+const F=x=>x.toFixed(3);
+const ST=[
+ {t:'Плотность одной ячейки',d:'Плотность, пропорциональная exp(−cγ − SS·e<sup>−γ</sup>), для c = 1, SS = 1.8 (вторая ячейка рис. 4.1). Она несимметрична: слева круче, справа длинный хвост. Это не гауссиана, поэтому прямо из неё не сэмплировать.',n:-1},
+ {t:'Парабола в точке γ̂ = 0',d:`В точке γ̂ = 0 считаем f, f′ и f″ и берём f ≈ f(γ̂) + f′·(γ−γ̂) + ½f″·(γ−γ̂)². Это парабола, то есть гауссиана на языке плотности. Она касается кривой в γ̂, но её вершина сдвинута.`,n:0},
+ {t:'Вершина параболы — шаг Ньютона',d:`Вершина параболы: γ̂ − f′/f″ = <strong>${F(it[1])}</strong>. Это один шаг Ньютона–Рафсона. Он ближе к настоящей вершине ${F(mode)}.`,n:0,mark:1},
+ {t:'Повторяем в новой точке',d:`Строим параболу в γ̂ = ${F(it[1])}; её вершина — ${F(it[2])}. Парабола уже заметно лучше повторяет кривую около пика.`,n:1,mark:2},
+ {t:'Сходимость',d:`Следующие шаги: ${F(it[3])}, ${F(it[4])}. Точка γ̂ стабилизировалась около ln(SS/c) = ${F(mode)}. Без априора точность этой гауссианы равна SS·e<sup>−γ̂</sup> = c = ${c}.<span class="f">γ̂ ← γ̂ − f′(γ̂)/f″(γ̂)</span>`,n:4,mark:4}];
+let k=0;const $=id=>document.getElementById(id);
+function draw(){
+ const s=ST[k];let h=`<path class="ax" d="M30 205H385M30 20V205"/>`;
+ for(let g=-1;g<=3;g++)h+=`<text x="${X(g)}" y="222" text-anchor="middle">${g}</text>`;
+ h+=`<text x="385" y="236" text-anchor="end">γ</text>`;
+ if(s.n>=0)for(let j=0;j<=s.n;j++){const op=j==s.n?1:.35;h+=`<path d="${path(g=>gauss(g,it[j]))}" fill="none" stroke="var(--chart-2)" stroke-width="2" opacity="${op}" ${j==s.n?'':'stroke-dasharray="4 3"'}/>`}
+ h+=`<path d="${path(dens)}" fill="none" stroke="var(--brand)" stroke-width="2.6"/>`;
+ if(s.n>=0)for(let j=0;j<=s.n;j++)h+=`<circle cx="${X(it[j])}" cy="205" r="4" fill="var(--chart-2)"/>`;
+ if(s.mark)h+=`<line x1="${X(it[s.mark])}" x2="${X(it[s.mark])}" y1="25" y2="205" stroke="var(--chart-2)" stroke-dasharray="3 3"/>`;
+ h+=`<line x1="${X(mode)}" x2="${X(mode)}" y1="198" y2="212" stroke="var(--foreground)"/><text x="${X(mode)}" y="16" text-anchor="middle" style="fill:var(--foreground)">${k==4?'γ̂ = ln(SS/c)':''}</text>`;
+ $('fig').innerHTML=h;
+ $('cnt').textContent=`шаг ${k+1} из ${ST.length}`;$('prev').disabled=!k;$('next').disabled=k==ST.length-1;
+ $('steps').innerHTML=ST.map((x,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><div><b>${x.t}</b><div class="d">${x.d}</div></div></div>`).join('');
+}
+$('prev').onclick=()=>{k--;draw()};$('next').onclick=()=>{k++;draw()};
+$('steps').onclick=e=>{const t=e.target.closest('.txt');if(t){k=+t.dataset.i;draw()}};
+draw();
+</script>

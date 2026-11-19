@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans)}
+svg text{font:11px var(--font-mono);fill:var(--muted-foreground)}svg .ax{stroke:var(--border);fill:none}
+.leg{display:flex;gap:18px;font-size:12px;color:var(--foreground);margin-top:4px;flex-wrap:wrap}
+.leg i{display:inline-block;width:18px;height:3px;vertical-align:3px;margin-right:6px}
+</style>
+<div class="w"><svg id="s" viewBox="0 0 580 270" width="100%"></svg>
+<div class="leg"><span><i style="background:var(--muted-foreground)"></i>постоянный</span><span><i style="background:var(--chart-2)"></i>экспоненциальный рост</span><span><i style="background:var(--brand)"></i>рост, затем спад</span></div></div>
+<script>
+const f1=t=>1,f2=t=>Math.log(150)-t,f3=t=>t>1.5?Math.log(150)-t:Math.log(7.4681)+t;
+const X=t=>50+t/10*490,Y=v=>140-v*24;
+let s=`<path class="ax" d="M50 15V255M50 140H540"/>`;
+for(let t=0;t<=10;t+=2)s+=`<text x="${X(t)}" y="268" text-anchor="middle">${t}</text>`;
+for(let v=-4;v<=5;v+=2)s+=`<text x="44" y="${Y(v)+4}" text-anchor="end">${v}</text><line x1="50" x2="540" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--border)" opacity=".4"/>`;
+[[f1,'var(--muted-foreground)',2.6],[f3,'var(--brand)',6],[f2,'var(--chart-2)',2.6]].forEach(([f,c,w])=>{let d='';for(let i=0;i<=400;i++){const t=i*.025;d+=(i?'L':'M')+X(t).toFixed(1)+' '+Y(f(t)).toFixed(1)}
+ s+=`<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}"/>`});
+s+=`<line x1="${X(1.5)}" x2="${X(1.5)}" y1="20" y2="250" stroke="var(--muted-foreground)" stroke-dasharray="3 3"/><text x="${X(1.5)+4}" y="30">t = 1.5</text><text x="297" y="266" style="display:none"></text><text x="545" y="266" text-anchor="end">t</text><text x="56" y="22">log N<tspan baseline-shift="sub" font-size="9">e</tspan>(t)</text>`;
+document.getElementById('s').innerHTML=s;
+</script>
