@@ -1,0 +1,56 @@
+<style>
+.w{font-family:var(--font-sans);display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.r{display:flex;align-items:center;gap:10px;margin:4px 0}
+.l{width:150px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
+.bar{height:20px;border-radius:3px;background:var(--chart-1);min-width:2px}
+.bar.b{background:var(--chart-2)}.bar.w{background:var(--warning)}.bar.d{background:var(--destructive)}.bar.m{background:color-mix(in srgb,var(--chart-1) 30%,transparent)}
+.v{font:12px var(--font-mono);color:var(--foreground)}
+.ax{font-size:10px;color:var(--subtle-foreground);margin:2px 0 0 160px}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 12px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.txt{padding:8px 6px 8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}.txt.on{color:var(--foreground)}.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}.txt.on b{color:var(--brand)}
+</style>
+<div>
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="w"><div id="fig" style="width:420px"></div><div id="steps"></div></div>
+</div>
+<script>
+// two subpopulations of equal weight; every number is computed from these inputs
+const w=[.5,.5],p=[.9,.3];
+const pb=w[0]*p[0]+w[1]*p[1];
+const H=p.map(x=>2*x*(1-x));
+const Hobs=w[0]*H[0]+w[1]*H[1], Hexp=2*pb*(1-pb), s2=w.reduce((a,wi,i)=>a+wi*(p[i]-pb)**2,0), Fst=s2/(pb*(1-pb));
+const f=x=>x.toFixed(2);
+const S=[
+ {t:'Две субпопуляции',d:`Частоты аллеля A: p₁ = ${p[0]}, p₂ = ${p[1]}; доли по ${w[0]}. Внутри каждой — панмиксия (случайное скрещивание).`},
+ {t:'Гетерозиготность внутри',d:`H<sub>i</sub> = 2p<sub>i</sub>(1−p<sub>i</sub>): ${f(H[0])} и ${f(H[1])}.`},
+ {t:'Наблюдаемая H',d:`H<sub>obs</sub> = Σ w<sub>i</sub>·2p<sub>i</sub>q<sub>i</sub> = ${f(Hobs)}: средняя по выборке из обеих.`},
+ {t:'Ожидаемая H',d:`Если считать смесь одной панмиктической популяцией, p̄ = ${f(pb)}, H<sub>exp</sub> = 2p̄(1−p̄) = ${f(Hexp)}.`},
+ {t:'Дефицит',d:`ΔH = ${f(Hexp-Hobs)} = 2σ²<sub>p</sub> = ${f(2*s2)}; F<sub>ST</sub> = ΔH / H<sub>exp</sub> = ${Fst.toFixed(3)}.`}];
+let k=0;const $=id=>document.getElementById(id);
+const row=(l,cls,v,max,txt)=>`<div class="r"><div class="l">${l}</div><div class="bar ${cls}" style="width:${v/max*220}px"></div><div class="v">${txt}</div></div>`;
+function fig(){let h='';
+ h+=`<div class="t">Частота аллеля A</div>`+row('субпопуляция 1','',p[0],1,f(p[0]))+row('субпопуляция 2','b',p[1],1,f(p[1]));
+ if(k>=1)h+=`<div class="t" style="margin-top:14px">Гетерозиготность, максимум 0.5</div>`+row('H₁','',H[0],.5,f(H[0]))+row('H₂','b',H[1],.5,f(H[1]));
+ if(k>=2)h+=row('H obs','m',Hobs,.5,f(Hobs));
+ if(k>=3)h+=row('H exp (p̄='+f(pb)+')','w',Hexp,.5,f(Hexp));
+ if(k>=4)h+=row('ΔH','d',Hexp-Hobs,.5,f(Hexp-Hobs));
+ return h}
+function draw(){$('fig').innerHTML=fig();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`}
+function go(i){k=Math.max(0,Math.min(S.length-1,i));draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

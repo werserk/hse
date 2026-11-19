@@ -1,0 +1,36 @@
+<style>
+.w{font-family:var(--font-sans);display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.r{display:flex;align-items:center;gap:10px;margin:4px 0}
+.l{width:150px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
+.bar{height:20px;border-radius:3px;background:var(--chart-1);min-width:2px}
+.bar.b{background:var(--chart-2)}.bar.w{background:var(--warning)}.bar.d{background:var(--destructive)}.bar.m{background:color-mix(in srgb,var(--chart-1) 30%,transparent)}
+.v{font:12px var(--font-mono);color:var(--foreground)}
+.ax{font-size:10px;color:var(--subtle-foreground);margin:2px 0 0 160px}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 12px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.txt{padding:8px 6px 8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}.txt.on{color:var(--foreground)}.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div><div class="t" id="title"></div><div id="fig"></div></div>
+<div class="side" id="side"></div>
+</div>
+<script>
+const N=5,M=2*N,i0=3,p=i0/M; // 2N = 10 копий, сейчас у аллеля 3 копии
+const C=(n,k)=>{let r=1;for(let j=1;j<=k;j++)r=r*(n-k+j)/j;return r};
+const pmf=Array.from({length:M+1},(_,j)=>C(M,j)*p**j*(1-p)**(M-j));
+const mx=Math.max(...pmf);
+document.getElementById('title').textContent=`P(X₍ₜ₊₁₎ = j | X₍ₜ₎ = ${i0}), N = ${N}, 2N = ${M}`;
+document.getElementById('fig').innerHTML=pmf.map((q,j)=>`<div class="r" style="margin:2px 0"><div class="l" style="width:52px;white-space:nowrap">j = ${j}</div><div class="bar ${j==0?'d':j==i0?'':'m'}" style="width:${q/mx*240}px"></div><div class="v">${q.toFixed(3)}</div></div>`).join('');
+const mean=pmf.reduce((a,q,j)=>a+q*j,0), v=pmf.reduce((a,q,j)=>a+q*(j-mean)**2,0);
+document.getElementById('side').innerHTML=`Распределение числа копий в следующем поколении, если сейчас их ${i0} из ${M} (p = ${p}).<br><br><b>Среднее ${mean.toFixed(2)}</b> равно текущему ${i0}: дрейф не сдвигает частоту в среднем.<br><b>Разброс</b> (SD) ${Math.sqrt(v).toFixed(2)} копии: частота меняется случайно.<br><b>Красный столбец</b>, j = 0: аллель утрачен с вероятностью (1−p)<sup>2N</sup> = ${pmf[0].toFixed(3)}.`;
+</script>
