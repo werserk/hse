@@ -238,7 +238,7 @@ def plain_chrome(title, home="/"):
     return f'<nav class="cs-top"><a href="{esc(home)}">← Материалы</a></nav><header class="cs-head"><h1>{esc(title)}</h1></header>'
 
 
-def case_page(e, c, active, main, style, cover, prefix="", side="", css="", js=""):
+def case_page(e, c, active, main, style, cover, prefix="", side="", css="", js="", below=""):
     """A page of a case. The overview (active="overview", at the case's URL) has the branded card: cover, number, subject,
     title, date, status, summary, and below it the choice of materials. A material's page has the shared header (case_chrome)."""
     cs = c["slug"]
@@ -265,7 +265,7 @@ addEventListener("message",e=>{{if(e.data?.type!=="widget-height")return;for(con
 {read(KIT / 'head.css')}
 {read(KIT / 'case.css')}{css}</style></head>
 <body class="cs"><div class="cs-wrap">{head}
-<div class="cs-body{" has-side" if side else ""}">{side}<main class="cs-main">{main}</main></div></div>{js}</body></html>"""
+<div class="cs-body{" has-side" if side else ""}">{side}<main class="cs-main">{main}</main></div>{below}</div>{js}</body></html>"""
 
 
 def file_size(f):
@@ -300,12 +300,10 @@ def overview_main(e, p, dest, toc, widgets, text=""):
     if p["code"]: info["code"] = "Внешний репозиторий" if p["code"]["ext"] else "Исходники · " + plural(len([x for x in p["code"]["dir"].rglob("*") if x.is_file()]), ("файл", "файла", "файлов"))
     if p["video"]: info["video"] = {"file": "Видеофайл", "embed": "Запись, встроенная на страницу", "link": "Ссылка на видео"}[p["video"]["kind"]]
     mats = [f for f in e["formats"] if f["key"] != "overview"]
-    tiles = "".join(f'<a class="mt{" main" if i == 0 else ""}" href="{esc(tab_href(f, ""))}"{" target=_blank rel=noopener" if f["ext"] or f.get("blank") else ""}><b>{esc(f["label"])}{" ↗" if f["ext"] or f.get("blank") else ""}</b>'
+    tiles = "".join(f'<a class="mt{" main" if i == 0 else ""}" href="{"#konspekt" if f["key"] == "notes" else esc(tab_href(f, ""))}"{" target=_blank rel=noopener" if f["ext"] or f.get("blank") else ""}><b>{esc(f["label"])}{" ↗" if f["ext"] or f.get("blank") else ""}</b>'
                     f'<span>{esc(info.get(f["key"], ""))}</span></a>' for i, f in enumerate(mats))
     out = f'<div class="ov-text nt-body">{text}</div>' if text else ""
     out += f'<h2 class="cs-h2">Материалы</h2><div class="mts">{tiles}</div>' if tiles else '<p class="empty">Материалов пока нет.</p>'
-    if p["md"] and sum(1 for l, _, _ in toc if l == 2) > 1:
-        out += '<h2 class="cs-h2">Содержание конспекта</h2><ul class="ov-toc">' + "".join(f'<li><a href="notes/index.html#{esc(i)}">{t}</a></li>' for l, i, t in toc if l == 2) + "</ul>"
     files = [(label, f, True) for label, f in e["files"].items()] + ([("HTML (конспект, офлайн)", "notes/index.html", f"{e['slug']}.html")] if p["md"] else [])
     files = [link(*x) for x in files] + [link(label + " ↗", url, attrs=' target="_blank" rel="noopener"') for label, url in (e.get("links") or {}).items()]
     if files: out += f'<h2 class="cs-h2">Файлы и ссылки</h2><p class="cs-files">{"".join(files)}</p>'
@@ -614,12 +612,17 @@ def build_entry(cfg, c, e, dest, style, pdf):
     cover = make_cover(e, dest, konspekt=bool(p["md"]))  # last: the konspekt page may be the card's only picture
     e["cover_name"] = cover
     text, css = "", ""
-    if (d / "overview.md").is_file():  # the case's own words above the choice of materials
+    if (d / "overview.md").is_file():  # the case's own words (shown above the materials; for a case without konspekt it is the page's text)
         text, _ = konspekt(d, style, "overview.md")
         css = "\n" + read(KIT / "notes.css") + (katex_css(cfg) if 'class="katex"' in text else "")
-    # links from the old address of the konspekt (/<course>/<slug>/#anchor) lead to it
-    js = '<script>if(location.hash)location.replace("notes/index.html"+location.hash)</script>' if p["md"] else ""
-    (dest / "index.html").write_text(case_page(e, c, "overview", overview_main(e, p, dest, toc, widgets, text), style, cover, css=css, js=js), encoding="utf-8")
+    below, js = "", ""
+    if p["md"]:  # the konspekt is read on the overview itself, under the materials; notes/ stays as the standalone page
+        inline, itoc = konspekt(d, style, p["md"])
+        iside = ('<nav class="nt-toc"><ol>' + "".join(f'<li class="l{l}"><a href="#{i}">{t}</a></li>' for l, i, t in itoc) + "</ol></nav>") if len(itoc) > 1 else ""
+        css = "\n" + read(KIT / "notes.css") + (katex_css(cfg) if 'class="katex"' in inline + text else "")
+        below = (f'<div class="cs-body{" has-side" if iside else ""}" id="konspekt">{iside}<main class="cs-main"><article class="nt-body">{inline}</article></main></div>')
+        js = f"<script>{read(KIT / 'notes.js')}</script>"
+    (dest / "index.html").write_text(case_page(e, c, "overview", overview_main(e, p, dest, toc, widgets, text), style, cover, css=css, js=js, below=below), encoding="utf-8")
     if p["code"] and "dir" in p["code"]: code_page(e, c, p, dest, style, cover)
     if p["video"] and p["video"]["kind"] != "link": video_page(e, c, p, dest, style, cover)
 

@@ -22,11 +22,9 @@ body.cs .cs-wrap { padding-bottom: 100px; }
 .mt span { font-size: 13px; line-height: 1.4; color: var(--muted-foreground); }
 .mt.main { border-color: var(--brand); }
 .mt:hover { background: var(--surface-recessed); }
-.ov-toc { columns: 2; column-gap: 36px; margin: 0; padding: 0; list-style: none; font: 16px/1.5 var(--font-serif); }
-.ov-toc li { margin-bottom: 6px; break-inside: avoid; }
-.ov-toc a:hover { text-decoration: underline; }
 .ov-text { max-width: 820px; margin-bottom: 8px; }
 .cs-body { display: block; padding-top: 28px; }
+#konspekt { margin-top: 36px; padding-top: 32px; border-top: 1px solid var(--border); }
 .cs-body.has-side { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 36px; }
 .cs-main { min-width: 0; max-width: 820px; }
 .cs-body.has-side > :first-child { position: sticky; top: 16px; align-self: start; max-height: calc(100vh - 32px); overflow: auto; }
@@ -49,8 +47,7 @@ body.cs .cs-wrap { padding-bottom: 100px; }
   .cs-card { flex-direction: column; align-items: stretch; gap: 18px; }
   .cs-cv { flex: none; }
   .cs-card h1 { font-size: 28px; }
-  .ov-toc { columns: 1; }
-  .cs-body.has-side { grid-template-columns: 1fr; gap: 16px; }
+    .cs-body.has-side { grid-template-columns: 1fr; gap: 16px; }
   .cs-body.has-side > :first-child { position: static; max-height: none; }
   .nt-toc { display: none; }
 }
