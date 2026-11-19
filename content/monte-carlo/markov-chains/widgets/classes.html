@@ -65,11 +65,11 @@ function lineArrow(a,b,off,lab,lx,ly,color=col,t=.5){
  return arrowQ(x1+ux*R+nx,y1+uy*R+ny,(x1+x2)/2+nx,(y1+y2)/2+ny,x2-ux*R+nx,y2-uy*R+ny,color,1.5)+`<text x="${x1+(x2-x1)*t+nx*2.3+(lx||0)}" y="${y1+(y2-y1)*t+ny*2.3+(ly||0)+4}" text-anchor="middle" font-size="12" fill="${color}">${lab}</text>`}
 function loop(a,dir,lab){const [x,y]=N[a];const sx=dir=='u'?0:0;
  const top=dir=='u';return arrowQ(x-10,y+(top?-R+2:R-2),x,y+(top?-R-34:R+34),x+10,y+(top?-R+2:R-2),col,1.5)+`<text x="${x+22}" y="${y+(top?-R-18:R+24)}" font-size="12" fill="${col}">${lab}</text>`}
-s+=lineArrow(1,2,8,'1/2',0,0)+lineArrow(2,1,8,'1/2',0,0);
+s+=lineArrow(1,2,8,'1/4',0,0)+lineArrow(2,1,8,'1/2',0,0);
 s=s.replace(/$/,'');
 s+=lineArrow(1,3,0,'1/4',0,-8);
 s+=lineArrow(1,5,0,'1/4',0,-8,col,.8);
-s+=lineArrow(2,4,0,'1/4',0,10);
+s+=lineArrow(2,4,0,'1/2',0,10);
 s+=lineArrow(3,4,8,'1/3')+lineArrow(4,3,8,'1/2');
 s+=loop(1,'u','1/4')+loop(3,'u','2/3')+loop(4,'d','1/2')+loop(5,'u','1');
 for(const i in N){const [x,y]=N[i];const c=i<3?'var(--foreground)':(i<5?'var(--chart-1)':'var(--chart-2)');
