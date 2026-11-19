@@ -29,9 +29,10 @@ def site_cfg():
 
 WIDGET_HEAD = """<!doctype html><html data-style="{style}"><head><meta charset="utf-8"><base target="_blank">
 <style>{theme}
-body{{margin:0;background:transparent;color:var(--foreground);font:14px/1.45 var(--font-sans);zoom:{zoom};accent-color:var(--brand)}}</style></head><body>"""
+body{{margin:0;background:transparent;color:var(--foreground);font:14px/1.45 var(--font-sans);zoom:{zoom};accent-color:var(--brand)}}
+@media(max-width:560px){{.g{{grid-template-columns:minmax(0,1fr)!important}}.side{{border-left:0!important;border-top:2px solid var(--border);padding:8px 0 0!important;margin-top:10px}}}}</style></head><body>"""
 WIDGET_TAIL = """<script>(()=>{const r=()=>parent.postMessage({type:'widget-height',h:Math.ceil(document.documentElement.scrollHeight)},'*');
-new ResizeObserver(r).observe(document.documentElement);addEventListener('load',r);r();})();</script>{keys}</body></html>"""
+new ResizeObserver(r).observe(document.documentElement);addEventListener('load',r);addEventListener('resize',()=>{r();requestAnimationFrame(r);setTimeout(r,120)});document.fonts&&document.fonts.ready.then(r);r();setTimeout(r,150);})();</script>{keys}</body></html>"""
 # On slides a focused widget hands the deck's keys over, so a clicker keeps working after a click on a slider.
 WIDGET_KEYS = """<script>(()=>{const nav=['PageDown','PageUp','ArrowRight','ArrowLeft','ArrowDown','ArrowUp',' ','Home','End','f','F','а','А','s','S','ы','Ы','o','O','щ','Щ','Escape'];
 addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target,typing=t.isContentEditable||/^(TEXTAREA|SELECT)$/.test(t.tagName)||(t.tagName==='INPUT'&&!/^(range|checkbox|radio|button)$/.test(t.type));
@@ -170,8 +171,10 @@ def md_to_html(md):
         from markdown.extensions.toc import slugify_unicode
     except ImportError:
         sys.exit("konspekt needs the markdown package: uv run --with markdown python build.py ...")
-    return markdown.markdown(md, extensions=["tables", "fenced_code", "attr_list", "md_in_html", "toc"],
-                             extension_configs={"toc": {"slugify": slugify_unicode}})
+    out = markdown.markdown(md, extensions=["tables", "fenced_code", "attr_list", "md_in_html", "toc"],
+                            extension_configs={"toc": {"slugify": slugify_unicode}})
+    # a wide table scrolls inside its own wrapper instead of stretching the page
+    return re.sub(r"(?s)(<table\b.*?</table>)", r'<div class="tw">\1</div>', out)
 
 
 def link(label, href, dl=False, attrs=""):
