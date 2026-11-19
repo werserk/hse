@@ -1,0 +1,74 @@
+<!doctype html><meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 12px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:1.5fr 1fr;column-gap:24px;align-items:start}
+svg text{font:11px var(--font-mono);fill:var(--muted-foreground)}
+svg .br{stroke:var(--foreground);fill:none;stroke-width:1.6}svg .ev{fill:var(--brand)}
+svg .gl{stroke:var(--muted-foreground);stroke-dasharray:4 3}
+.txt{padding:8px 4px 8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}.txt .d{display:none}.txt.done{color:var(--muted-foreground)}.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}.txt.on b{color:var(--brand)}
+table{border-collapse:collapse;font:12px var(--font-mono);margin-top:8px;width:100%}
+th,td{padding:3px 7px;text-align:right;border-bottom:1px solid var(--border);color:var(--muted-foreground);font-weight:400}
+th{color:var(--foreground);font-weight:600}td.c1{text-align:left}
+tr.hl td{color:var(--foreground);background:color-mix(in srgb,var(--brand) 12%,transparent)}
+.f{font-family:var(--font-mono);font-size:12px;color:var(--foreground);display:block;margin-top:4px}
+</style>
+<div class="w"><div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div><svg id="fig" viewBox="0 0 440 210" width="100%"></svg><div id="tab"></div></div><div id="steps"></div></div></div>
+<script>
+// toy tree: 5 tips at t=0; events 5→4, 4→3, 3→2, 2→1; grid x = 1, 2, 3
+const E=[.3,.7,1.4,2.6],G=[1,2,3];
+const X=t=>34+t/3.1*390,Yt=[22,50,92,120,168];
+// segments: break at events and grid points, v = lineages alive on the segment
+const pts=[0,...[...E,...G].sort((a,b)=>a-b)].filter((x,i,a)=>x<=E[3]&&(i==0||x!=a[i-1]));
+if(pts[pts.length-1]!==E[3])pts.push(E[3]);
+const seg=[];
+for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],v=5-E.filter(e=>e<=a+1e-9).length,cell=G.filter(g=>g<=a+1e-9).length;
+  seg.push({a,b,v,cell,ev:E.some(e=>Math.abs(e-b)<1e-9),pairs:v*(v-1)/2,len:b-a,ss:v*(v-1)/2*(b-a)})}
+const cells=[0,1,2].map(k=>{const s=seg.filter(x=>x.cell==k);return{k:k+1,c:s.filter(x=>x.ev).length,ss:s.reduce((q,x)=>q+x.ss,0)}});
+const f=x=>x.toFixed(2),ll=(th)=>cells.reduce((q,c,i)=>q-c.c*Math.log(th[i])-c.ss/th[i],0);
+const th0=cells.map(c=>c.ss/c.c),lc=ll([1.5,1.5,1.5]),lm=ll(th0);
+function tree(stage){
+  let s='';
+  const yA=(Yt[0]+Yt[1])/2,yB=(Yt[2]+Yt[3])/2,yAB=(yA+yB)/2,yR=(yAB+Yt[4])/2;
+  const br=(a,ya,b,yb,t)=>`<path class="br" d="M${X(a)} ${ya}H${X(t)}V${yb}H${X(b)}"/>`;
+  if(stage>=1)G.forEach((g,i)=>s+=`<line class="gl" x1="${X(g)}" x2="${X(g)}" y1="8" y2="185"/><text x="${X(g)}" y="200" text-anchor="middle">x${i+1}=${g}</text>`);
+  if(stage>=1)[0,1,2].forEach(i=>{const a=i?G[i-1]:0,b=i<3?G[i]:3;s+=`<rect x="${X(a)}" y="8" width="${X(b)-X(a)}" height="177" fill="color-mix(in srgb,var(--chart-${i%2?2:1}) ${stage>=3?14:8}%,transparent)"/><text x="${(X(a)+X(b))/2}" y="19" text-anchor="middle" style="fill:var(--foreground);font-weight:600">ячейка ${i+1}</text>`});
+  s+=br(0,Yt[0],0,Yt[1],E[0])+br(0,Yt[2],0,Yt[3],E[1])+br(E[0],yA,E[1],yB,E[2])+br(E[2],yAB,0,Yt[4],E[3]);
+  s+=`<text x="${X(0)-4}" y="204" text-anchor="end">t=0</text>`;
+  [[E[0],yA],[E[1],yB],[E[2],yAB],[E[3],yR]].forEach(([t,y])=>s+=`<circle class="ev" cx="${X(t)}" cy="${y}" r="4"/>`);
+  if(stage>=2)seg.forEach(x=>{const m=(X(x.a)+X(x.b))/2;s+=`<text x="${m}" y="${stage>=3?178:178}" text-anchor="middle" style="fill:var(--foreground)">v=${x.v}</text>`});
+  return s;
+}
+function table(stage){
+  if(stage<2)return'';
+  const hl=stage==3?1:-1,showAll=stage>=4;
+  let rows=seg.map(x=>`<tr class="${stage==3&&x.cell==0?'hl':''}"><td class="c1">${x.cell+1}</td><td>${x.a}–${x.b}</td><td>${x.v}</td><td>${x.pairs}</td><td>${f(x.len)}</td><td>${f(x.ss)}</td><td>${x.ev?'●':''}</td></tr>`).join('');
+  let t=`<table><tr><th class="c1">ячейка</th><th>отрезок</th><th>v</th><th>пар</th><th>длина</th><th>пар×длина</th><th>слияние</th></tr>${rows}</table>`;
+  if(stage>=4)t+=`<table><tr><th class="c1">ячейка</th><th>c<sub>k</sub></th><th>SS<sub>k</sub></th><th>SS/c</th></tr>${cells.map(c=>`<tr class="${stage==4&&c.k==1?'':''}"><td class="c1">${c.k}</td><td>${c.c}</td><td>${f(c.ss)}</td><td>${f(c.ss/c.c)}</td></tr>`).join('')}</table>`;
+  return t;
+}
+const ST=[
+ {t:'Дерево одного локуса',d:'Пять последовательностей в момент t = 0 и четыре слияния линий (точки). Число линий падает 5 → 4 → 3 → 2 → 1. Слияния происходят в моменты 0.3, 0.7, 1.4 и 2.6.'},
+ {t:'Сетка режет время на ячейки',d:'Сетка x₁ = 1, x₂ = 2, x₃ = 3 делит ось на ячейки. На ячейке k размер популяции постоянен и равен θ<sub>k</sub>. Корень (t = 2.6) лежит в третьей ячейке, четвёртая пуста.'},
+ {t:'Отрезки с постоянным числом линий',d:'Внутри ячейки режем ещё и по моментам слияний. На каждом отрезке число линий v постоянно, поэтому постоянна и скорость слияния v(v−1)/2θ<sub>k</sub>. В таблице: сколько пар линий и какой длины отрезок.'},
+ {t:'Ячейка 1: считаем c и SS',d:`Слияний <strong>c₁ = ${cells[0].c}</strong> (в 0.3 и 0.7). Сумма «пары × длина» по подсвеченным строкам: <strong>SS₁ = 10·0.3 + 6·0.4 + 3·0.3 = ${f(cells[0].ss)}</strong>. Каждое слияние вносит множитель 1/θ₁, каждый отрезок — множитель exp(−пары·длина/θ₁).`},
+ {t:'Все ячейки',d:`Те же две суммы для каждой ячейки: c = (${cells.map(c=>c.c)}), SS = (${cells.map(c=>f(c.ss))}). Всего c = ${cells.reduce((q,c)=>q+c.c,0)} = n−1 слияний, как и должно быть. Отношение SS/c — значение θ<sub>k</sub>, при котором данные наиболее вероятны.`},
+ {t:'Правдоподобие дерева',d:`<span class="f">P(g|θ) = ∏ θ<sub>k</sub><sup>−c<sub>k</sub></sup> · exp(−SS<sub>k</sub>/θ<sub>k</sub>)</span>Всё дерево сжато до шести чисел. При θ = (1.5; 1.5; 1.5): ln P = ${f(lc)}. При θ = SS/c = (${th0.map(f)}): ln P = ${f(lm)}, то есть выше.`}];
+let k=0;const $=id=>document.getElementById(id);
+function draw(){
+  $('fig').innerHTML=tree(k==0?0:k==1?1:k==2?2:3);
+  $('tab').innerHTML=table(k);
+  $('cnt').textContent=`шаг ${k+1} из ${ST.length}`;$('prev').disabled=!k;$('next').disabled=k==ST.length-1;
+  $('steps').innerHTML=ST.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><div><b>${s.t}</b><div class="d">${s.d}</div></div></div>`).join('');
+}
+$('prev').onclick=()=>{k--;draw()};$('next').onclick=()=>{k++;draw()};
+$('steps').onclick=e=>{const t=e.target.closest('.txt');if(t){k=+t.dataset.i;draw()}};
+draw();
+</script>

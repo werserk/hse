@@ -1,0 +1,31 @@
+<!doctype html><meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans)}
+svg text{font:12px var(--font-mono);fill:var(--muted-foreground)}
+svg .t{fill:var(--foreground);font-weight:600}
+svg .ax{stroke:var(--border)}svg .ev{fill:var(--brand)}
+svg .cell{stroke:var(--foreground);stroke-width:1.5;fill:none}
+.l{font-size:12px;color:var(--muted-foreground);margin-top:2px}
+</style>
+<div class="w"><svg id="s" viewBox="0 0 640 250" width="100%"></svg>
+<div class="l">Те же четыре слияния (точки) на оси времени t. Сверху ступени Skygrid лежат на сетке K/M; θ₄ — хвост глубже порога. Снизу ступени Skyride меняются в моменты слияний, а дерево кончается в корне (t = 2.6).</div></div>
+<script>
+const ev=[.3,.7,1.4,2.6],K=3,M=3,X=t=>40+t/3.4*570;
+function row(y0,title,cuts,names,end=3.4){
+  let s=`<text class="t" x="40" y="${y0}">${title}</text>`;
+  const yb=y0+62;
+  s+=`<line class="ax" x1="${X(0)}" x2="${X(3.4)}" y1="${yb}" y2="${yb}"/>`;
+  const edges=[0,...cuts,end];
+  for(let i=0;i<edges.length-1;i++){
+    const a=X(edges[i]),b=X(edges[i+1]);
+    s+=`<rect x="${a}" y="${yb-34}" width="${b-a}" height="34" fill="color-mix(in srgb,var(--chart-${i%2?2:1}) 22%,transparent)" stroke="none"/>`;
+    s+=`<text x="${(a+b)/2}" y="${yb-13}" text-anchor="middle" style="fill:var(--foreground)">${names[i]}</text>`;}
+  cuts.forEach(c=>s+=`<line x1="${X(c)}" x2="${X(c)}" y1="${yb-38}" y2="${yb+6}" stroke="var(--foreground)" stroke-width="1.5"/><text x="${X(c)}" y="${yb+20}" text-anchor="middle">${c}</text>`);
+  ev.forEach(e=>s+=`<circle class="ev" cx="${X(e)}" cy="${yb}" r="4"/>`);
+  return s;
+}
+const th=i=>`θ<tspan baseline-shift="sub" font-size="9">${i}</tspan>`;
+document.getElementById('s').innerHTML=
+ row(18,'Skygrid: границы заданы заранее (K = 3, M = 3)',[1,2,3],['θ₁','θ₂','θ₃','θ₄'])+
+ row(135,'Skyride: границы — моменты слияний этого дерева',ev.slice(0,3),['θ₁','θ₂','θ₃','θ₄'],2.6);
+</script>

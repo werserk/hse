@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans);display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.p{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;background:var(--card)}
+.p h4{margin:0 0 4px;font-size:14px}.s{font-size:12px;color:var(--muted-foreground)}
+svg text{font:11px var(--font-mono);fill:var(--muted-foreground)}
+.v{margin-top:6px;font-size:13px;color:var(--foreground)}.ok{color:var(--chart-2)}.no{color:var(--destructive)}
+.l{grid-column:1/3;font-size:12px;color:var(--muted-foreground)}
+table{border-collapse:collapse;font:11px var(--font-mono);margin-top:6px}td{padding:2px 5px;color:var(--muted-foreground);text-align:right}
+</style>
+<div class="w" id="w"></div>
+<script>
+// two trajectories with the same mean level, M+1 = 8 levels
+const A=[1.5,3.2,.8,2.9,1,3,1.2,2.8],B=[.9,1.2,1.6,2,2.3,2.6,2.9,3];
+const pen=g=>g.slice(1).reduce((q,x,i)=>q+(x-g[i])**2,0),mean=g=>g.reduce((p,x)=>p+x)/g.length;
+function panel(g,title,ok){
+ const X=i=>20+i*34,Y=v=>120-v*28;let s=`<svg viewBox="0 0 290 135" width="100%"><line x1="16" x2="280" y1="120" y2="120" stroke="var(--border)"/>`;
+ g.forEach((v,i)=>s+=`<rect x="${X(i)}" y="${Y(v)}" width="32" height="${120-Y(v)}" fill="var(--chart-1)" opacity=".28"/><line x1="${X(i)}" x2="${X(i)+32}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--chart-1)" stroke-width="2.5"/>`+(i?`<line x1="${X(i)}" x2="${X(i)}" y1="${Y(g[i-1])}" y2="${Y(v)}" stroke="var(--chart-1)" stroke-dasharray="2 2"/>`:'')+`<text x="${X(i)+16}" y="132" text-anchor="middle">${i+1}</text>`);
+ s+='</svg>';
+ const d=g.slice(1).map((x,i)=>(x-g[i]));
+ return `<div class="p"><h4>${title}</h4><div class="s">γ = (${g.join('; ')})</div>${s}
+ <table><tr>${d.map(x=>`<td>${x>=0?'+':''}${x.toFixed(1)}</td>`).join('')}</tr><tr>${d.map(x=>`<td>${(x*x).toFixed(2)}</td>`).join('')}</tr></table>
+ <div class="v">Σ(γ<sub>i+1</sub> − γ<sub>i</sub>)² = <b>${pen(g).toFixed(2)}</b> <span class="${ok?'ok':'no'}">${ok?'✓ малый штраф':'✗ большой штраф'}</span></div></div>`}
+document.getElementById('w').innerHTML=panel(A,'Рваная траектория',0)+panel(B,'Плавная траектория',1)+
+ `<div class="l">Уровни γ<sub>k</sub> = ln θ<sub>k</sub> на восьми ячейках (ступени). Под рисунком — разности соседних уровней и их квадраты. Априор оценивает траекторию по сумме этих квадратов; средний уровень у обеих похож (${mean(A).toFixed(2)} и ${mean(B).toFixed(2)}).</div>`;
+</script>
