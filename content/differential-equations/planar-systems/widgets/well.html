@@ -7,7 +7,7 @@ svg .ax{font:11px var(--font-mono);fill:var(--muted-foreground)}
 .n b{color:var(--foreground)}.n p{margin:0 0 9px}
 .t{font-size:14px;font-weight:600;margin:0 0 8px;color:var(--foreground)}
 </style>
-<div class="g"><div><div class="t">Потенциал V(x) и уровень энергии E</div><svg id="s" width="400" height="260"></svg></div><div class="n" id="n"></div></div>
+<div class="g"><div><div class="t">Потенциал V(x) и уровень энергии E</div><svg id="s" viewBox="0 0 400 260" style="width:400px;max-width:100%;height:auto"></svg></div><div class="n" id="n"></div></div>
 <script>
 const V=x=>x*x/2+x**4/4,W=400,H=260,L=20,B=34,XM=1.5,YM=2.4;
 const px=v=>L+(v+XM)/(2*XM)*(W-L-10), py=v=>H-B-v/YM*(H-B-10);

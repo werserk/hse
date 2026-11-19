@@ -33,5 +33,5 @@ const an=Array.from({length:n-1},(_,i)=>1/(i+1)).reduce((a,b)=>a+b,0);
 document.getElementById('title').textContent='Выборка n = '+n+': интервалы, пока линий k';
 document.getElementById('fig').innerHTML=ks.map(k=>`<div class="r" style="margin:3px 0"><div class="l" style="width:60px">k = ${k}</div><div class="bar" style="width:${ET(k)*200}px"></div><div class="v">E[T<sub>${k}</sub>] = ${ET(k).toFixed(3)}</div></div>`).join('')
 +`<div class="r" style="margin-top:8px"><div class="l" style="width:60px">Σ</div><div class="v">E[T<sub>MRCA</sub>] = ${tm.toFixed(3)} = 2(1−1/n)</div></div>`;
-document.getElementById('side').innerHTML=`Ожидаемая длительность каждого интервала в коалесцентных единицах (1 ед. = 2Nₑ поколений). Первый интервал (k = 2) один длиннее всех остальных вместе: <b>${ET(2).toFixed(2)}</b> из ${tm.toFixed(2)}.<br><br>Общая длина ветвей E[L] = Σ k·E[T<sub>k</sub>] = <b>${L.toFixed(3)}</b> = 2aₙ, где aₙ = ${an.toFixed(3)}.`;
+document.getElementById('side').innerHTML=`Ожидаемая длительность каждого интервала в коалесцентных единицах (1 ед. = 2Nₑ поколений). Последний, самый древний интервал (k = 2) один длиннее всех остальных вместе: <b>${ET(2).toFixed(2)}</b> из ${tm.toFixed(2)}.<br><br>Общая длина ветвей E[L] = Σ k·E[T<sub>k</sub>] = <b>${L.toFixed(3)}</b> = 2aₙ, где aₙ = ${an.toFixed(3)}.`;
 </script>

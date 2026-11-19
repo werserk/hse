@@ -9,7 +9,7 @@ svg .small{font:11px var(--font-mono);fill:var(--muted-foreground)}
 .n p{margin:0 0 9px}
 .t{font-size:14px;font-weight:600;margin:0 0 8px;color:var(--foreground)}
 </style>
-<div class="g"><div><div class="t">Плоскость (tr, det) матрицы Якоби</div><svg id="s" width="420" height="330"></svg></div>
+<div class="g"><div><div class="t">Плоскость (tr, det) матрицы Якоби</div><svg id="s" viewBox="0 0 420 330" style="width:420px;max-width:100%;height:auto"></svg></div>
 <div class="n" id="n"></div></div>
 <script>
 const W=420,H=330,L=44,R=14,T=10,B=34,X0=-4,X1=4,Y0=-2,Y1=4;
@@ -30,7 +30,7 @@ s+=reg(`${left.join(' ')} ${x(0)},${y(Y1)} ${x(-4)},${y(Y1)}`,'--success',10);  
 s+=reg(`${right.join(' ')} ${x(4)},${y(Y1)} ${x(0)},${y(Y1)}`,'--warning',10);
 // axes
 s+=`<line x1="${x(X0)}" y1="${y(0)}" x2="${x(X1)}" y2="${y(0)}" style="stroke:var(--border)"/>`;
-s+=`<line x1="${x(0)}" y1="${y(Y0)}" x2="${x(0)}" y2="${y(Y1)}" style="stroke:var(--foreground);stroke-width:2"/>`;
+s+=`<line x1="${x(0)}" y1="${y(0)}" x2="${x(0)}" y2="${y(Y1)}" style="stroke:var(--foreground);stroke-width:2"/>`;
 s+=`<polyline points="${par}" fill="none" style="stroke:var(--foreground);stroke-dasharray:4 3"/>`;
 for(const v of [-4,-2,2,4])s+=`<text class="ax" x="${x(v)}" y="${H-B+16}" text-anchor="middle">${v}</text>`;
 for(const v of [-2,2,4])s+=`<text class="ax" x="${L-8}" y="${y(v)+4}" text-anchor="end">${v}</text>`;
@@ -41,7 +41,7 @@ s+=lab(0,-1,'седло: det &lt; 0');
 s+=lab(-2.5,0.9,'узел, устойч.');s+=lab(2.5,0.9,'узел, неуст.');
 s+=lab(-2.2,3.1,'фокус, устойч.');s+=lab(2.2,3.1,'фокус, неуст.');
 s+=`<text class="small" x="${x(0.1)}" y="${y(Y1)+13}">tr = 0: центр или</text><text class="small" x="${x(0.1)}" y="${y(Y1)+25}">негиперболика</text>`;
-s+=`<text class="small" transform="translate(${x(3.0)},${y(2.6)}) rotate(-36)">D = 0</text>`;
+s+=`<text class="small" transform="translate(${x(3.0)},${y(2.6)}) rotate(-58)">D = 0</text>`;
 // the two equilibria of §3
 const pt=(tr,d,t)=>`<circle cx="${x(tr)}" cy="${y(d)}" r="5" style="fill:var(--brand);stroke:var(--background);stroke-width:1.5"/><text x="${x(tr)+9}" y="${y(d)+4}" style="font-weight:600">${t}</text>`;
 s+=pt(1,-0.75,'A');s+=pt(-0.5,0.75,'B');

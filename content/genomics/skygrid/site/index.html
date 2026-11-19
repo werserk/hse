@@ -2291,7 +2291,7 @@ display:block!important;
 <div class="equation-panel fragment">
 <p><strong>Компактное правдоподобие</strong></p>
 <p><span class="math display">
-P(g_i\mid \theta)=
+P(g_i\mid \theta)\propto
 \prod_{k=\alpha_i}^{\omega_i+1}
 \left(\frac{1}{\theta_k}\right)^{c_{ik}}
 \exp\!\left(-\frac{SS_{ik}}{\theta_k}\right)
@@ -2367,7 +2367,7 @@ display:block!important;
 <div class="equation-panel fragment">
 <p><strong>Переход к <span class="math inline">\gamma_k=\log\theta_k</span></strong></p>
 <p><span class="math display">
-P(g_i\mid \gamma)=
+P(g_i\mid \gamma)\propto
 \prod_{k=\alpha_i}^{\omega_i+1}
 \exp\!\left[-\gamma_k c_{ik}-SS_{ik}e^{-\gamma_k}\right]
 </span></p>
@@ -3038,8 +3038,7 @@ display:block!important;
 <div class="equation-panel fragment tight-math">
 <p><strong>Второй порядок для всей условной плотности</strong></p>
 <p><span class="math display">
-P(\gamma\mid \tau,g)\approx
-\tau^{M/2}
+P(\gamma\mid \tau,g)\;\propto\;
 \exp\!\left[
 -\frac12\gamma^\top
 \bigl(\tau Q+\mathrm{Diag}(SS_k e^{-\hat\gamma_k})\bigr)\gamma
@@ -3162,9 +3161,9 @@ display:block!important;
 <p><strong>Шаг 1. Предложение для <span class="math inline">\tau</span></strong></p>
 <p><span class="math display">
 \tau^\ast=\tau^{(n)}f,\qquad
-f\sim P(f)\propto f+\frac{1}{f},\quad f\in\left[\frac{1}{F},F\right]
+f\sim P(f)\propto 1+\frac{1}{f},\quad f\in\left[\frac{1}{F},F\right]
 </span></p>
-<p>это симметричное мультипликативное предложение, а <span class="math inline">F</span> управляет масштабом шага</p>
+<p>это симметричное мультипликативное предложение (в статье напечатано <span class="math inline">\propto f+1/f</span>, симметрию даёт <span class="math inline">1+1/f</span>), а <span class="math inline">F</span> управляет масштабом шага</p>
 </div>
 <div class="inference-line fragment">
 <p><strong>Шаг 2. Предложение для <span class="math inline">\gamma</span>:</strong> при фиксированном <span class="math inline">\tau^\ast</span> строится локальная гауссова аппроксимация и из неё генерируется кандидат <span class="math inline">\gamma^\ast</span></p>
@@ -3184,7 +3183,7 @@ f\sim P(f)\propto f+\frac{1}{f},\quad f\in\left[\frac{1}{F},F\right]
 <p><strong>Заметки</strong></p>
 <ul>
 <li>Мультипликативное предложение для <span class="math inline">\tau</span> удобно, потому что параметр точности должен оставаться положительным.</li>
-<li>Плотность на <span class="math inline">f</span> симметрична относительно замены <span class="math inline">f\leftrightarrow 1/f</span>, что упрощает шаг Metropolis-Hastings.</li>
+<li>Плотность <span class="math inline">\propto 1+1/f</span> делает предложение симметричным, и в отношение Metropolis-Hastings не входит множитель от <span class="math inline">f</span>. Плотность <span class="math inline">\propto f+1/f</span>, напечатанная в статье, добавила бы множитель <span class="math inline">1/f</span>.</li>
 <li>Параметр <span class="math inline">F</span> — настраиваемая константа; он задаёт, насколько далеко новое значение <span class="math inline">\tau^\ast</span> может отойти от текущего.</li>
 <li><code>Metropolis-Hastings</code> — схема приёма или отклонения кандидата, которая корректирует неточное предложение и сохраняет правильное апостериорное распределение.</li>
 <li>Пример: если <span class="math inline">F=2</span>, новый множитель <span class="math inline">f</span> выбирается из интервала <span class="math inline">[1/2,2]</span>, и <span class="math inline">\tau</span> может либо уменьшиться, либо увеличиться в разумных пределах за один шаг.</li>

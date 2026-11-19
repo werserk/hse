@@ -8,7 +8,7 @@ svg .ax{stroke:var(--border);fill:none}svg .ln{fill:none;stroke-width:2}
 <div class="w"><svg id="s" viewBox="0 0 640 326" width="100%"></svg></div>
 <script>
 const Ne=t=>t<1?1:t<2.5?3:.5, lam=t=>1/Ne(t), T=4, N=800, dt=T/N;
-const S=[1],p=[];let cum=0;
+const S=[],p=[];let cum=0;
 for(let i=0;i<=N;i++){const t=i*dt;if(i>0)cum+=lam(t-dt/2)*dt;S.push(Math.exp(-cum));}
 const X=t=>50+t/T*570;
 const panels=[{name:'N_e(t)',y0:10,h:80,f:Ne,max:3.3,c:'var(--chart-1)',step:1},

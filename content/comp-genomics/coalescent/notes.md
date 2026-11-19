@@ -89,7 +89,7 @@ $$
 Усреднив по деревьям, получаем один параметр, который определяет всю картину:
 
 $$
-\theta=4N_e\mu\ \ (\text{на сайт}),\qquad \theta=4N_e\mu L\ \ (\text{на регион длины }L),\qquad N_e=\frac{\theta}{4\mu}.
+\theta=4N_e\mu\ \ (\text{на сайт}),\qquad \theta=4N_e\mu \ell\ \ (\text{на регион из }\ell\text{ сайтов}),\qquad N_e=\frac{\theta}{4\mu}.
 $$
 
 ### Два способа оценить $\theta$

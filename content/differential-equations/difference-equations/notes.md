@@ -95,7 +95,7 @@ $$
 | $\alpha^t\cos\omega t$ или $\alpha^t\sin\omega t$ | $\lambda^2-2\alpha\cos\omega\,\lambda+\alpha^2$ | 2 |
 | $t^{s}\alpha^t\cos\omega t$ или $t^{s}\alpha^t\sin\omega t$ | $(\lambda^2-2\alpha\cos\omega\,\lambda+\alpha^2)^{s+1}$ | $2(s+1)$ |
 
-Синус и косинус с одним $\alpha$, $\omega$ дают один и тот же множитель: корни $\alpha e^{\pm i\omega}$ приходят парой. Это следует из условия вещественных коэффициентов (с комплексными коэффициентами хватило бы одного корня).
+Синус и косинус с одним $\alpha$, $\omega$ дают один и тот же множитель: корни $\alpha e^{\pm i\omega}$ приходят парой. Пара нужна потому, что синус и косинус — комбинации двух экспонент $(\alpha e^{\pm i\omega})^t$: например, $\alpha^t\sin\omega t=\frac1{2i}\bigl((\alpha e^{i\omega})^t-(\alpha e^{-i\omega})^t\bigr)$. Одного корня хватило бы только для комплексного решения $\alpha^te^{i\omega t}$.
 
 #### Решение примера
 
