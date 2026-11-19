@@ -1,0 +1,137 @@
+<!-- Fig. 3.1 (stepper): how Loter's loops multiply into its runtime. Toy panel and haplotype 1a from Fig. 1.1;
+     the DP table Q is computed below (lambda = 1). Steps go from one cell outward: column (2n), table (p),
+     cohort (2N), 160 runs. The loop card shows the loops revealed so far and the product of their counts. -->
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:372px 1fr;column-gap:28px;align-items:start}
+.pic{height:236px;position:relative}
+.r{display:flex;align-items:center;gap:8px;margin:2px 0}
+.l{width:26px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
+.s{display:flex;gap:2px;font-family:var(--font-mono);font-size:12px}
+.s span{box-sizing:border-box;width:24px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:3px}
+.idx span{height:13px;font-size:10px;color:var(--subtle-foreground)}
+.h span{background:var(--muted);color:var(--foreground)}
+.q span{background:color-mix(in srgb,var(--foreground) 6%,transparent);color:var(--foreground)}
+.q span.e{background:none;outline:1px dashed var(--border);outline-offset:-1px;color:transparent}
+.q span.cur{outline:2px solid var(--brand);outline-offset:-2px;font-weight:600}
+.q span.mn{background:color-mix(in srgb,var(--brand) 22%,transparent)}
+.q span.dep{outline:1px solid var(--foreground);outline-offset:-1px}
+.det{margin:10px 0 0 34px;font:12px/1.6 var(--font-mono);color:var(--muted-foreground)}
+.det b{color:var(--foreground);font-weight:600}
+.mini{display:grid;grid-template-columns:repeat(3,auto);gap:18px 22px;justify-content:start;margin:6px 0 0 6px}
+.mt{position:relative}
+.mt .lab{font:11px var(--font-mono);color:var(--muted-foreground);margin-bottom:3px}
+.mt .tb{position:relative;display:grid;grid-template-columns:repeat(10,8px);gap:1px;background:var(--background);z-index:3}
+.mt .tb i{width:8px;height:8px;border-radius:1px;background:color-mix(in srgb,var(--foreground) 30%,transparent)}
+.mt .ly{position:absolute;left:0;width:89px;height:35px;border:1px solid color-mix(in srgb,var(--foreground) 35%,transparent);border-radius:2px;background:var(--background);transition:opacity .25s}
+.x160{font-size:12px;color:var(--foreground);margin:16px 0 0 6px}
+.card{margin-top:14px;border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font:12px/1.75 var(--font-mono);color:var(--foreground)}
+.card .ln{display:grid;grid-template-columns:1fr 54px;transition:opacity .3s}
+.card .ln.off{opacity:.2}
+.card .ln .c{text-align:right;color:var(--muted-foreground)}
+.card .ln.now{color:var(--brand)}
+.card .ln.now .c{color:var(--brand)}
+.card .ln.n{font-weight:600}
+.card .tot{border-top:1px solid var(--border);margin-top:4px;padding-top:4px;display:grid;grid-template-columns:auto 1fr;column-gap:10px;font-family:var(--font-sans);font-size:12px;color:var(--muted-foreground)}
+.card .tot b{font-family:var(--font-mono);color:var(--foreground);font-weight:600}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div><div class="pic" id="pic"></div><div class="card" id="card"></div></div><div id="steps"></div></div>
+</div>
+<script>
+// toy panel and target haplotype 1a from Fig. 1.1; lambda = 1
+const H={A1:'0010001000',A2:'0100000010',B1:'1111101111',B2:'1011111101'},h='0011101010',lam=1;
+const names=Object.keys(H),R=names.length,P=h.length,TN=6;   // 2n = 4, p = 10, 2N = 6 (N = 3)
+const mis=(i,j)=>+(H[names[i]][j]!==h[j]);
+// Q(i,j) = mismatch + min(stay = Q(i,j-1), jump = m(j-1) + lambda), m(j-1) = min over the column j-1
+const Q=names.map(()=>Array(P).fill(0)),m=Array(P).fill(0);
+for(let j=0;j<P;j++){for(let i=0;i<R;i++)Q[i][j]=mis(i,j)+(j?Math.min(Q[i][j-1],m[j-1]+lam):0);m[j]=Math.min(...Q.map(r=>r[j]))}
+const CI=1,CJ=3;                                             // the cell shown in step 1: A2 at SNP 4 (0-based 1, 3)
+const argm=j=>Q.findIndex(r=>r[j]===m[j]);
+// real run (chapter 1): N = 2000, 2n = 372, p = 50 000, 160 runs, 8.06 h
+const real=160*4000*372*50000, ns=8.06*3600/real*1e9;
+const fmt=v=>v.toLocaleString('ru-RU');
+const sci=v=>{const e=Math.floor(Math.log10(v));return `${(v/10**e).toFixed(1).replace('.',',')}·10<sup>${e}</sup>`};
+// loop card, innermost line last; 'from' = first step where the line is shown
+const LN=[
+ {t:'for прогон in 1..160',c:'×160',from:4},
+ {t:'  for гаплотип in 1..2N',c:'×2N',from:3,n:1},
+ {t:'    for SNP j in 1..p',c:'×p',from:2},
+ {t:'      m = min по столбцу j−1',c:'1 раз',from:1},
+ {t:'      for i in 1..2n',c:'×2n',from:1},
+ {t:'        Q(i, j) = …',c:'O(1)',from:0}];
+const TOT=[['одна клетка','1'],['столбец: 2n',`${R}`],['таблица: 2n·p',`${R*P}`],['когорта: 2N·2n·p',`${TN*R*P}`],['160·2N·2n·p',`${fmt(160*TN*R*P)}`]];
+const S=[
+ {t:'Одна клетка',d:`Q(i, j) — наименьшая стоимость пути, который на SNP j копирует гаплотип панели i. Клетка смотрит на две клетки предыдущего столбца: остаться на том же гаплотипе или переключиться с лучшего гаплотипа, заплатив λ. Это несколько операций.`},
+ {t:'Столбец: цикл по 2n',d:`Лучший гаплотип предыдущего столбца один для всех клеток, поэтому его стоимость m находится один раз на столбец (подсвечена). Столбец стоит 2·2n операций. Если бы каждая клетка сама искала минимум, вышло бы (2n)².`},
+ {t:'Таблица: цикл по p',ms:600,d:`Столбцы заполняются слева направо, каждый по предыдущему. Таблица 2n × p даёт стоимости всех путей; лучший путь восстанавливается обратным проходом, поэтому для каждой клетки хранится, откуда в неё пришли.`},
+ {t:'Когорта: цикл по 2N',ms:350,d:`Каждый гаплотип когорты получает свою таблицу, независимо от остальных. Это единственный цикл, число повторов которого зависит от N, поэтому время растёт линейно.`},
+ {t:'160 прогонов',ms:300,d:`Всё повторяется для 8 значений λ на 20 случайных выборках панели, и метки выбираются голосованием. Множитель 160 не зависит от N: он сдвигает прямую вверх, но не меняет наклон.`}];
+let k=0,col=CJ,tabs=0,lay=0,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+function table(){
+ const idx=`<div class="r"><div class="l"></div><div class="s idx">${[...h].map((_,j)=>`<span>${j+1}</span>`).join('')}</div></div>`;
+ const hr=`<div class="r"><div class="l">1a</div><div class="s h">${[...h].map(a=>`<span>${a}</span>`).join('')}</div></div>`;
+ const rows=names.map((nm,i)=>`<div class="r"><div class="l">${nm}</div><div class="s q">${Q[i].map((v,j)=>{
+  let c=j<col||(j==col&&(k>0||i<CI))?'':'e';
+  if(k==0&&i==CI&&j==CJ)c='cur';
+  if(k<=1&&j==CJ-1&&i==argm(CJ-1))c+=' mn';
+  if(k==0&&j==CJ-1&&i==CI)c+=' dep';
+  if(k==1&&j==CJ)c='cur';
+  return `<span class="${c}">${v}</span>`}).join('')}</div></div>`).join('');
+ let det='';
+ if(k==0)det=`Q(A2, 4) = [h₄ ≠ H<sub>A2,4</sub>] + min(Q(A2, 3), m₃ + λ)<br>= ${mis(CI,CJ)} + min(${Q[CI][CJ-1]}, ${m[CJ-1]} + ${lam}) = <b>${Q[CI][CJ]}</b>`;
+ if(k==1)det=`m₃ = ${m[CJ-1]} (${names[argm(CJ-1)]}) — один раз на столбец<br>столбец 4: <b>${R}</b> клетки, по одной операции выбора`;
+ if(k==2)det=`посчитано столбцов: <b>${Math.min(col+1,P)}</b> из ${P}, клеток: <b>${Math.min(col+1,P)*R}</b>`;
+ return idx+hr+rows+`<div class="det">${det}</div>`;
+}
+function mini(){
+ let s='<div class="mini">';
+ for(let t=0;t<TN;t++){const lb=`${(t>>1)+1}${'ab'[t&1]}`;
+  s+=`<div class="mt" style="opacity:${t<tabs?1:0};transition:opacity .25s"><div class="lab">${lb}</div><div style="position:relative">`;
+  for(let q=3;q>=1;q--)s+=`<div class="ly" style="top:${q*4}px;left:${q*4}px;opacity:${q<=lay?1:0}"></div>`;
+  s+=`<div class="tb">${'<i></i>'.repeat(R*P)}</div></div></div>`;}
+ return s+'</div>'+(k==4?`<div class="x160" style="opacity:${lay>=3?1:0}">каждая таблица × 160 = 8 значений λ × 20 выборок панели</div>`:'');
+}
+function draw(){
+ $('pic').innerHTML=k<=2?table():mini();
+ $('card').innerHTML=LN.map(l=>`<div class="ln${l.from>k?' off':''}${l.from==k?' now':''}${l.n&&l.from<=k?' n':''}"><span>${l.t.replace(/ /g,'&nbsp;')}</span><span class="c">${l.c}</span></div>`).join('')+
+  `<div class="tot"><span>клеток в примере:</span><b>${TOT[k][1]}</b><span>формула:</span><b>${TOT[k][0]}</b>`+
+  (k==4?`<span>в замере, N = 2000:</span><b>${sci(real)} → ${ns.toFixed(1).replace('.',',')} нс на клетку</b>`:`<span>&nbsp;</span><b></b>`)+`</div>`;
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+const full=i=>{col=i>=2?P:CJ;tabs=i>=3?TN:0;lay=i>=4?3:0};
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;full(i);
+ if(fwd&&s.ms){ // animate only one step forward; end in the full static state
+  if(i==2)col=CJ; if(i==3)tabs=0; if(i==4)lay=0;
+  window.stepperBusy=true;draw();
+  const t=timer=setInterval(()=>{
+   if(i==2)col++; if(i==3)tabs++; if(i==4)lay++;
+   const done=(i==2&&col>=P)||(i==3&&tabs>=TN)||(i==4&&lay>=3);
+   draw(); if(done){clearInterval(t);window.stepperBusy=false}},s.ms);
+  return;}
+ draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){full(k);draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;full(0);$('steps').style.minHeight=hmax+'px';draw();
+</script>

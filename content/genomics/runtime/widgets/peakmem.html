@@ -1,0 +1,96 @@
+<!-- Fig. 3.2 (stepper): how to count Loter's peak memory. Memory over time in bytes per cohort cell (one allele of
+     one cohort haplotype; 2N x p cells), from reading bcm-uga/Loter @ 5c91354 (cli.py, local_ancestry.py).
+     Sizes are dtype widths; the per-run tooth (~11 B) is an estimate of the arrays alive inside one run. -->
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:420px 1fr;column-gap:26px;align-items:start}
+svg{display:block;overflow:visible}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .grid{stroke:var(--border)}
+svg .pk{font-size:12px;font-weight:600;fill:var(--brand)}
+svg rect{transition:opacity .25s}
+table{border-collapse:collapse;margin-top:12px;font-size:12px}
+td{padding:3px 10px 3px 0;white-space:nowrap;color:var(--foreground);vertical-align:top;transition:opacity .25s}
+td.m{font-family:var(--font-mono);color:var(--muted-foreground);white-space:nowrap}
+td.v{font-family:var(--font-mono);text-align:right;white-space:nowrap}
+td .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+tr.off td{opacity:.2}
+tr.tot td{border-top:1px solid var(--border);padding-top:6px;font-weight:600}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div><table id="led"></table>
+</div>
+<script>
+// bytes per cohort cell (2N x p cells); widths of numpy dtypes as allocated by loter_cli
+const B={coh:1,load:9,votes:16,run:11,fin:24,ch:16}; // load: allel GT int8 + float64 matrix; run: estimate; fin: argmax copies counts (16) + int64 result (8); ch: after choose, result 8 + float64 8
+const cells=2*2000*50000;                              // N = 2000, p = 50 000 (chapter 1)
+const peak=B.coh+B.votes+B.fin;
+const C={coh:'color-mix(in srgb,var(--foreground) 55%,transparent)',load:'color-mix(in srgb,var(--foreground) 14%,transparent)',
+ votes:'var(--chart-2)',run:'color-mix(in srgb,var(--chart-2) 35%,transparent)',fin:'var(--chart-1)'};
+const L=34,T=14,W=372,H=200,YM=46,TEETH=8;
+const X=t=>L+t/14*W, Y=b=>T+H-b/YM*H;
+const LED=[
+ {k:'coh',t:'когорта',m:'uint8',v:B.coh,life:'весь запуск',from:0},
+ {k:'load',t:'чтение VCF',m:'int8 + float64',v:B.load,life:'при загрузке',from:0},
+ {k:'votes',t:'голоса',m:'2 × float64',v:B.votes,life:'весь запуск',from:1},
+ {k:'run',t:'прогон',m:'uint32, bool, float64',v:'≈'+B.run,life:'один прогон',from:2},
+ {k:'fin',t:'итог: копия голосов и номер',m:'float64 + int64',v:B.fin,life:'в конце',from:3}];
+const S=[
+ {t:'Чтение когорты',d:'Аллели когорты хранятся по байту. Пока файл читается, рядом на короткое время живёт матрица float64: временный массив тоже входит в пик, если живёт одновременно с остальными.'},
+ {t:'Голоса',d:'На каждую клетку заводятся два счётчика голосов, по числу популяций, во float64. Они нужны до последнего прогона, поэтому живут весь запуск.'},
+ {t:'160 прогонов',ms:320,d:'Каждый прогон создаёт путь (номер гаплотипа панели, uint32) и временные массивы, добавляет голоса и всё освобождает. Прогоны идут по очереди, поэтому в пик входит один прогон, а не 160.'},
+ {t:'Итог и пик',d:'В конце для каждой клетки выбирается победитель. Чтобы найти его номер (int64), numpy сначала копирует все голоса (float64). Копия и номер живут одновременно с голосами — это самая высокая точка. Затем копия освобождается, а рядом с номером записывается число голосов победителя.'}];
+let k=0,teeth=0,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+const rect=(x0,x1,b0,b1,c,on)=>`<rect x="${X(x0)}" y="${Y(b1)}" width="${X(x1)-X(x0)}" height="${Y(b0)-Y(b1)}" fill="${c}" opacity="${on?1:0}"/>`;
+function fig(){
+ let s=`<svg width="${L+W+14}" height="${T+H+30}">`;
+ for(const b of [0,10,20,30,40])s+=`<line class="grid" x1="${L}" x2="${L+W}" y1="${Y(b)}" y2="${Y(b)}"/><text x="${L-6}" y="${Y(b)+4}" text-anchor="end">${b}</text>`;
+ s+=`<text x="${L-6}" y="${T-4}" text-anchor="end">Б</text><text x="${L+W}" y="${T+H+16}" text-anchor="end">время запуска →</text>`;
+ s+=`<text x="${L}" y="${T+H+16}">байт на клетку когорты</text>`;
+ s+=rect(0,14,0,B.coh,C.coh,1);
+ s+=rect(0,0.7,B.coh,B.coh+B.load,C.load,1);
+ s+=rect(1,14,B.coh,B.coh+B.votes,C.votes,k>=1);
+ for(let i=0;i<TEETH;i++){const x0=1.4+i*1.25;s+=rect(x0,x0+0.8,B.coh+B.votes,B.coh+B.votes+B.run,C.run,k>=2&&i<teeth);}
+ if(k>=2)s+=`<text x="${X(6.3)}" y="${Y(B.coh+B.votes+B.run)-6}" text-anchor="middle" opacity="${teeth>=TEETH?1:0}">… всего 160 прогонов</text>`;
+ s+=rect(12.2,13.1,B.coh+B.votes,peak,C.fin,k>=3)+rect(13.1,14,B.coh+B.votes,B.coh+B.votes+B.ch,C.fin,k>=3);
+ if(k>=3)s+=`<line x1="${L}" x2="${L+W}" y1="${Y(peak)}" y2="${Y(peak)}" stroke="var(--brand)" stroke-dasharray="5 4" stroke-width="1.3"/>`+
+  `<text class="pk" x="${X(12.0)}" y="${Y(peak)-6}" text-anchor="end">пик ${peak} Б</text>`;
+ return s+'</svg>';
+}
+function led(){
+ return LED.map(r=>`<tr class="${r.from>k?'off':''}"><td><span class="sw" style="background:${C[r.k]}"></span>${r.t}</td><td class="m">${r.m}</td><td class="v">${r.v} Б</td><td class="m">${r.life}</td></tr>`).join('')+
+  `<tr class="tot${k<3?' off':''}"><td>пик: ${B.coh} + ${B.votes} + ${B.fin}</td><td></td><td class="v">${peak} Б</td><td class="m">× 2N·p = ${(peak*cells/1e9).toFixed(1).replace('.',',')} ГБ</td></tr>`;
+}
+function draw(){
+ $('fig').innerHTML=fig();$('led').innerHTML=led();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1;k=i;teeth=i>=2?TEETH:0;
+ if(fwd&&S[i].ms){teeth=0;window.stepperBusy=true;draw();
+  const t=timer=setInterval(()=>{teeth++;draw();if(teeth>=TEETH){clearInterval(t);window.stepperBusy=false}},S[i].ms);return;}
+ draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){teeth=k>=2?TEETH:0;draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;teeth=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>
