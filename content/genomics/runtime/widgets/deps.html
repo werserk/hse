@@ -1,0 +1,33 @@
+<!-- Fig. 2.1 (comparison): units of work when targets are independent (each haplotype is processed against the panel)
+     and when they learn from each other, as RFMix EM does: one forest per person, trained on the 2N - 2 haplotypes
+     of the other people (own two cells empty). N = 3 and N = 6. -->
+<style>
+.w{font-family:var(--font-sans)}
+table{border-collapse:collapse}
+th{font-size:13px;font-weight:600;text-align:left;padding:0 30px 8px 0;color:var(--foreground);vertical-align:bottom}
+th small{display:block;font-weight:400;font-size:12px;color:var(--muted-foreground);max-width:270px;line-height:1.4}
+td{padding:6px 30px 6px 0;vertical-align:top}
+td.l{font-size:12px;color:var(--muted-foreground);white-space:nowrap;padding-right:18px;padding-top:8px}
+tr.v td{border-top:1px solid var(--border);padding-top:8px;font-size:13px;color:var(--foreground)}
+.c{display:grid;gap:2px}
+.c span{width:10px;height:10px;border-radius:2px;background:color-mix(in srgb,var(--foreground) 55%,transparent)}
+.c span.o{background:none;outline:1px dashed var(--border);outline-offset:-1px}
+.cnt{font:600 12px var(--font-mono);color:var(--foreground);margin-top:6px}
+.cnt small{font:400 12px var(--font-sans);color:var(--muted-foreground)}
+</style>
+<div class="w"><table id="t"></table></div>
+<script>
+// columns: the 2N cohort haplotypes. independent: one row (the panel), every cell is work.
+// dependent: N rows, one forest per person; a person's own two haplotypes (columns 2i, 2i+1) are not used.
+const Ns=[3,6];
+const ind=n=>2*n, dep=n=>n*(2*n-2);
+const grid=(rows,cols,empty)=>{let c='';for(let r=0;r<rows;r++)for(let j=0;j<cols;j++)c+=empty(r,j)?'<span class="o"></span>':'<span></span>';
+ return `<div class="c" style="grid-template-columns:repeat(${cols},10px)">${c}</div>`};
+let r=`<tr><th></th><th>Цели смотрят только на панель<small>каждый гаплотип когорты — одна единица работы</small></th>`+
+ `<th>Цели учатся друг у друга<small>строка — лес для одного человека, клетка — гаплотип, на котором он учится; свои два гаплотипа (пустые клетки) лес не видит</small></th></tr>`;
+for(const n of Ns)r+=`<tr><td class="l">N = ${n}<br>${2*n} гаплотипов</td>`+
+ `<td>${grid(1,2*n,()=>false)}<div class="cnt">${ind(n)} <small>= 2N</small></div></td>`+
+ `<td>${grid(n,2*n,(i,j)=>(j>>1)==i)}<div class="cnt">${dep(n)} <small>= N(2N − 2)</small></div></td></tr>`;
+r+=`<tr class="v"><td class="l">N × 2</td><td>работа ×${ind(6)/ind(3)}</td><td>работа ×${dep(6)/dep(3)}, при большом N → ×4</td></tr>`;
+document.getElementById('t').innerHTML=r;
+</script>

@@ -47,7 +47,7 @@
 const H={A1:'0010001000',A2:'0100000010',B1:'1111101111',B2:'1011111101'},P=10;
 // each cohort haplotype is copied from panel pieces; its true ancestry is the population of the copied reference
 const run=(...seg)=>seg.flatMap(([r,len])=>Array(len).fill(r));
-const paths=[run(['A1',2],['B1',5],['A2',3]), run(['B2',10]),
+const paths=[run(['A1',3],['B1',4],['A2',3]), run(['B2',10]),
              run(['A2',6],['B2',4]),          run(['B1',3],['A1',7]),
              run(['A1',10]),                  run(['B2',4],['A2',3],['B1',3])];
 const coh=paths.map(s=>s.map((r,j)=>H[r][j]).join(''));

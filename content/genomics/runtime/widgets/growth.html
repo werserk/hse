@@ -1,6 +1,7 @@
-<!-- Fig. 1.2: runtime and peak memory vs cohort size, Schubert 2020 Fig. 2–3 (points digitized, N >= 500). -->
+<!-- Fig. 2.2: runtime vs cohort size, Schubert 2020 Fig. 2 (points digitized, N >= 500); linear axes. -->
 <style>
-.w{font-family:var(--font-sans);display:grid;grid-template-columns:auto auto;column-gap:22px;row-gap:14px;align-items:start}
+.w{font-family:var(--font-sans);display:grid;grid-template-columns:auto 1fr;column-gap:24px;align-items:start}
+.ch{display:flex;flex-direction:column;gap:12px}
 svg{display:block;overflow:visible}
 svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
 svg .t{font-size:14px;font-weight:600;fill:var(--foreground)}
@@ -11,7 +12,7 @@ svg .grid{stroke:var(--border);stroke-width:1}
 .side p{margin:0 0 10px}
 .side p:last-child{margin:0}
 </style>
-<div class="w"><div id="a"></div><div id="b"></div><div id="c"></div><div class="side" id="side"></div></div>
+<div class="w"><div class="ch"><div id="a"></div><div id="b"></div></div><div class="side" id="side"></div></div>
 <script>
 // Schubert, Andaleon & Wheeler 2020, PeerJ 8:e10090, Fig. 2 (hours) and Fig. 3 (GB); one run per size, one core
 const N=[500,1000,1500,2000];
@@ -43,10 +44,10 @@ function chart({title,key,ymax,yt,only,band,unit,labels}){
 }
 document.getElementById('a').innerHTML=chart({title:'а. Время',key:'t',ymax:150,yt:[0,50,100,150],unit:'ч',band:20,only:()=>true,labels:k=>k=='RFMix'});
 document.getElementById('b').innerHTML=chart({title:'б. Время, без RFMix',key:'t',ymax:20,yt:[0,5,10,15,20],unit:'ч',only:k=>k!='RFMix',labels:()=>true});
-document.getElementById('c').innerHTML=chart({title:'в. Пик памяти',key:'m',ymax:35,yt:[0,10,20,30],unit:'ГБ',only:()=>true,labels:()=>true});
 const r=(k,key)=>D[k][key][3]/D[k][key][1];  // growth when N doubles 1000 → 2000
 document.getElementById('side').innerHTML=
- `<p><b>а.</b> Линия RFMix загибается вверх: при удвоении N с 1000 до 2000 время выросло в ${dec(r('RFMix','t'),1)} раза.</p>`+
- `<p><b>б.</b> Остальные идут почти по прямым: Loter ×${dec(r('Loter','t'),2)}, ELAI ×${dec(r('ELAI','t'),2)}, LAMP-LD ×${dec(r('LAMP-LD','t'),2)} за то же удвоение. MOSAIC на N = 2000 падает с ${dec(D.MOSAIC.t[2],1)} до ${dec(D.MOSAIC.t[3],1)} ч.</p>`+
- `<p><b>в.</b> Память у всех пяти растёт по прямым. Круче всех у Loter: ${dec(D.Loter.m[3],1)} ГБ при N = 2000.</p>`;
+ `<p><b>а.</b> Линия RFMix загибается вверх. При удвоении N с 1000 до 2000 его время выросло в <b>${dec(r('RFMix','t'),1)}</b> раза.</p>`+
+ `<p><b>б.</b> Loter, ELAI и LAMP-LD идут почти по прямым. За то же удвоение: Loter ×${dec(r('Loter','t'),2)}, ELAI ×${dec(r('ELAI','t'),2)}, LAMP-LD ×${dec(r('LAMP-LD','t'),2)}.</p>`+
+ `<p>MOSAIC при N = 2000 работает быстрее, чем при 1500: ${dec(D.MOSAIC.t[3],1)} ч против ${dec(D.MOSAIC.t[2],1)} ч. Его обучение останавливается раньше, когда правдоподобие начинает падать.</p>`+
+ `<p>Серая полоса на «а» — область графика «б».</p>`;
 </script>

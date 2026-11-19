@@ -1,0 +1,54 @@
+<!-- Fig. 2.3: runtime vs cohort size on log-log axes, Schubert 2020 Fig. 2 (digitized, N >= 500),
+     with guide lines of slope 1 and 2; the side table gives the exponent alpha for the doubling 1000 -> 2000. -->
+<style>
+.w{font-family:var(--font-sans);display:grid;grid-template-columns:auto 1fr;column-gap:26px;align-items:start}
+svg{display:block;overflow:visible}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .grid{stroke:var(--border)}
+svg .lab{font-size:12px;font-weight:600}
+svg .gd{font-size:11px;fill:var(--foreground)}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground);font-weight:600}
+.side p{margin:0 0 10px}
+.side p:last-child{margin:0}
+.side table{border-collapse:collapse;margin:2px 0 10px;font-size:13px}
+.side td{padding:2px 12px 2px 0}
+.side td.v{font-family:var(--font-mono);color:var(--foreground);text-align:right}
+</style>
+<div class="w"><div id="fig"></div><div class="side" id="side"></div></div>
+<script>
+// Schubert, Andaleon & Wheeler 2020, Fig. 2 (hours), one core, one run per size
+const N=[500,1000,1500,2000];
+const D={
+ RFMix:{c:1,t:[5.19,22.30,65.22,146.56]}, Loter:{c:2,t:[2.48,4.13,6.18,8.06]}, ELAI:{c:3,t:[3.96,7.17,10.74,14.17]},
+ 'LAMP-LD':{c:4,t:[0.26,0.63,0.83,1.02]}, MOSAIC:{c:5,t:[6.61,13.38,18.01,11.00]}};
+const L=46,T=12,W=330,H=280,RL=78,nx0=400,nx1=2500,ty0=0.15,ty1=500;
+const X=n=>L+Math.log(n/nx0)/Math.log(nx1/nx0)*W, Y=t=>T+H-Math.log(t/ty0)/Math.log(ty1/ty0)*H;
+const dec=(v,d)=>v.toFixed(d).replace('.',',');
+let s=`<svg width="${L+W+RL}" height="${T+H+34}">`;
+for(const n of N)s+=`<line class="grid" x1="${X(n)}" x2="${X(n)}" y1="${T}" y2="${T+H}"/><text x="${X(n)}" y="${T+H+15}" text-anchor="middle">${n}</text>`;
+for(const t of [0.3,1,3,10,30,100,300])s+=`<line class="grid" x1="${L}" x2="${L+W}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L-6}" y="${Y(t)+4}" text-anchor="end">${dec(t,t<1?1:0)}</text>`;
+s+=`<text x="${L-6}" y="${T-2}" text-anchor="end">ч</text><text x="${L+W}" y="${T+H+30}" text-anchor="end">N, людей (обе оси логарифмические)</text>`;
+// slope key in the empty upper-left corner: over one doubling of N, alpha = 1 multiplies T by 2, alpha = 2 by 4
+const k0=500,k1=1000,t0=25;
+for(const [a,txt] of [[1,'α = 1: ×2'],[2,'α = 2: ×4']]){
+ s+=`<line x1="${X(k0)}" y1="${Y(t0)}" x2="${X(k1)}" y2="${Y(t0*2**a)}" stroke="var(--foreground)" stroke-width="1.3" stroke-dasharray="5 4"/>`;
+ s+=`<text class="gd" x="${X(k1)+5}" y="${Y(t0*2**a)+4}">${txt}</text>`;}
+s+=`<text x="${X(k0)}" y="${Y(t0)+14}">за удвоение N</text>`;
+for(const [k,o] of Object.entries(D)){const col=`var(--chart-${o.c})`;
+ s+=`<polyline fill="none" stroke="${col}" stroke-width="2" points="${N.map((n,i)=>X(n)+','+Y(o.t[i])).join(' ')}"/>`;
+ s+=N.map((n,i)=>`<circle cx="${X(n)}" cy="${Y(o.t[i])}" r="3.5" fill="${col}"/>`).join('');}
+// direct labels at the right end, pushed apart to at least 13 px
+const lab=Object.keys(D).map(k=>({k,y:Y(D[k].t[3])+4})).sort((a,b)=>a.y-b.y);
+for(let i=1;i<lab.length;i++)if(lab[i].y-lab[i-1].y<13)lab[i].y=lab[i-1].y+13;
+for(const o of lab)s+=`<text class="lab" x="${X(2000)+8}" y="${o.y}" style="fill:var(--chart-${D[o.k].c})">${o.k}</text>`;
+document.getElementById('fig').innerHTML=s+'</svg>';
+// alpha for the doubling 1000 -> 2000: T(2000)/T(1000) = 2^alpha
+const al=k=>Math.log2(D[k].t[3]/D[k].t[1]);
+document.getElementById('side').innerHTML=
+ `<p>На этих осях <b>T = C·N<sup>α</sup></b> — прямая с наклоном α. Пунктир слева вверху — наклоны α = 1 и α = 2.</p>`+
+ `<p><b>α при удвоении N 1000 → 2000</b></p><table>`+
+ ['Loter','ELAI','LAMP-LD','RFMix'].map(k=>`<tr><td style="color:var(--chart-${D[k].c})">${k}</td><td class="v">${dec(al(k),2)}</td></tr>`).join('')+`</table>`+
+ `<p>У MOSAIC время при N = 2000 падает, α по этой паре не имеет смысла.</p>`+
+ `<p>Линия RFMix круче наклона α = 2 и с ростом N становится ещё круче.</p>`;
+</script>
