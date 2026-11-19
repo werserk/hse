@@ -1,0 +1,37 @@
+<style>
+.w{font-family:var(--font-sans);display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.r{display:flex;align-items:center;gap:10px;margin:4px 0}
+.l{width:150px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
+.bar{height:20px;border-radius:3px;background:var(--chart-1);min-width:2px}
+.bar.b{background:var(--chart-2)}.bar.w{background:var(--warning)}.bar.d{background:var(--destructive)}.bar.m{background:color-mix(in srgb,var(--chart-1) 30%,transparent)}
+.v{font:12px var(--font-mono);color:var(--foreground)}
+.ax{font-size:10px;color:var(--subtle-foreground);margin:2px 0 0 160px}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 12px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.txt{padding:8px 6px 8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}.txt.on{color:var(--foreground)}.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div><div class="t" id="title"></div><div id="fig"></div></div>
+<div class="side" id="side"></div>
+</div>
+<script>
+const n=6;
+const ET=k=>2/(k*(k-1)); // E[T_k] in coalescent units (2Ne generations)
+const ks=[];for(let k=n;k>=2;k--)ks.push(k);
+const tm=ks.reduce((a,k)=>a+ET(k),0), L=ks.reduce((a,k)=>a+k*ET(k),0);
+const an=Array.from({length:n-1},(_,i)=>1/(i+1)).reduce((a,b)=>a+b,0);
+document.getElementById('title').textContent='Выборка n = '+n+': интервалы, пока линий k';
+document.getElementById('fig').innerHTML=ks.map(k=>`<div class="r" style="margin:3px 0"><div class="l" style="width:60px">k = ${k}</div><div class="bar" style="width:${ET(k)*200}px"></div><div class="v">E[T<sub>${k}</sub>] = ${ET(k).toFixed(3)}</div></div>`).join('')
++`<div class="r" style="margin-top:8px"><div class="l" style="width:60px">Σ</div><div class="v">E[T<sub>MRCA</sub>] = ${tm.toFixed(3)} = 2(1−1/n)</div></div>`;
+document.getElementById('side').innerHTML=`Ожидаемая длительность каждого интервала в коалесцентных единицах (1 ед. = 2Nₑ поколений). Первый интервал (k = 2) один длиннее всех остальных вместе: <b>${ET(2).toFixed(2)}</b> из ${tm.toFixed(2)}.<br><br>Общая длина ветвей E[L] = Σ k·E[T<sub>k</sub>] = <b>${L.toFixed(3)}</b> = 2aₙ, где aₙ = ${an.toFixed(3)}.`;
+</script>
