@@ -1,28 +1,10 @@
-/* Konspekt page: contents on the left, a reading column with figures and widgets (lecture-blog layout). */
-* { box-sizing: border-box; }
-html { scroll-padding-top: 24px; }
-body.nt { margin: 0; background: var(--background); color: var(--foreground); font: 19px/1.65 var(--font-serif); }
-.nt a { color: var(--brand); text-decoration: none; }
-.nt a:hover { text-decoration: underline; }
-.nt-side { position: fixed; inset: 0 auto 0 0; width: 280px; overflow: auto; padding: 28px 20px 40px; border-right: 1px solid var(--border); font: 14px/1.4 var(--font-sans); }
-.nt-side a:hover { text-decoration: none; }
-.nt-back { color: var(--muted-foreground) !important; }
-.nt-title { font: 600 18px/1.3 var(--font-heading); margin: 18px 0 14px; }
-.nt-act { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
-.nt-act a { border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 10px; color: var(--foreground) !important; font-size: 13px; }
-.nt-act a.go { background: var(--brand); border-color: var(--brand); color: #fff !important; }
-.nt-toc { list-style: none; margin: 0; padding: 0; }
-.nt-toc a { display: block; padding: 5px 10px; border-left: 2px solid var(--border); color: var(--muted-foreground) !important; }
-.nt-toc .l3 a { padding-left: 24px; font-size: 13px; }
-.nt-toc a:hover { color: var(--foreground) !important; }
-.nt-toc a.on { border-left-color: var(--brand); color: var(--foreground) !important; background: var(--surface-recessed); }
-.nt-main { margin-left: 280px; max-width: 900px; padding: 56px 64px 120px; }
-.nt-kick { margin: 0 0 12px; font: 600 13px/1 var(--font-mono); letter-spacing: .08em; color: var(--brand); }
-.nt-head h1 { font: 600 44px/1.12 var(--font-heading); margin: 0 0 10px; }
-.nt-meta { margin: 0 0 8px; font: 14px/1.5 var(--font-sans); color: var(--subtle-foreground); }
+/* Konspekt: the reading column inside a case page (case.css supplies the card, switcher and contents). */
+.cs-main:has(.nt-body) { font: 19px/1.65 var(--font-serif); }
+.nt a:hover, .nt-body a:hover { text-decoration: underline; }
 .nt-lead { font-size: 1.15em; }
 .nt-pending { color: var(--muted-foreground); font-style: italic; }
 .nt-body h2 { font: 600 30px/1.25 var(--font-heading); margin: 64px 0 16px; }
+.nt-body h2:first-child { margin-top: 0; }
 .nt-body h3 { font: 600 22px/1.3 var(--font-heading); margin: 36px 0 10px; }
 .nt-body p, .nt-body ul, .nt-body ol { margin: 0 0 16px; }
 .nt-body img, .nt-body video { max-width: 100%; height: auto; }
@@ -41,12 +23,5 @@ body.nt { margin: 0; background: var(--background); color: var(--foreground); fo
 .nt-body th { color: var(--muted-foreground); font-weight: 500; }
 details.answer { display: flow-root; margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: .95em; }
 details.answer summary { cursor: pointer; font: 600 14px var(--font-sans); color: var(--muted-foreground); }
-@media (max-width: 900px) {
-  .nt-side { position: static; width: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: 16px; }
-  .nt-toc, .nt-title { display: none; } .nt-act { margin: 12px 0 0; }
-  .nt-main { margin-left: 0; padding: 28px 18px 80px; }
-  .nt-head h1 { font-size: 32px; }
-  .nt-body figure.right { float: none; width: auto; margin: 24px 0; }
-}
-@media print { .nt-side { display: none; } .nt-main { margin: 0; padding: 0; max-width: none; } }
+@media (max-width: 900px) { .nt-body figure.right { float: none; width: auto; margin: 24px 0; } }
 .nt-body .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; }

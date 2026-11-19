@@ -1,11 +1,12 @@
-# Agents: how to make a material for hse.werserk.dev
+# Agents: how to make a case for hse.werserk.dev
 
 This repo is public and every push to `main` deploys https://hse.werserk.dev. Build and kit reference: `README.md`.
 
-## What a material is
+## What a case is
 
-Every material is a **konspekt** (the text, its page) plus **resources**: a presentation, documents, downloads.
-Each resource page has the same header with a «Конспект» link back to the text.
+A catalogue card is a **case** («кейс»). The items inside it are its **materials**: a **konspekt** (the text, its page) plus
+slides, speaker mode, PDF, document, code, video. The case page shows a card and a switcher between the materials it has;
+full schema of `entry.json`: README § Cases and materials.
 
 ```
 content/<course>/<entry>/              published as
@@ -19,9 +20,10 @@ content/<course>/<entry>/              published as
   *.pdf        downloads; labels via "downloads": {"Label": "file.pdf"} in entry.json
 ```
 
-A document-only material (a PDF or PPTX) names it in `"file"`. It opens at `/doc/` under the same header.
+A document-only case (a PDF or PPTX) names it in `"file"`. It opens at `/doc/` under the same header.
 An external link is `"type": "link", "url": …`. `"status": "planned"` shows a dashed card and builds nothing.
 Until `notes.md` exists, the page shows `summary` and «Текстовый конспект готовится», and the build prints a warning.
+Optional fields add materials: `"video"` (file or YouTube/Rutube link), `"code"` (a `code/` folder or a link), `"links"`, `"status"` (`ready`/`draft`).
 
 ## Workflow
 
