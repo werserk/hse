@@ -5,173 +5,129 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Runtime, memory &amp; scalability — НИС АДНЖ</title>
 <style>
-.slide .src{position:absolute;left:72px;right:90px;bottom:18px;font-size:15px;color:var(--subtle-foreground);margin:0}
+.slide .cap{position:absolute;left:72px;right:90px;bottom:14px;font-size:17px;line-height:1.3;color:var(--subtle-foreground);margin:0}
+.slide .cap b{font-weight:600;color:var(--muted-foreground)}
 .slide .small{font-size:18px}
-.slide .formula{font-family:var(--font-serif);font-size:30px;margin:6px 0}
-.slide sub.m{font-size:.55em;color:var(--muted-foreground)}
-.slide table{border-collapse:collapse;font-size:24px}
-.slide td,.slide th{padding:6px 18px 6px 0;border-bottom:1px solid var(--border)}
+.slide .formula{font-family:var(--font-serif);font-size:30px;margin:2px 0 6px;white-space:nowrap}
+.slide .formula i{font-style:italic}
+.slide table{border-collapse:collapse;font-size:22px}
+.slide td,.slide th{padding:7px 22px 7px 0;border-bottom:1px solid var(--border);vertical-align:top}
 .slide th{font-weight:400;color:var(--muted-foreground);text-align:left}
 .slide .r{text-align:right;font-variant-numeric:tabular-nums}
-.slide .callout{border:2px solid var(--chart-1);border-radius:var(--radius);padding:12px 16px;margin-top:20px;font-size:20px}
-.slide svg.chart{width:100%;max-height:470px}
-.slide svg.chart text{font-size:17px;fill:var(--muted-foreground);font-family:var(--font-sans)}
-.slide svg.chart text[fill]{fill:attr(fill)}
-.slide svg .ax{stroke:var(--border);stroke-width:1.5}.slide svg .grid{stroke:var(--border);stroke-dasharray:2 4}
+.slide .callout{border:2px solid var(--brand);border-radius:var(--radius);padding:12px 18px;font-size:21px}
+.slide .terms{font-size:19px;line-height:1.4;color:var(--muted-foreground);margin-top:18px}
+.slide .terms b{color:var(--foreground);font-weight:600}
 </style>
 </head>
 <body>
 
+<!-- 1 -->
 <section class="slide title">
 <h1>Runtime, memory &amp; scalability</h1>
-<h3>Сколько стоит локальное происхождение: время, память, масштаб</h3>
-<div class="meta">Максим Кирилюк · НИС АДНЖ · 19.11.2026<br><span class="small">Данные: Schubert, Andaleon &amp; Wheeler (2020), <i>PeerJ</i> 8:e10090</span></div>
-<aside class="notes">Мой доклад — про цену локального происхождения: сколько времени, сколько памяти и что будет, когда людей станет больше.</aside>
-</section>
-<section class="slide">
-<h2>2000 человек, одно ядро: 8 часов или 6 суток?</h2>
-<iframe class="widget grow" data-src="widgets/scaling.html" data-zoom="1.3"></iframe>
-<aside class="notes">Пять программ, одни и те же данные, одно ядро. При двух тысячах человек Loter считает восемь часов, RFMix — шесть суток; по памяти наоборот: Loter — тридцать три гигабайта, RFMix — два. [Двигаю N вправо.] За пределами замера кривые расходятся: RFMix уходит в годы, Loter упирается в оперативную память. Почему одна кривая — прямая, а другая — парабола, об этом доклад.</aside>
-</section>
-<section class="slide">
-<h2>Размер задачи — четыре числа</h2>
-<div class="cols">
-<svg viewBox="0 0 420 330" class="chart">
-<text x="210" y="18" text-anchor="middle">референсная панель</text>
-<rect x="40" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="64" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="88" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="112" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="136" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="160" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="184" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="208" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="232" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="256" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="280" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="304" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="328" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="352" y="28" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="40" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="64" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="88" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="112" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="136" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="160" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="184" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="208" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="232" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="256" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="280" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="304" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="328" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="352" y="52" width="20" height="20" fill="var(--chart-2)" fill-opacity="0.55"/><rect x="40" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="64" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="88" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="112" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="136" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="160" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="184" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="208" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="232" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="256" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="280" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="304" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="328" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="352" y="76" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="40" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="64" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="88" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="112" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="136" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="160" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="184" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="208" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="232" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="256" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="280" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="304" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="328" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/><rect x="352" y="100" width="20" height="20" fill="var(--chart-1)" fill-opacity="0.55"/>
-<text x="30" y="80" text-anchor="end">R</text><text x="384" y="52" fill="var(--chart-2)">YRI</text><text x="384" y="100" fill="var(--chart-1)">CEU</text>
-<text x="210" y="148" text-anchor="middle">когорта: аллели 0/1</text>
-<rect x="40" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="64" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="88" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="112" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="136" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="160" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="184" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="208" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="232" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="256" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="280" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="304" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="328" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="352" y="158" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="40" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="64" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="88" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="112" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="136" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="160" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="184" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="208" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="232" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="256" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="280" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="304" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="328" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="352" y="182" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="40" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="64" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="88" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="112" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="136" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="160" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="184" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="208" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="232" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="256" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="280" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="304" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="328" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="352" y="206" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="40" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="64" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="88" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="112" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="136" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="160" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="184" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="208" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="232" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="256" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="280" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="304" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="328" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="352" y="230" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="40" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="64" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="88" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="112" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="136" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="160" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="184" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="208" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="232" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="256" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="280" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="304" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="328" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="352" y="254" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="40" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="64" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="88" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="112" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="136" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="160" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="184" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="208" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="232" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="256" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="280" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="304" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/><rect x="328" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.7"/><rect x="352" y="278" width="20" height="20" fill="var(--foreground)" fill-opacity="0.15"/>
-<text x="30" y="236" text-anchor="end">2N</text><text x="207" y="320" text-anchor="middle">M маркеров</text>
-</svg>
-<div>
-<table><tr><td><b>N</b></td><td>люди (2N гаплотипов)</td><td class="r">20…2000</td></tr>
-<tr><td><b>M</b></td><td>маркеры (SNP)</td><td class="r">50&nbsp;000*</td></tr>
-<tr><td><b>R</b></td><td>гаплотипы панели</td><td class="r">≈&nbsp;372</td></tr>
-<tr><td><b>K</b></td><td>популяции</td><td class="r">2</td></tr></table>
-<p style="margin-top:24px">Меняли только <b>N</b>.<br>Вход при N = 2000: 2·10⁸ аллелей = <b class="accent">25&nbsp;МБ</b> битами.</p>
-</div></div>
-<p class="src">* M для этого опыта в статье не назван: 50 000 (хр. 22) или 44 332 (хр. 1); берём 50 000 (±10%). R: 1000G CEU 99 + YRI 108 минус ≈10% основателей — оценка.</p>
-<aside class="notes">Задачу задают четыре числа. N — люди, у каждого два гаплотипа. M — маркеры, около пятидесяти тысяч. R — гаплотипы панели, около трёхсот семидесяти. K — две популяции. В опыте меняли только N. Весь вход на две тысячи человек — двадцать пять мегабайт битами.</aside>
-</section>
-<section class="slide">
-<h2>I. Время: один гаплотип — динамика за O(M·R)</h2>
-<iframe class="widget grow" data-src="widgets/mintrick.html" data-zoom="1.3"></iframe>
-<p class="src">Loter: src/graph/graph.cpp, EstimateSknn::s_cost_i. Li &amp; Stephens (2003), Genetics 165:2213.</p>
-<aside class="notes">Первая часть — время. Loter собирает гаплотип мозаикой из гаплотипов панели: на каждом маркере выбирает, с кого копировать, и платит штраф лямбда за переключение. В лоб каждая строка смотрит на все — R в квадрате на маркер. [Двигаю R до 372.] Но штраф одинаковый, и из всех прыжков выгоден только прыжок из минимума. Хватает одного минимума на столбец — в сто восемьдесят шесть раз меньше. У HMM-методов тот же трюк с суммой.</aside>
-</section>
-<section class="slide">
-<h2>Loter: 160 проходов, и во что они упираются</h2>
-<div class="cols">
-<div>
-<p class="formula">T ∝ 8<sub class="m">λ</sub> × 20<sub class="m">бутстрэп</sub> × 2N × M × R</p>
-<p>N = 2000: <b class="accent">1,2·10¹³</b> клеток.<br>Соседи по когорте не участвуют ⇒ <b>линейно по N</b>.</p>
-<p style="margin-top:18px">Таблица на гаплотип: R × M × 8 Б = <b style="color:var(--chart-1)">149 МБ</b> — ни в один кэш.</p>
-<p>Если упираемся в запись в DRAM:<br>95 ТБ / 10–20 ГБ/с ≈ <b style="color:var(--chart-3)">1,3–2,6 ч</b>; замер — <b>8,1 ч</b>. Тот же порядок.</p>
-</div>
-<svg viewBox="0 0 420 300" class="chart">
-<rect x="135.0" y="20" width="150" height="50" fill="var(--chart-3)" fill-opacity="0.15"/><text x="210" y="51" text-anchor="middle" style="fill:var(--foreground)"><tspan font-weight="700">L1</tspan>  32 КБ · 1 нс</text><rect x="100.0" y="82" width="220" height="50" fill="var(--chart-3)" fill-opacity="0.27"/><text x="210" y="113" text-anchor="middle" style="fill:var(--foreground)"><tspan font-weight="700">L2</tspan>  1 МБ · 4 нс</text><rect x="60.0" y="144" width="300" height="50" fill="var(--chart-3)" fill-opacity="0.39"/><text x="210" y="175" text-anchor="middle" style="fill:var(--foreground)"><tspan font-weight="700">L3</tspan>  30 МБ · 15 нс</text><rect x="10.0" y="206" width="400" height="50" fill="var(--chart-3)" fill-opacity="0.51"/><text x="210" y="237" text-anchor="middle" style="fill:var(--foreground)"><tspan font-weight="700">DRAM</tspan>  сотни ГБ · 100 нс</text>
-<text x="210" y="290" text-anchor="middle" fill="var(--chart-1)">↑ таблица DP 149 МБ живёт здесь</text>
-</svg></div>
-<p class="src">Типичные порядки для x86-сервера; машина в статье не указана. Оценка, не профиль. Ещё одно слагаемое того же порядка — перекраска на Python: цикл по R номерам панели (local_ancestry.py, clusters_to_list_pop).</p>
-<aside class="notes">Loter повторяет проход сто шестьдесят раз: восемь штрафов на двадцать случайных панелей. При двух тысячах человек это десять в тринадцатой клеток, и соседи по когорте не участвуют — время линейно. Таблица на один гаплотип — сто сорок девять мегабайт, ни в один кэш не влезает. Если проход упирается в запись в память, выходит полтора–два с половиной часа; замер — восемь. Порядок тот же, но профиля нет — это оценка.</aside>
-</section>
-<section class="slide">
-<h2>RFMix: откуда N²</h2>
-<div class="cols">
-<div>
-<p>В каждом окне — случайный лес, обученный на панели: это линейно.</p>
-<p style="margin-top:16px"><b>EM-доучивание</b> (<code>-e 2</code>): каждому человеку — свой лес на <i>остальной когорте</i>.</p>
-<p class="formula" style="margin-top:16px">N лесов × 2N примеров ≈ 2N²</p>
-<p>Людей ×2 ⇒ лесов ×2, каждый ×2 ⇒ <b style="color:var(--chart-1)">работа ×4</b>.</p>
-</div>
-<svg viewBox="0 0 420 280" class="chart">
-<text x="62" y="96" text-anchor="middle">3 чел.</text><rect x="20" y="108" width="27" height="27" fill="var(--muted-foreground)" fill-opacity="0.2"/><rect x="50" y="108" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="80" y="108" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="20" y="138" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="50" y="138" width="27" height="27" fill="var(--muted-foreground)" fill-opacity="0.2"/><rect x="80" y="138" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="20" y="168" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="50" y="168" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="80" y="168" width="27" height="27" fill="var(--muted-foreground)" fill-opacity="0.2"/>
-<text x="300" y="34" text-anchor="middle">6 чел.</text><rect x="210" y="46" width="27" height="27" fill="var(--muted-foreground)" fill-opacity="0.2"/><rect x="240" y="46" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="270" y="46" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="300" y="46" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="330" y="46" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="360" y="46" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="210" y="76" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="240" y="76" width="27" height="27" fill="var(--muted-foreground)" fill-opacity="0.2"/><rect x="270" y="76" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="300" y="76" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="330" y="76" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="360" y="76" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="210" y="106" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="240" y="106" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="270" y="106" width="27" height="27" fill="var(--muted-foreground)" fill-opacity="0.2"/><rect x="300" y="106" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="330" y="106" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="360" y="106" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="210" y="136" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="240" y="136" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="270" y="136" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="300" y="136" width="27" height="27" fill="var(--muted-foreground)" fill-opacity="0.2"/><rect x="330" y="136" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="360" y="136" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="210" y="166" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="240" y="166" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="270" y="166" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="300" y="166" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="330" y="166" width="27" height="27" fill="var(--muted-foreground)" fill-opacity="0.2"/><rect x="360" y="166" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="210" y="196" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="240" y="196" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="270" y="196" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="300" y="196" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="330" y="196" width="27" height="27" fill="var(--chart-1)" fill-opacity="0.8"/><rect x="360" y="196" width="27" height="27" fill="var(--muted-foreground)" fill-opacity="0.2"/>
-<text x="210" y="248" text-anchor="middle">строка — лес одного человека,</text><text x="210" y="270" text-anchor="middle">клетки — его обучающие примеры</text>
-</svg></div>
-<p class="src">По коду RFMix 1.5.4 (main.cpp, randomforest.cpp); запуск авторов без --use-reference-panels-in-EM. В статье механизма нет.</p>
-<aside class="notes">RFMix устроен иначе: в каждом окне — случайный лес, обученный на панели, это линейно. Но авторы включили EM-доучивание: каждому человеку строится свой лес на всех остальных гаплотипах когорты. Удвоили людей — лесов вдвое больше, и каждый учится на вдвое большей выборке. Работа растёт вчетверо — это и есть N квадрат.</aside>
-</section>
-<section class="slide">
-<h2>Замер: наклон в log–log</h2>
-<div class="cols">
-<svg viewBox="0 0 600 400" class="chart"><line x1="60" y1="340" x2="500" y2="340" class="ax"/><line x1="60" y1="16" x2="60" y2="340" class="ax"/><text x="89" y="362" text-anchor="middle">500</text><text x="281" y="362" text-anchor="middle">1000</text><text x="394" y="362" text-anchor="middle">1500</text><text x="474" y="362" text-anchor="middle">2000</text><text x="52" y="272" text-anchor="end">1</text><line x1="60" y1="267" x2="500" y2="267" class="grid"/><text x="52" y="167" text-anchor="end">10</text><line x1="60" y1="162" x2="500" y2="162" class="grid"/><text x="52" y="63" text-anchor="end">100</text><line x1="60" y1="58" x2="500" y2="58" class="grid"/><text x="500" y="386" text-anchor="end">N, людей</text><text x="52" y="14" text-anchor="end">ч</text><polyline points="89.2,188.8 139.8,172.2 182.5,158.2 219.5,146.1 252.2,135.4 281.4,125.8 307.8,117.2 331.9,109.2 354.1,102.0 374.7,95.2 393.8,89.0 411.7,83.1 428.5,77.6 444.4,72.4 459.4,67.5 473.6,62.8" fill="none" stroke="var(--muted-foreground)" stroke-dasharray="3 5" stroke-width="2"/><text x="480" y="79" fill="var(--muted-foreground)">α = 2</text><polyline points="89.2,192.1 281.4,125.8 393.8,77.1 473.6,40.3" fill="none" stroke="var(--chart-1)" stroke-width="4"/><circle cx="89.2" cy="192.1" r="5" fill="var(--chart-1)"/><circle cx="281.4" cy="125.8" r="5" fill="var(--chart-1)"/><circle cx="393.8" cy="77.1" r="5" fill="var(--chart-1)"/><circle cx="473.6" cy="40.3" r="5" fill="var(--chart-1)"/><text x="484" y="46" fill="var(--chart-1)">RFMix</text><polyline points="89.2,204.3 281.4,177.4 393.8,159.0 473.6,146.4" fill="none" stroke="var(--muted-foreground)" stroke-width="2"/><circle cx="89.2" cy="204.3" r="5" fill="var(--muted-foreground)"/><circle cx="281.4" cy="177.4" r="5" fill="var(--muted-foreground)"/><circle cx="393.8" cy="159.0" r="5" fill="var(--muted-foreground)"/><circle cx="473.6" cy="146.4" r="5" fill="var(--muted-foreground)"/><text x="484" y="152" fill="var(--muted-foreground)">ELAI</text><polyline points="89.2,225.6 281.4,202.4 393.8,184.1 473.6,172.1" fill="none" stroke="var(--chart-2)" stroke-width="4"/><circle cx="89.2" cy="225.6" r="5" fill="var(--chart-2)"/><circle cx="281.4" cy="202.4" r="5" fill="var(--chart-2)"/><circle cx="393.8" cy="184.1" r="5" fill="var(--chart-2)"/><circle cx="473.6" cy="172.1" r="5" fill="var(--chart-2)"/><text x="484" y="178" fill="var(--chart-2)">Loter</text><polyline points="89.2,328.1 281.4,287.9 393.8,275.3 473.6,266.0" fill="none" stroke="var(--muted-foreground)" stroke-width="2"/><circle cx="89.2" cy="328.1" r="5" fill="var(--muted-foreground)"/><circle cx="281.4" cy="287.9" r="5" fill="var(--muted-foreground)"/><circle cx="393.8" cy="275.3" r="5" fill="var(--muted-foreground)"/><circle cx="473.6" cy="266.0" r="5" fill="var(--muted-foreground)"/><text x="484" y="272" fill="var(--muted-foreground)">LAMP-LD</text></svg>
-<div>
-<p class="formula">α = log(T₂/T₁) / log(N₂/N₁)</p>
-<table><tr><th></th><th class="r">500→1000</th><th class="r">1000→2000</th></tr>
-<tr><td style="color:var(--chart-2)"><b>Loter</b></td><td class="r">0,74</td><td class="r"><b>0,96</b></td></tr>
-<tr><td>ELAI</td><td class="r">0,86</td><td class="r">0,98</td></tr>
-<tr><td style="color:var(--chart-1)"><b>RFMix</b></td><td class="r">2,10</td><td class="r" style="color:var(--chart-1)"><b>2,72</b></td></tr></table>
-<div class="callout">T = a + bN + cN², a,b,c ≥ 0 ⇒ T(2N) ≤ 4T(N) ⇒ α ≤ 2.<br>RFMix: ×6,57 ⇒ α = 2,72. Даже N²·log(2N) даёт ≈ 2,1.<br><b>Лишний рост не объяснён.</b></div>
-</div></div>
-<p class="src">Точки сняты с Fig. 2 (Schubert 2020), одна точка на размер; N &lt; 500 сливаются. Пунктир — α = 2.</p>
-<aside class="notes">Проверяем на замере. Наклон в логарифмических осях — показатель альфа. У Loter и ELAI он около единицы, как и ожидали. У RFMix от тысячи до двух тысяч — два и семь. Но многочлен второй степени с неотрицательными коэффициентами при удвоении растёт максимум вчетверо, то есть альфа не больше двух. Даже N квадрат на логарифм даёт около двух и одной десятой. Лишний рост в статье не объяснён.</aside>
-</section>
-<section class="slide">
-<h2>II. Память: пик, а не сумма</h2>
-<iframe class="widget grow" data-src="widgets/peak.html" data-zoom="1.35"></iframe>
-<aside class="notes">Вторая часть — память. Время складывается по шагам, память — нет: мерили максимум того, что живёт одновременно. [Нажимаю «сначала», потом «проход».] Один проход — и пик уже тридцать три гигабайта. Сто шестьдесят проходов умножают время, но не память. С N растут только массивы, живущие весь запуск.</aside>
-</section>
-<section class="slide">
-<h2>Сколько байт на один аллель</h2>
-<div class="cols" style="grid-template-columns:3fr 2fr">
-<svg viewBox="0 0 620 360" class="chart"><text x="100" y="32" text-anchor="end">1 бит</text><rect x="110.0" y="16" width="43.9" height="22" fill="var(--chart-3)" opacity="0.55"/><text x="161.9" y="33">0,125</text><text x="100" y="72" text-anchor="end">uint8</text><rect x="110.0" y="56" width="143.5" height="22" fill="var(--chart-3)" opacity="0.55"/><text x="261.5" y="73">1,0</text><text x="100" y="112" text-anchor="end">float64</text><rect x="110.0" y="96" width="243.2" height="22" fill="var(--chart-3)" opacity="0.55"/><text x="361.2" y="113">8,0</text><text x="100" y="152" text-anchor="end">ELAI</text><rect x="110.0" y="136" width="161.9" height="22" fill="var(--muted-foreground)" opacity="1"/><text x="279.9" y="153">≈1,5</text><text x="100" y="192" text-anchor="end">RFMix</text><rect x="110.0" y="176" width="260.7" height="22" fill="var(--chart-1)" opacity="1"/><text x="378.7" y="193">11,5</text><text x="100" y="232" text-anchor="end">MOSAIC</text><rect x="110.0" y="216" width="324.5" height="22" fill="var(--muted-foreground)" opacity="1"/><text x="442.5" y="233">44</text><text x="100" y="272" text-anchor="end">LAMP-LD</text><rect x="110.0" y="256" width="333.6" height="22" fill="var(--muted-foreground)" opacity="1"/><text x="451.6" y="273">53</text><text x="100" y="312" text-anchor="end">Loter</text><rect x="110.0" y="296" width="388.3" height="22" fill="var(--chart-2)" opacity="1"/><text x="506.3" y="313">166</text><text x="143" y="350" text-anchor="middle">0,1</text><text x="254" y="350" text-anchor="middle">1</text><text x="364" y="350" text-anchor="middle">10</text><text x="474" y="350" text-anchor="middle">100</text><line x1="110" y1="334" x2="560" y2="334" class="ax"/></svg>
-<div>
-<p class="formula">s = (ΔM<sub>peak</sub>/ΔN) / 2M</p>
-<p>Информации в аллеле — <b style="color:var(--chart-3)">1 бит</b>.</p>
-<p>Loter хранит <b style="color:var(--chart-2)">≈ 166 Б</b>:<br>вход 25 МБ → <b>33 ГБ</b>.</p>
-<p style="margin-top:16px">Память задаёт <i>представление</i> данных, а не их объём.</p>
-</div></div>
-<p class="src">Наклон по N = 500 и 2000 на Fig. 3; 2M = 10⁵ аллелей на человека. По коду Loter явные массивы 2N×M дают ≥ 49 Б; остальное не профилировано.</p>
-<aside class="notes">Удобная мера — байт на один аллель: наклон памяти, делённый на число аллелей человека. Информации в аллеле — один бит. ELAI тратит около полутора байт, RFMix — одиннадцать, Loter — сто шестьдесят шесть. Поэтому из двадцати пяти мегабайт входа выходит тридцать три гигабайта. Память задаёт представление данных, а не их объём.</aside>
-</section>
-<section class="slide">
-<h2>Хранить меньше: 149 МБ → 2,5 МБ</h2>
-<div class="cols">
-<div>
-<ol><li>стоимости нужен только <i>предыдущий</i> столбец</li>
-<li>путь из клетки ведёт либо в свою строку, либо в <b>минимум</b> — это <b style="color:var(--chart-3)">1 бит</b></li></ol>
-<p class="formula" style="margin-top:16px">R·M/8 + 4M ≈ 2,5 МБ (×59 меньше)</p>
-<p>Операций столько же, но таблица влезает в L3.</p>
-</div>
-<svg viewBox="0 0 360 300" class="chart">
-<rect x="50" y="20" width="110" height="230" fill="var(--chart-1)" opacity="0.8"/><text x="105" y="275" text-anchor="middle">сейчас 149 МБ</text>
-<rect x="210" y="246" width="110" height="4" fill="var(--chart-3)"/><text x="265" y="275" text-anchor="middle">1 бит: 2,5 МБ</text>
-<line x1="190" y1="196" x2="350" y2="196" stroke="var(--chart-3)" stroke-dasharray="5 4"/><text x="350" y="188" text-anchor="end" fill="var(--chart-3)">L3 ≈ 30 МБ</text>
-</svg></div>
-<p class="src">Идея к EstimateSknn::s_cost_i; в Loter не реализовано, не измерено.</p>
-<aside class="notes">А представление можно менять. Стоимость нужна только за предыдущий маркер, а путь из клетки ведёт либо в свою строку, либо в минимум — один бит. Таблица сжимается со ста сорока девяти мегабайт до двух с половиной и влезает в кэш. Это идея, не замер.</aside>
-</section>
-<section class="slide">
-<h2>III. Масштабирование: пределы ускорения</h2>
-<iframe class="widget grow" data-src="widgets/amdahl.html" data-zoom="1.22"></iframe>
-<aside class="notes">Третья часть — масштабирование. В статье всё считали на одном ядре. Закон Амдала: если параллельна доля f, больше чем в один делить на один минус f раз не ускоришься. [Двигаю p.] Второй потолок — шина памяти: если проход упирается в память, ядра делят одну шину, выигрыш порядка десяти–двадцати раз. У Loter перекраска написана на Python и не параллелится — тогда ускорение не больше двух.</aside>
-</section>
-<section class="slide">
-<h2>Делим когорту на p частей</h2>
-<iframe class="widget grow" data-src="widgets/chunks.html" data-zoom="1.55"></iframe>
-<aside class="notes">Сильнейший приём — делить когорту. У RFMix квадрат превращается в p маленьких квадратов: работа падает в p раз даже на одном ядре. [p = 4.] Две тысячи целиком — сто сорок шесть часов, четыре куска по пятьсот — двадцать один: в семь раз, больше четырёх, потому что альфа больше двух. Цена — EM учится на меньшей выборке, точность надо перепроверить. Линейный Loter делим не ради работы, а чтобы влезть в память.</aside>
-</section>
-<section class="slide">
-<h2>Три числа для любого метода</h2>
-<div class="cols">
-<ol>
-<li><b>α</b> — как растёт время: замер на 3+ размерах, наклон в log–log</li>
-<li><b>Байт на аллель</b> — сколько людей влезет: N<sub>max</sub> ≈ RAM / (2M·s)</li>
-<li><b>Единица деления</b> — можно ли резать когорту и что станет с точностью</li>
-</ol>
-<div>
-<table><tr><th></th><th class="r">α</th><th class="r">Б/аллель</th><th>точность</th></tr>
-<tr><td>LAMP-LD</td><td class="r">≈ 0,7</td><td class="r">53</td><td></td></tr>
-<tr><td>ELAI</td><td class="r">1,0</td><td class="r">≈ 1,5</td><td></td></tr>
-<tr><td style="color:var(--chart-2)"><b>Loter</b></td><td class="r">1,0</td><td class="r">166</td><td>ниже RFMix</td></tr>
-<tr><td>MOSAIC</td><td class="r">—</td><td class="r">44</td><td></td></tr>
-<tr><td style="color:var(--chart-1)"><b>RFMix</b></td><td class="r">2,7</td><td class="r">11,5</td><td>лучшая медиана</td></tr></table>
-<p class="small muted" style="margin-top:12px">α на 1000→2000. Не измерено в статье: несколько ядер, другие M и R, повторы, профиль.</p>
-</div></div>
-<aside class="notes">Итак, у любого метода стоит спросить три числа. Альфа — как растёт время. Байт на аллель — сколько людей влезет. И единица деления — можно ли резать когорту без потери точности. Лучшего по всем осям нет: RFMix точнее, но квадратичен; Loter линеен, но тяжёл по памяти. Спасибо, готов ответить на вопросы.</aside>
+<h3>Время и память программ LAI и их рост с размером когорты</h3>
+<div class="meta">Максим Кирилюк · НИС АДНЖ · 19.11.2026<br><span class="small">Данные: Schubert, Andaleon, Wheeler (2020), <i>PeerJ</i> 8:e10090</span></div>
+<aside class="notes">Доклад — о вычислительной стоимости программ LAI, то есть вывода локального происхождения: сколько времени и памяти они тратят и как это растёт с размером когорты. Данные — сравнение пяти программ из статьи Schubert, Andaleon и Wheeler (2020).<br>Порядок: замер, рост с N, разбор Loter и остальных программ, затем железо.</aside>
 </section>
 
+<!-- 2 -->
+<section class="slide">
+<h2>Что программа LAI читает и пишет</h2>
+<iframe class="widget grow" data-src="widgets/lai-io.html" data-zoom="0.86"></iframe>
+<p class="cap"><b>Рис. 1.1.</b> Программа LAI размечает когорту по одному гаплотипу; рамка — то, что в этот момент лежит в памяти.</p>
+<aside class="notes">Обозначения из первого доклада: панель — 2n гаплотипов известного происхождения, когорта — N человек, то есть 2N гаплотипов, p — число SNP. Аллель — вариант на SNP, 0 или 1.<br>Шаги рисунка:<br>1. Вход: панель, когорта из трёх человек, ответ пуст.<br>2. Программа читает панель; рамка — то, что сейчас в памяти.<br>3. Для гаплотипа 1a нужны только он сам и панель: размечаем его и записываем ответ.<br>4. Гаплотип 1b — так же, 1a больше не нужен.<br>5. Остальные по одному: каждый аллель прочитан один раз, каждая метка записана один раз.<br>Отсюда два ориентира. Время — порядка 2N·p + 2n·p + 2N·p операций, линейно по N. Память — панель и один гаплотип с ответом, по биту на значение, и от N она не зависит.</aside>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+<h2>Пять программ</h2>
+<table>
+<tr><th>Программа</th><th>Модель</th><th>Учится на</th></tr>
+<tr><td><b>Loter</b></td><td>путь копирования по гаплотипам панели, DP</td><td>панели</td></tr>
+<tr><td><b>RFMix</b></td><td>случайный лес в каждом окне, затем шаги EM</td><td>панели, затем на когорте</td></tr>
+<tr><td><b>ELAI</b></td><td>HMM: популяция × 10 кластеров; читает генотипы</td><td>панели и когорте</td></tr>
+<tr><td><b>LAMP-LD</b></td><td>HMM каждой популяции в окнах по 300 SNP</td><td>только панели</td></tr>
+<tr><td><b>MOSAIC</b></td><td>вероятностная модель копирования доноров</td><td>панели и когорте</td></tr>
+</table>
+<div class="terms"><b>Случайный лес</b> (random forest) — набор деревьев решений, которые голосуют за популяцию.<br><b>HMM</b> (hidden Markov model) — вдоль хромосомы меняется скрытое состояние (популяция), аллели зависят от состояния.<br><b>EM</b> (expectation–maximization) — подбор параметров по шагам: разметить данные моделью, переоценить параметры, повторить.</div>
+<aside class="notes">В замере пять программ. Три понятия для них — внизу слайда. Случайный лес — набор деревьев решений, которые голосуют за популяцию. HMM, скрытая марковская модель: вдоль хромосомы меняется ненаблюдаемое состояние, здесь популяция, а аллели зависят от него. EM — подбор параметров по шагам: разметить данные моделью, переоценить параметры, повторить.<br>По строкам. Loter — из первого доклада. RFMix в каждом окне хромосомы обучает случайный лес на панели, затем шаги EM переобучают его на размеченной когорте. ELAI — HMM с состояниями «популяция и один из 10 кластеров похожих гаплотипов», читает генотипы. LAMP-LD обучает HMM каждой популяции по панели, в окнах по 300 SNP. MOSAIC копирует гаплотипы панели — доноров — с популяциями над ними, параметры подбирает EM.<br>Последний столбец важен дальше: учится ли программа на самой когорте.</aside>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+<h2>Замер: время и память при N = 2000</h2>
+<iframe class="widget grow" data-src="widgets/cost.html" data-zoom="1.6"></iframe>
+<p class="cap"><b>Рис. 1.2.</b> Время и пик памяти пяти программ при N = 2000, обе оси логарифмические; пунктир — минимум задачи. По рис. 2 и 3 Schubert et al. (2020).</p>
+<aside class="notes">Замер такой. Когорта синтетическая: 80% происхождения от YRI (Западная Африка) и 20% от CEU (Европа), популяций проекта 1000 Genomes, смешение 7 поколений назад. Число SNP в статье для этого замера не названо, берём 50 000; от этого допущения зависят все дальнейшие расчёты. В панели около 372 гаплотипов, N от 20 до 2000. Каждая программа шла на одном ядре; мерили время и пик памяти — наибольший объём памяти, занятый одновременно.<br>На рисунке N = 2000, по горизонтали время, по вертикали память. Время — от 1 часа у LAMP-LD до 147 часов у RFMix, память — от 0,48 ГБ у ELAI до 33 ГБ у Loter.<br>Пунктир слева внизу — ориентиры с прошлого слайда при N = 2000: около 4·10<sup>8</sup> операций, то есть 0,4 с при 10<sup>9</sup> операций в секунду, и 2,3 МБ. То есть программы тратят на 4–6 порядков больше времени и на 2–4 порядка больше памяти. Этот разрыв в основном вносит алгоритм.</aside>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+<h2>Рост с N: <span style="font-family:var(--font-serif)"><i>f</i> ≈ <i>C</i> · <i>N</i><sup>α</sup></span></h2>
+<iframe class="widget grow" data-src="widgets/loglog.html" data-zoom="1.0"></iframe>
+<p class="cap"><b>Рис. 2.1.</b> Время (а) и пик памяти (б) от N, обе оси логарифмические; пунктир — наклоны α = 1 и α = 2. По рис. 2 и 3 Schubert et al. (2020).</p>
+<aside class="notes">Теперь — как затраты растут с N. Если f ≈ C · N<sup>α</sup>, то удвоение N умножает затраты на 2<sup>α</sup>, а на логарифмических осях это прямая с наклоном α. Пунктир — наклоны 1 и 2.<br>Слева время. У Loter и ELAI α ≈ 1, время растёт вместе с когортой. У LAMP-LD 0,7, но точки сняты грубо. У RFMix на удвоении 1000 → 2000 время выросло в 6,6 раза, α ≈ 2,7, а на удвоении 500 → 1000 было 2,1. Если это не шум, наклон сам растёт. MOSAIC при N = 2000 быстрее, чем при 1500; почему — на слайде о других программах.<br>Справа память. У четырёх программ α ≈ 1: каждый человек добавляет одну и ту же порцию. У Loter это 17 МБ на человека, хотя два его гаплотипа по биту на аллель — 12,5 КБ. Память ELAI почти постоянна, α ≈ 0,16.<br>Откуда это берётся, разберём сначала на Loter.</aside>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+<h2>Loter: время — произведение циклов</h2>
+<iframe class="widget grow" data-src="widgets/loops.html" data-zoom="1.04"></iframe>
+<p class="cap"><b>Рис. 3.1.</b> Циклы Loter от одной клетки таблицы до всего запуска; в карточке — открытые циклы и число клеток.</p>
+<aside class="notes">Время читается по циклам программы: каждый вложенный цикл умножает работу на число своих повторов.<br>Шаги рисунка:<br>1. Одна клетка Q(i, j): выбрать «остаться» или «переключиться из минимума прошлого столбца».<br>2. Столбец — цикл по 2n гаплотипам панели.<br>3. Таблица — цикл по p SNP.<br>4. Когорта — цикл по 2N гаплотипам.<br>5. 160 прогонов: 8 значений λ на 20 выборок панели.<br>Перемножаем: 160 · 2N · p · 2n клеток. От N зависит один множитель, поэтому α ≈ 1. При N = 2000 это 1,2·10<sup>13</sup> клеток за 8,1 часа, 2,4 нс на клетку, около 7 тактов процессора при частоте порядка 3 ГГц; такт — один шаг процессора.<br>По моей оценке, эти наносекунды примерно поровну делят два прохода: сама клетка DP на C++ и перевод путей в метки на Python. Второй проходит матрицу путей отдельно для каждого из 2n гаплотипов панели.</aside>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+<h2>Loter: память — 41 байт на клетку когорты</h2>
+<iframe class="widget grow" data-src="widgets/peakmem.html" data-zoom="1.2"></iframe>
+<p class="cap"><b>Рис. 3.2.</b> Память Loter во время запуска в байтах на клетку когорты; внизу — массивы, их типы и время жизни.</p>
+<aside class="notes">Теперь память Loter. Пик — сумма массивов, живущих одновременно. Растущие с N массивы Loter имеют форму 2N × p, поэтому считаем байты на клетку когорты — один аллель одного гаплотипа. На рисунке по горизонтали время запуска, внизу таблица массивов.<br>Шаги рисунка:<br>1. Чтение когорты: байт на аллель плюс временная матрица float64 — 8-байтовых чисел; её создаёт numpy, библиотека массивов Python.<br>2. Голоса: два счётчика float64, 16 байт, живут весь запуск.<br>3. 160 прогонов: временные массивы около 11 байт.<br>4. Итог: numpy копирует голоса и пишет номер победителя, ещё 24 байта. Пик — 1 + 16 + 24 = 41 байт.<br>Это 8-байтовые числа там, где хватило бы байта: голосов не больше 160. А с N память растёт, потому что голоса хранятся для всей когорты; при разметке по одному гаплотипу она от N не зависела бы.<br>41 байт на 2·10<sup>8</sup> клеток — 8,2 ГБ, а в замере 33, в 4,1 раза больше. Ровно в 4 раза завышает пик ошибка GNU time 1.7: килобайты считаются страницами по 4 КБ. Это гипотеза, её проверяет один запуск.</aside>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+<h2>Остальные программы: где в циклах стоит N</h2>
+<iframe class="widget grow" data-src="widgets/cards.html" data-zoom="1.05"></iframe>
+<p class="cap"><b>Рис. 4.1.</b> Циклы четырёх программ при настройках замера; выделены циклы, число повторов которых зависит от N.</p>
+<aside class="notes">Остальные программы — тем же способом. Время растёт как N в степени числа вложенных циклов по N; память — если в пике живёт массив размера N. На рисунке циклы четырёх программ, выделены циклы по N, внизу карточки — что растёт с N в памяти.<br>RFMix, слева сверху. На шагах EM каждому человеку строится свой лес на остальных гаплотипах когорты. W в карточке — число окон. С N растёт и число лесов, и выборка каждого, а узел дерева проходит массивы во всю выборку. Память растёт из-за массивов на каждый гаплотип когорты, по оценке — вариантов фазировки окон и счётчиков голосов. Поэтому запуск стоит от N² до N³, и 2,7 лежит в этом диапазоне.<br>ELAI, справа. Человек входит в цикл один раз, α ≈ 1. Большие таблицы HMM живут только на время одного человека, поэтому память почти постоянна.<br>LAMP-LD, слева снизу. Модели обучены по панели один раз, человек только оценивается готовыми моделями; правдоподобие — вероятность его аллелей при данной модели. Работы на человека мало, у Loter на гаплотип приходится 160 прогонов по панели, — отсюда самый быстрый замер.<br>MOSAIC, справа снизу. G в карточке — точки сетки вдоль хромосомы, EM идёт раундами. По умолчанию MOSAIC берёт не больше 1000 человек. Поэтому при N = 1500 и 2000 время от N уже не зависит, а 18 и 11 часов, вероятно, — разное число шагов EM. Память же растёт: файл когорты читается целиком.</aside>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+<h2>Где лежат данные</h2>
+<iframe class="widget grow" data-src="widgets/hier.html" data-zoom="1.6"></iframe>
+<p class="cap"><b>Рис. 5.1.</b> Уровни памяти одного ядра и массивы Loter при N = 2000 по размеру; справа — как Loter к ним обращается.</p>
+<aside class="notes">Последняя часть — железо. Время клетки зависит от того, где лежат её данные.<br>На рисунке уровни памяти одного ядра: кэши L1, L2, L3 — маленькие и быстрые, RAM — большая и медленная: порядка 1 нс из L1 и 90 нс из RAM. При последовательном чтении предел задаёт пропускная способность, 10–20 ГБ/с на ядро. Под шкалой — массивы Loter при N = 2000.<br>Loter заводит полную таблицу DP на каждый гаплотип, 149 МБ, — больше любого кэша, — и каждая клетка пишет в неё 8 байт. За запуск это 95 ТБ записи в RAM, и ещё 48 ТБ даёт чтение матрицы путей при переводе в метки. При 10–20 ГБ/с это 2–4 часа из 8,1. То есть заметная часть времени — перенос байтов.</aside>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+<h2>Ядра: закон Амдала</h2>
+<div class="formula"><i>S</i>(<i>c</i>) = 1 / ((1 − <i>f</i>) + <i>f</i> / <i>c</i>) ≤ 1 / (1 − <i>f</i>)</div>
+<iframe class="widget grow" data-src="widgets/amdahl.html" data-zoom="1.7"></iframe>
+<p class="cap"><b>Рис. 5.2.</b> Ускорение на c ядрах при трёх долях делимой работы f; пунктир — ускорение в c раз.</p>
+<aside class="notes">Дальше ядра. В замере все программы шли на одном ядре. Гаплотипы Loter независимы, и DP можно раздать ядрам, но перевод в метки на Python идёт в одном потоке.<br>Закон Амдала, формула сверху: если поделить можно долю времени f, ускорение на c ядрах не больше 1 / (1 − f).<br>На рисунке три кривые: на 32 ядрах f = 0,99 даёт 24,4 раза, f = 0,9 — 7,8, f = 0,5 — 1,9. По оценке со слайда о циклах, у Loter f около 0,5, и тогда больше чем вдвое он не ускорится.<br>Второй предел — память узла: все ядра пишут в одну RAM. DP, упирающаяся в запись, ускорится не больше чем во столько раз, во сколько пропускная способность узла больше, чем у одного ядра, — порядка 10–20.</aside>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+<h2>Деление когорты на 4 части</h2>
+<table>
+<tr><th></th><th class="r">Целиком, N = 2000</th><th class="r">4 части по 500 подряд</th><th>Ответ</th></tr>
+<tr><td>Loter, время</td><td class="r">8,1 ч</td><td class="r">4 × 2,48 = 9,9 ч</td><td rowspan="2">почти не меняется</td></tr>
+<tr><td>Loter, пик памяти</td><td class="r">33 ГБ</td><td class="r">8,6 ГБ</td></tr>
+<tr><td>RFMix, время</td><td class="r">147 ч</td><td class="r">4 × 5,19 = 21 ч</td><td rowspan="2">меняется: EM учится<br>на 998 гаплотипах вместо 3998</td></tr>
+<tr><td>RFMix, пик памяти</td><td class="r">2,3 ГБ</td><td class="r">0,56 ГБ</td></tr>
+</table>
+<p class="callout step" style="margin-top:30px">Затраты программы LAI оцениваются до запуска по её циклам: сколько циклов по N вложены друг в друга; какие массивы размера N живут весь запуск и какого они типа; какую часть работы можно поделить между ядрами и частями когорты, не меняя ответа.</p>
+<aside class="notes">Последний приём — делить когорту на части. В таблице 2000 человек целиком и 4 части по 500, посчитанные подряд, одна за другой; числа частей — из замера при N = 500.<br>Loter: время 8,1 и 9,9 часа, память 33 и 8,6 ГБ. Ответ гаплотипа зависит только от него и панели, поэтому почти не меняется. Пик падает вчетверо, время растёт на 1,9 часа: работу, не зависящую от N, оплачивает каждая часть.<br>RFMix: время падает в 7 раз, до 21 часа. Но ответ меняется: на шагах EM лес учится на 998 гаплотипах вместо 3998.<br>[Шаг] Итог. Затраты программы LAI оцениваются до запуска по её циклам, тремя вопросами: сколько циклов по N вложены друг в друга; какие массивы размера N живут весь запуск и какого они типа; какую часть работы можно поделить между ядрами и частями когорты, не меняя ответа.</aside>
+</section>
+
+<script>
+// Slides: denser step lists in the konspekt steppers (.txt rows), so the widget fits at a readable zoom.
+(()=>{const css='.txt{padding-top:3px!important;padding-bottom:3px!important;line-height:1.35!important}.top{margin-bottom:8px!important}';
+const add=f=>{const d=f.contentDocument;if(!d||!d.head||d.getElementById('deck-compact'))return;const s=d.createElement('style');s.id='deck-compact';s.textContent=css;d.head.appendChild(s);};
+for(const f of document.querySelectorAll('iframe.widget')){f.addEventListener('load',()=>add(f));add(f);}})();
+</script>
 </body>
 </html>
