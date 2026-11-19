@@ -510,8 +510,14 @@ def section(c):
     """A subject on the home page: an underlined heading and the cards of its cases (the heading is not a link:
     subjects have no page of their own; /<course>/ redirects here, to #<course>)."""
     cards = "".join(card(e) for e in c["entries"]) or '<p class="empty">Пока пусто.</p>'
-    return (f'<section class="subject" id="{esc(c["slug"])}"><h2>{esc(c["title"])}{info(c.get("full", ""))}</h2>'
+    return (f'<section class="subject" id="{esc(c["slug"])}"><h2>{esc(c["title"])}{info(c.get("full", "")) if c["title"].startswith("НИС") else ""}</h2>'
             f'<div class="cards">{cards}</div></section>')
+
+
+def switch(base):
+    """Stable / Beta toggle in the catalogue header (base "" = stable, "/beta" = beta)."""
+    on = lambda b: ' class="on" aria-current="page"' if b == base else ""
+    return f'<nav class="switch" aria-label="Версия каталога"><a href="/"{on("")}>Stable</a><a href="/beta/"{on("/beta")}>Beta</a></nav>'
 
 
 def catalogue(courses):
@@ -639,7 +645,7 @@ def build_site(out, style=None, pdf=False):
         part = [dict(c, entries=[e for e in c["entries"] if e["base"] == base]) for c in courses]
         part = [c for c in part if c["entries"]]
         title = cfg["title"] + (" · beta" if base else "")
-        head = f'<header class="hero"><h1><a href="{base}/">{esc(title)}</a></h1></header>'
+        head = f'<header class="hero"><h1><a href="{base}/">{esc(title)}</a></h1>{switch(base)}</header>'
         for c in part:
             (root / c["slug"]).mkdir(parents=True, exist_ok=True)
             (root / c["slug"] / "index.html").write_text(redirect(cfg, c, style, base), encoding="utf-8")

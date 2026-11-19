@@ -14,6 +14,8 @@ content/<course>/<case>/entry.json  a case; schema below
 build.py                           site + deck builder (stdlib; Chrome for PDF)
 kit/                               theme.css (tokens), head.css (case header), deck.css/js (slides), frame.js (header over a site/document),
                                    notes.css/js (konspekt), starter/ (template for `build.py new`)
+tools/covers/cover.py              braille cover for a case: `uv run --with numpy --with pillow python tools/covers/cover.py content/<course>/<case>`
+                                   (or `--all-missing`; `--topic`, `--scene strands|tree|flow|walks|lattice`); writes cover.webp
 AGENTS.md                          how to make a material (workflow for agents)
 assets/                            catalogue CSS/JS
 ```

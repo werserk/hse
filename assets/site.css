@@ -45,3 +45,10 @@ a.card:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .foot { padding-bottom: 32px; font-size: 13px; color: var(--subtle-foreground); }
 
 @media (max-width: 560px) { .hero h1 { font-size: 28px; } .hero, main, .foot { padding: 0 18px; } .hero { padding-top: 32px; } }
+/* Stable / Beta switch in the catalogue header */
+.hero { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.switch { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; font: 500 13px/1 var(--font-sans); }
+.switch a { padding: 7px 14px; color: var(--muted-foreground, var(--foreground)); }
+.switch a.on { background: var(--foreground); color: var(--background); }
+.switch a:not(.on):hover { color: var(--brand); }
+@media (max-width: 560px) { .info::after { position: fixed; left: 18px; right: 18px; transform: none; width: auto; max-width: none; margin-top: 10px; } }
