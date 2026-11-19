@@ -29,6 +29,7 @@
 svg text{font-family:var(--font-sans)}
 .mono{font-family:var(--font-mono)}
 .ok{color:var(--success)}.bad{color:var(--destructive)}
+@media(max-width:560px){.g{grid-template-columns:1fr}.side{border-left:0;border-top:2px solid var(--border);padding:8px 0 0;margin-top:10px}}
 </style>
 
 <div class="w">
@@ -86,7 +87,7 @@ for(let i=0;i<4;i++){
  mx+=`<tr><th>из ${i}</th>`+P[i].map(v=>`<td class="${i==1?'r1':'c'}" data-s="${i==1?2:3}">${v?frac(v):'0'}</td>`).join('')+`<td class="sm" data-s="${i==1?2:3}">= ${frac(P[i].reduce((a,b)=>a+b,0))}</td></tr>`;
 }
 mx+='</table>';
-$('fig').innerHTML=`<div class="ttl">Очередь: число людей, 0–3</div><svg width="440" height="130" viewBox="0 0 440 130">${s}${nodes}</svg><div class="ttl" style="margin-top:6px">Матрица переходов P</div>${mx}`;
+$('fig').innerHTML=`<div class="ttl">Очередь: число людей, 0–3</div><svg width="440" height="130" viewBox="0 0 440 130" style="max-width:100%;height:auto">${s}${nodes}</svg><div class="ttl" style="margin-top:6px">Матрица переходов P</div>${mx}`;
 const S=[
  {t:'Состояния',stage:0,ms:900,d:'Состояние — число людей в очереди, 0–3. Этого достаточно: что будет дальше, зависит только от него.'},
  {t:'Куда можно выйти из состояния 1',stage:1,ms:900,d:'За такт с вероятностью 1/3 приходит человек (1→2), иначе уходит обслуженный (1→0, вероятность 2/3). Других исходов нет: две стрелки, вероятности в сумме 1.'},

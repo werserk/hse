@@ -29,6 +29,7 @@
 svg text{font-family:var(--font-sans)}
 .mono{font-family:var(--font-mono)}
 .ok{color:var(--success)}.bad{color:var(--destructive)}
+@media(max-width:560px){.g{grid-template-columns:1fr}.side{border-left:0;border-top:2px solid var(--border);padding:8px 0 0;margin-top:10px}}
 </style>
 
 <div class="w"><div class="g"><div id="fig"></div><div class="side" id="side"></div></div></div>
@@ -76,3 +77,4 @@ for(const i in N){const [x,y]=N[i];const c=i<3?'var(--foreground)':(i<5?'var(--c
 $('fig').innerHTML=`<div class="ttl">Граф цепи на пяти состояниях</div><svg width="560" height="262" viewBox="0 0 560 262">${s}</svg>`;
 $('side').innerHTML=`<b>Класс</b> — состояния, достижимые друг из друга. <b>Замкнутый</b>: стрелок наружу нет, цепь остаётся в нём навсегда. <b>Проходной</b>: из него есть выход наружу, цепь рано или поздно уходит.<br><br>{1, 2} проходной: из 1 есть стрелки в 3 и 5. {3, 4} замкнутый, у него есть петли, значит период 1. {5} замкнутый из одного состояния.<br><br><b>Стационарное</b> — на каждом замкнутом классе своё: на {3, 4} это π = (3/5, 2/5), на {5} это (1). Общее — их смесь.`;
 </script>
+<script>/*fit-width*/(function(){var d=document.documentElement;function f(){d.style.zoom="";var w=d.clientWidth,s=d.scrollWidth;if(s>w+1)d.style.zoom=Math.max(.5,w/s)}addEventListener("load",f);addEventListener("resize",f);addEventListener("click",function(){setTimeout(f,60)});setTimeout(f,200)})()</script>
