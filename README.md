@@ -27,13 +27,17 @@ are its **materials** (formats): konspekt, slides, speaker mode, PDF, document, 
 subject (`course.json`) with a card per case: a preview and the title, with the number above it. A subject has no page of
 its own: `/<course>/` redirects to its section on the home page.
 
-A case lives at `/<course>/<case>/`: a branded card (cover, number, subject, title, date, status, files) and a switcher
-between the materials the case has. Only the existing ones are shown. Each material has its own URL, and slides and documents
-keep the full-window header with the same switcher:
+A case lives at `/<course>/<case>/` and its page is the **overview**: the branded card (cover, number, subject, title, date,
+status, summary), a tile per material with what it holds («22 слайда», «19 виджетов · 5 разделов»), the konspekt's contents,
+files and links. An optional `overview.md` (Markdown, as the konspekt) is shown above the tiles. Only the materials that
+exist get a tile. Each material has its own URL; its page has a compact header and the switcher
+(Обзор · Конспект · Слайды …); slides and documents keep the full-window header with the same switcher.
+Old links `/<course>/<case>/#anchor` (konspekt sections) forward to `notes/#anchor`.
 
 | Material (tab) | Appears when | URL under `/<course>/<case>/` |
 |---|---|---|
-| Конспект (or «Обзор» without `notes.md`) | always | `/` |
+| Обзор | always | `/` |
+| Конспект | `notes.md` (or `"notes"`) | `notes/` |
 | Слайды | `deck.html` or a prebuilt `site/` | `slides/` |
 | Режим спикера | the deck has `<aside class="notes">` | `slides/?speaker` |
 | PDF | CI prints the deck, or a committed `<case>.pdf`; or `"file"` is a PDF | `slides/<case>.pdf`, `doc/` |
@@ -78,7 +82,7 @@ keep the full-window header with the same switcher:
   run with `node`). The page inlines the KaTeX CSS; the fonts are served once per site from `/assets/katex/fonts/`
   (an absolute URL, so a downloaded copy uses them too; without network it falls back to local fonts).
 
-The page is one self-contained file (also the offline copy). See `kit/starter/notes.md`.
+The page `notes/index.html` is one self-contained file (also the offline copy, downloaded as `<case>.html`). See `kit/starter/notes.md`.
 
 ## Decks
 

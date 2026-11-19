@@ -5,14 +5,16 @@ This repo is public and every push to `main` deploys https://hse.werserk.dev. Bu
 ## What a case is
 
 A catalogue card is a **case** («кейс»). The items inside it are its **materials**: a **konspekt** (the text, its page) plus
-slides, speaker mode, PDF, document, code, video. The case page shows a card and a switcher between the materials it has;
+slides, speaker mode, PDF, document, code, video. The case's own page is the **overview**: the card and a tile per material
+it has. Each material opens on its own page under a header with the same switcher (Обзор · Конспект · Слайды …);
 full schema of `entry.json`: README § Cases and materials.
 
 ```
 content/<course>/<entry>/              published as
   entry.json   title, date, event,     
                summary (1 sentence)    
-  notes.md     konspekt          →     /<course>/<entry>/          the material's page; written FIRST
+  overview.md  optional text     →     /<course>/<entry>/          above the tiles on the overview (a few paragraphs)
+  notes.md     konspekt          →     /<course>/<entry>/notes/    the material's page; written FIRST
   deck.html    presentation      →     /<course>/<entry>/slides/   our deck engine, made AFTER the konspekt
   site/        or a prebuilt one →     /<course>/<entry>/slides/   in a frame under the header (one of the two)
   widgets/     one-file widgets used by notes.md and deck.html
@@ -22,7 +24,8 @@ content/<course>/<entry>/              published as
 
 A document-only case (a PDF or PPTX) names it in `"file"`. It opens at `/doc/` under the same header.
 An external link is `"type": "link", "url": …`. `"status": "planned"` shows a dashed card and builds nothing.
-Until `notes.md` exists, the page shows `summary` and «Текстовый конспект готовится», and the build prints a warning.
+Without `notes.md` the case has no «Конспект» tile; the overview shows what exists. The old address `/<course>/<entry>/#anchor`
+forwards to `notes/#anchor`, so links to konspekt sections written before the overview keep working.
 Optional fields add materials: `"video"` (file or YouTube/Rutube link), `"code"` (a `code/` folder or a link), `"links"`, `"status"` (`ready`/`draft`).
 
 ## Workflow
@@ -55,9 +58,9 @@ Optional fields add materials: `"video"` (file or YouTube/Rutube link), `"code"`
    uv run --with markdown python build.py entry content/<course>/<entry> /tmp/<entry> --pdf
    ```
 
-   Open `/tmp/<entry>/index.html` and check:
-   - the konspekt reads on its own, its contents work, and «▶ Презентация» opens the slides;
-   - on the slides: «Конспект» goes back; PgDn/PgUp move slides, also after a click inside a widget; S opens the speaker view; O lists the slides;
+   Open `/tmp/<entry>/index.html` (the overview) and check:
+   - the tiles are the materials the case has; the konspekt (`notes/`) reads on its own and its contents work;
+   - on the slides: «Конспект» and «Обзор» in the header go back; PgDn/PgUp move slides, also after a click inside a widget; S opens the speaker view; O lists the slides;
    - the PDF has one page per slide.
 
    For regression scripts with Playwright, pass `screen=` larger than the viewport. Otherwise the page counts as fullscreen and hides the header.

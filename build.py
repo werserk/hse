@@ -180,14 +180,12 @@ def link(label, href, dl=False, attrs=""):
     return f'<a{attrs} href="{esc(href)}"{d}>{esc(label)}</a>'
 
 
-def konspekt(src, style, md_name, lead):
-    """The konspekt's body (Markdown + HTML, widgets, formulas) and its contents [(level, id, text)].
-    Without notes.md the case page shows `lead` and says the text is pending."""
-    if md_name:
-        md, restore = math_out(read(src / md_name))
-        body = restore(inline_local(md_to_html(md), src, style, src / md_name, keys=False))
-    else:
-        body = (f'<p class="nt-lead">{esc(lead)}</p>' if lead else "") + '<p class="nt-pending">Текстовый конспект готовится.</p>'
+def konspekt(src, style, md_name, up=""):
+    """A Markdown file (+ HTML, widgets, formulas) → (body, contents [(level, id, text)]). `up` = prefix that turns links
+    written for the case folder into links from the page's own folder (the konspekt page is notes/index.html)."""
+    md, restore = math_out(read(src / md_name))
+    body = restore(inline_local(md_to_html(md), src, style, src / md_name, keys=False))
+    if up: body = re.sub(r'(\s(?:src|href|poster)=")(?!https?:|//|/|#|data:|mailto:|\.\./)([^"]+)"', lambda m: f'{m[1]}{up}{m[2]}"', body)
     toc = [(int(l), i, re.sub(r"<[^>]+>", "", t)) for l, i, t in re.findall(r'<h([23]) id="([^"]+)">(.*?)</h\1>', body)]
     return body, toc
 
@@ -205,32 +203,76 @@ def tab_href(f, prefix): return f["href"] if f["ext"] else prefix + f["href"]
 
 
 def case_page(e, c, active, main, style, cover, prefix="", side="", css="", js=""):
-    """A case's page: the branded card (cover, number, course, title, date, status, files), the switcher between the
-    formats the case has, and the format's own content. Formats that need the full window (slides, documents) use the
-    header with the same switcher instead; see case_tabs."""
-    cs = c["slug"]
+    """A page of a case. The overview (active="overview", at the case's URL) has the branded card: cover, number, subject,
+    title, date, status, summary, and below it the choice of materials. A material's page has a compact header and the
+    switcher between the materials; slides and documents (full window) have the same switcher in their header, see case_tabs."""
+    cs, ov = c["slug"], active == "overview"
     course_url = f"/#{cs}" if cs else "/"
-    tabs = "".join(f'<a class="cs-tab{" on" if f["key"] == active else ""}" href="{esc(tab_href(f, prefix))}"'
-                   f'{" target=_blank rel=noopener" if f["ext"] else ""}>{esc(f["label"])}{" ↗" if f["ext"] else ""}</a>' for f in e["formats"])
-    cv = f'<span class="cs-cv"><img src="{esc(prefix + cover)}" alt="" onerror="this.parentNode.remove()"></span>' if cover else ""
     kick = " · ".join(x for x in [esc(e.get("number", "")),
                                   f'<a href="{course_url}" title="{esc(c.get("full", ""))}">{esc(c["title"])}</a>' if cs else ""] if x)
     event = e.get("event") if e.get("event") != c["title"] else ""
     meta = "".join(f"<span>{esc(x)}</span>" for x in [ru_date(e.get("date", "")), event] if x)
     st = e.get("status")
     pill = f'<span class="cs-pill {esc(st)}">{esc(STATUS.get(st, st))}</span>' if st else ""
-    files = [(label, prefix + f, True) for label, f in e["files"].items()] + [("HTML", prefix + "index.html", f"{e['slug']}.html")]
-    files = [link(*x) for x in files] + [link(label + " ↗", url, attrs=' target="_blank" rel="noopener"') for label, url in (e.get("links") or {}).items()]
+    if ov:
+        lead = f'<p class="cs-lead">{esc(e["summary"])}</p>' if e.get("summary") else ""
+        cv = f'<span class="cs-cv"><img src="{esc(prefix + cover)}" alt="" onerror="this.parentNode.remove()"></span>' if cover else ""
+        head = (f'<header class="cs-card">{cv}<div class="cs-info"><p class="cs-kick">{kick}</p><h1>{esc(e["title"])}</h1>'
+                f'<div class="cs-meta">{meta}{pill}</div>{lead}</div></header>')
+        tabs = ""
+    else:
+        head = f'<header class="cs-head"><p class="cs-kick">{kick}</p><h1>{esc(e["title"])}</h1><div class="cs-meta">{meta}{pill}</div></header>'
+        tabs = '<nav class="cs-tabs">' + "".join(
+            f'<a class="cs-tab{" on" if f["key"] == active else ""}" href="{esc(tab_href(f, prefix))}"'
+            f'{" target=_blank rel=noopener" if f["ext"] else ""}>{esc(f["label"])}{" ↗" if f["ext"] else ""}</a>' for f in e["formats"]) + "</nav>"
     return f"""<!doctype html><html lang="ru" data-style="{style}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(e["title"])}{" — " + esc(c["title"]) if cs else ""}</title>
+<script>if(/[?&]bare(&|$)/.test(location.search))document.documentElement.classList.add("bare")</script>
 <style>{read(KIT / 'theme.css')}
 {read(KIT / 'case.css')}{css}</style></head>
 <body class="cs"><div class="cs-wrap"><nav class="cs-top"><a href="{course_url}">← Материалы</a></nav>
-<header class="cs-card">{cv}<div class="cs-info"><p class="cs-kick">{kick}</p><h1>{esc(e["title"])}</h1>
-<div class="cs-meta">{meta}{pill}</div>{f'<p class="cs-lead">{esc(e["summary"])}</p>' if e.get("summary") else ""}
-<p class="cs-files"><span>Файлы</span>{"".join(files)}</p></div></header>
-<nav class="cs-tabs">{tabs}</nav>
+{head}{tabs}
 <div class="cs-body{" has-side" if side else ""}">{side}<main class="cs-main">{main}</main></div></div>{js}</body></html>"""
+
+
+def plural(n, forms):
+    """1 слайд, 2 слайда, 5 слайдов."""
+    k = n % 100
+    return f"{n} " + (forms[2] if 11 <= k <= 14 else forms[0] if n % 10 == 1 else forms[1] if 2 <= n % 10 <= 4 else forms[2])
+
+
+def overview_main(e, p, dest, toc, widgets, text=""):
+    """The overview's body: the case's own text (overview.md), the choice of materials (each with what it holds),
+    the konspekt's contents, files and links."""
+    d = e["dir"]; info = {}
+    if p["md"]:
+        secs = sum(1 for l, _, _ in toc if l == 2)
+        info["notes"] = "Текст с рисунками" + (f" и виджетами: {plural(widgets, ('виджет', 'виджета', 'виджетов'))}" if widgets else "") + \
+                        (f" · {plural(secs, ('раздел', 'раздела', 'разделов'))}" if secs else "")
+    if p["deck"]:
+        slides = re.split(r'<section\b[^>]*class="[^"]*\bslide\b', read(d / "deck.html"))[1:]
+        info["slides"] = f"Презентация · {plural(len(slides), ('слайд', 'слайда', 'слайдов'))}"
+        noted = sum(1 for sl in slides if re.search(r'<aside\b[^>]*class="[^"]*\bnotes\b', sl))
+        info["speaker"] = f"Заметки докладчика и таймер · к {noted} из {len(slides)} слайдов" if noted != len(slides) else f"Заметки докладчика и таймер · {plural(noted, ('слайд', 'слайда', 'слайдов'))}"
+    elif p["site"]: info["slides"] = "Презентация"
+    pdf = dest / "slides" / p["dpdf"] if p["deck_pdf"] else dest / p["doc"] if p["doc"] and p["doc"].lower().endswith(".pdf") else None
+    if pdf and pdf.exists():
+        kb = pdf.stat().st_size / 1024
+        info["pdf"] = "Печатная версия · " + (f"{kb / 1024:.1f} МБ".replace(".", ",") if kb >= 1024 else f"{kb:.0f} КБ")
+    if p["doc"]: info["doc"] = "Документ · " + Path(p["doc"]).suffix.lstrip(".").upper()
+    if p["code"]: info["code"] = "Внешний репозиторий" if p["code"]["ext"] else "Исходники · " + plural(len([x for x in p["code"]["dir"].rglob("*") if x.is_file()]), ("файл", "файла", "файлов"))
+    if p["video"]: info["video"] = {"file": "Видеофайл", "embed": "Запись, встроенная на страницу", "link": "Ссылка на видео"}[p["video"]["kind"]]
+    mats = [f for f in e["formats"] if f["key"] != "overview"]
+    tiles = "".join(f'<a class="mt{" main" if i == 0 else ""}" href="{esc(tab_href(f, ""))}"{" target=_blank rel=noopener" if f["ext"] else ""}><b>{esc(f["label"])}{" ↗" if f["ext"] else ""}</b>'
+                    f'<span>{esc(info.get(f["key"], ""))}</span></a>' for i, f in enumerate(mats))
+    out = f'<div class="ov-text nt-body">{text}</div>' if text else ""
+    out += f'<h2 class="cs-h2">Материалы</h2><div class="mts">{tiles}</div>' if tiles else '<p class="empty">Материалов пока нет.</p>'
+    if p["md"] and sum(1 for l, _, _ in toc if l == 2) > 1:
+        out += '<h2 class="cs-h2">Содержание конспекта</h2><ul class="ov-toc">' + "".join(f'<li><a href="notes/index.html#{esc(i)}">{t}</a></li>' for l, i, t in toc if l == 2) + "</ul>"
+    files = [(label, f, True) for label, f in e["files"].items()] + ([("HTML (конспект, офлайн)", "notes/index.html", f"{e['slug']}.html")] if p["md"] else [])
+    files = [link(*x) for x in files] + [link(label + " ↗", url, attrs=' target="_blank" rel="noopener"') for label, url in (e.get("links") or {}).items()]
+    if files: out += f'<h2 class="cs-h2">Файлы и ссылки</h2><p class="cs-files">{"".join(files)}</p>'
+    return out
 
 
 def case_tabs(e, active, prefix="../", skip=()):
@@ -305,13 +347,13 @@ def make_cover(e, dest, konspekt=False):
     elif doc and doc.lower().endswith(".pdf") and shutil.which("pdftoppm"):
         subprocess.run(["pdftoppm", "-png", "-singlefile", "-f", "1", "-l", "1", "-scale-to-x", "640", "-scale-to-y", "-1",
                         str(d / doc), str(dest / "cover")], check=False)
-    elif konspekt and (dest / "index.html").exists(): shoot((dest / "index.html").resolve().as_uri(), png)
+    elif konspekt and (dest / "notes" / "index.html").exists(): shoot((dest / "notes" / "index.html").resolve().as_uri() + "?bare", png)
     return png.name if png.exists() else None
 
 
 # ---------- cases: what a case has, its catalogue card and pages ----------
-# A case is a folder content/<course>/<case>/ (entry.json). Its materials (formats) are found from the folder and entry.json:
-#   Конспект notes.md · Слайды deck.html or site/ · Режим спикера (deck has <aside class="notes">) · PDF (print of the deck,
+# A case is a folder content/<course>/<case>/ (entry.json). Its page is the overview; its materials (formats) are found
+# from the folder and entry.json:  Конспект notes.md (→ notes/) · Слайды deck.html or site/ · Режим спикера (deck has <aside class="notes">) · PDF (print of the deck,
 #   or "file" is a PDF) · Документ ("file", PPTX etc.) · Код (code/ folder or "code") · Видео ("video").
 # The page and the card show only the formats that exist.
 
@@ -324,7 +366,7 @@ def case_code(e):
     d, c = e["dir"], e.get("code")
     if isinstance(c, str) and URL.match(c): return {"href": c, "ext": True}
     name = c if isinstance(c, str) else "code"
-    if (d / name).is_dir(): return {"href": "code/index.html", "ext": False, "dir": d / name, "name": name}
+    if (d / name).is_dir() and (c or any(not x.name.startswith(".") for x in (d / name).rglob("*") if x.is_file())): return {"href": "code/index.html", "ext": False, "dir": d / name, "name": name}
     if c: sys.exit(f"{d}: code folder not found: {c}")
 
 
@@ -361,7 +403,8 @@ def inspect_case(e, pdf):
     for f in files.values():
         if not (d / f).is_file(): sys.exit(f"{d}: download not found: {f}")
     code, video = case_code(e), case_video(e)
-    fm = [("notes", "Конспект" if md else "Обзор", "index.html", False)]
+    fm = [("overview", "Обзор", "index.html", False)]
+    if md: fm.append(("notes", "Конспект", "notes/index.html", False))
     if deck or site: fm.append(("slides", "Слайды", "slides/index.html", False))
     if deck and re.search(r'<aside\b[^>]*class="[^"]*\bnotes\b', read(d / "deck.html")):
         fm.append(("speaker", "Режим спикера", "slides/index.html?speaker", False))
@@ -374,7 +417,7 @@ def inspect_case(e, pdf):
             "formats": [dict(zip(("key", "label", "href", "ext"), f)) for f in fm]}
 
 
-# ---------- catalogue: one grid of case cards with a course filter ----------
+# ---------- catalogue: sections by subject, case cards ----------
 
 def load_content():
     courses = []
@@ -425,7 +468,7 @@ def catalogue(courses):
 
 
 def redirect(cfg, c, style):
-    """/<course>/ stays a working URL: subjects are not a page any more, it opens the catalogue with the course filter."""
+    """/<course>/ stays a working URL: subjects are not a page any more, it opens the catalogue at the subject's section."""
     to = f"/#{c['slug']}"
     return page(cfg, c["title"], f'<main><p>Страницы предмета больше нет: <a href="{to}">кейсы «{esc(c["title"])}»</a>.</p></main>'
                 f'<script>location.replace({json.dumps(to)})</script>', style,
@@ -471,14 +514,13 @@ def video_page(e, c, p, dest, style, cover):
 
 
 def build_entry(cfg, c, e, dest, style, pdf):
-    """Every case: the page /<course>/<slug>/ (card, format switcher, konspekt) plus a page per format that needs one:
-    slides/ (deck.html, or a prebuilt site/), doc/ ("file"), code/, video/; downloads ("downloads", committed *.pdf).
+    """Every case: the overview /<course>/<slug>/ (card, choice of materials) plus a page per material that needs one:
+    notes/ (notes.md), slides/ (deck.html, or a prebuilt site/), doc/ ("file"), code/, video/; downloads ("downloads", committed *.pdf).
     Slides and documents keep the shared header, now with the same switcher."""
     if not e.get("href") or e.get("type") == "link": return
     d, slug = e["dir"], e["slug"]
     p = inspect_case(e, pdf)
     e["formats"], e["files"] = p["formats"], p["files"]
-    if not p["md"]: print(f"warning: {d.relative_to(ROOT) if d.is_relative_to(ROOT) else d}: no notes.md, the konspekt page shows a placeholder")
     cs = c["slug"]
     back = (f"/#{cs}" if cs else "/", c["title"])
     code_dir = {p["code"]["name"]} if p["code"] and "dir" in p["code"] else set()
@@ -488,7 +530,8 @@ def build_entry(cfg, c, e, dest, style, pdf):
     up = [(label, f"../{f}", True) for label, f in p["files"].items()]
     if p["deck"]:
         pack_deck(d, dest / "slides", style, pdf=pdf and not p["committed"], name=slug, has_pdf=p["committed"],
-                  title=e["title"], back=back, notes="../index.html", tabs=case_tabs(e, "slides", skip=("speaker",)), skip=deck_skip)
+                  title=e["title"], back=back, notes="../notes/index.html" if p["md"] else None,
+                  tabs=case_tabs(e, "slides", skip=("speaker",)), skip=deck_skip)
         if p["committed"]: shutil.copy(d / p["dpdf"], dest / "slides")
     if p["site"]:
         shutil.copytree(d / "site", dest / "slides" / "site")
@@ -498,20 +541,25 @@ def build_entry(cfg, c, e, dest, style, pdf):
         if p["doc"].lower().endswith(".pdf"): src = f"../{p['doc']}"
         else: src = "https://view.officeapps.live.com/op/embed.aspx?src=" + urllib.parse.quote(f"https://{cfg['domain']}/{e['course']}/{slug}/{p['doc']}", safe="")
         pack_frame(dest / "doc", style, e["title"], src, back, case_tabs(e, "doc"), [("Скачать", f"../{p['doc']}", True)])
-    cover = make_cover(e, dest)
-
-    def notes_page():
-        body, toc = konspekt(d, style, p["md"], e.get("summary", ""))
+    toc, widgets = [], 0
+    if p["md"]:  # the konspekt lives in notes/, one level down: links written for the case folder get "../"
+        body, toc = konspekt(d, style, p["md"], up="../")
+        widgets = body.count("<iframe")
         side = ('<nav class="nt-toc"><ol>' + "".join(f'<li class="l{l}"><a href="#{i}">{t}</a></li>' for l, i, t in toc) + "</ol></nav>") if len(toc) > 1 else ""
         css = ("\n" + read(KIT / "notes.css") + (katex_css(cfg) if 'class="katex"' in body else ""))
-        main = f'<article class="nt-body">{body}</article>'
-        (dest / "index.html").write_text(case_page(e, c, "notes", main, style, cover, side=side, css=css,
-                                                   js=f"<script>{read(KIT / 'notes.js')}</script>"), encoding="utf-8")
-    notes_page()
-    if not cover:  # nothing else to show on the card: the konspekt's first screen
-        cover = make_cover(e, dest, konspekt=True)
-        if cover: notes_page()
+        (dest / "notes").mkdir(exist_ok=True)
+        (dest / "notes" / "index.html").write_text(
+            case_page(e, c, "notes", f'<article class="nt-body">{body}</article>', style, None, "../", side=side, css=css,
+                      js=f"<script>{read(KIT / 'notes.js')}</script>"), encoding="utf-8")
+    cover = make_cover(e, dest, konspekt=bool(p["md"]))  # last: the konspekt page may be the card's only picture
     e["cover_name"] = cover
+    text, css = "", ""
+    if (d / "overview.md").is_file():  # the case's own words above the choice of materials
+        text, _ = konspekt(d, style, "overview.md")
+        css = "\n" + read(KIT / "notes.css") + (katex_css(cfg) if 'class="katex"' in text else "")
+    # links from the old address of the konspekt (/<course>/<slug>/#anchor) lead to it
+    js = '<script>if(location.hash)location.replace("notes/index.html"+location.hash)</script>' if p["md"] else ""
+    (dest / "index.html").write_text(case_page(e, c, "overview", overview_main(e, p, dest, toc, widgets, text), style, cover, css=css, js=js), encoding="utf-8")
     if p["code"] and "dir" in p["code"]: code_page(e, c, p, dest, style, cover)
     if p["video"] and p["video"]["kind"] != "link": video_page(e, c, p, dest, style, cover)
 

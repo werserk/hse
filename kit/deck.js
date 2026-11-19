@@ -97,7 +97,8 @@
   } else {
     body.classList.add('speaker');
     const root = document.createElement('div'); root.className = 'spk';
-    root.innerHTML = `<div class="spk-head"><b class="spk-n"></b><span class="spk-clock"></span><span>← → листать · таймер стартует с первого перехода</span></div>
+    const home = meta('tabs') ? JSON.parse(meta('tabs'))[0] : null;   // the case's overview, so the speaker view is not a dead end
+    root.innerHTML = `<div class="spk-head">${home ? `<a class="spk-back" href="${home[1]}">← ${home[0]}</a>` : ''}<b class="spk-n"></b><span class="spk-clock"></span><span>← → листать · таймер стартует с первого перехода</span></div>
       <div class="spk-cur"></div><div class="spk-side"><div class="spk-next"></div><div class="spk-notes"></div></div>`;
     body.appendChild(root);
     root.querySelector('.spk-cur').appendChild(stage);
@@ -161,7 +162,7 @@
     return true;
   }
   addEventListener('keydown', (e) => {
-    if (e.target.closest?.('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.closest?.('input, textarea, select') || (e.target.closest?.('a, button') && (e.key === 'Enter' || e.key === ' ')) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (key(e.key)) e.preventDefault();
   });
   let tx = null;
