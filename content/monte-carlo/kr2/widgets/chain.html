@@ -1,0 +1,114 @@
+
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.note{font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.lab{font:12px var(--font-mono);color:var(--muted-foreground)}
+.idx{font-size:10px;color:var(--subtle-foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+[data-s]{opacity:0;transition:opacity var(--dur,0ms) ease}
+[data-s].on{opacity:1}
+svg text{font-family:var(--font-sans)}
+.mono{font-family:var(--font-mono)}
+.ok{color:var(--success)}.bad{color:var(--destructive)}
+</style>
+
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig" style="position:relative"></div><div id="steps"></div></div>
+</div>
+
+<style>
+.mx{border-collapse:separate;border-spacing:3px;margin-top:6px;font:13px var(--font-mono)}
+.mx td,.mx th{box-sizing:border-box;width:44px;height:26px;text-align:center;border-radius:4px;padding:0}
+.mx th{font-weight:400;font-size:11px;color:var(--subtle-foreground)}
+.mx td.c{background:color-mix(in srgb,var(--chart-1) 14%,transparent)}
+.mx td.r1{background:var(--brand);color:var(--background);font-weight:600}
+.mx td.sm{color:var(--success);width:54px}
+</style>
+<script>
+
+const $=id=>document.getElementById(id);
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+function frac(x,maxd=400){ // continued-fraction reconstruction of a rational from a float
+ if(Math.abs(x-Math.round(x))<1e-9)return String(Math.round(x));
+ let h1=1,h0=0,k1=0,k0=1,b=x;
+ for(let i=0;i<30;i++){const a=Math.floor(b);[h1,h0]=[a*h1+h0,h1];[k1,k0]=[a*k1+k0,k1];
+  if(Math.abs(x-h1/k1)<1e-10||k1>maxd)break;b=1/(b-a)}
+ return h1+'/'+k1}
+function solve(A,b){const n=b.length,M=A.map((r,i)=>[...r,b[i]]);
+ for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;[M[c],M[p]]=[M[p],M[c]];
+  for(let r=0;r<n;r++)if(r!==c){const f=M[r][c]/M[c][c];for(let j=c;j<=n;j++)M[r][j]-=f*M[c][j]}}
+ return M.map((r,i)=>r[n]/r[i])}
+function arrowQ(x1,y1,cx,cy,x2,y2,col,w=1.6,dash=''){
+ const dx=x2-cx,dy=y2-cy,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,s=7;
+ const bx=x2-ux*s,by=y2-uy*s,px=-uy*s*.5,py=ux*s*.5;
+ return `<path d="M${x1} ${y1}Q${cx} ${cy} ${bx} ${by}" fill="none" stroke="${col}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''}/><polygon points="${x2},${y2} ${bx+px},${by+py} ${bx-px},${by-py}" fill="${col}"/>`}
+
+const X=[70,170,270,370],Y=64,R=20,up=[1,3],dn=[2,3];
+const P=[0,1,2,3].map(i=>{const r=[0,0,0,0];r[Math.min(i+1,3)]+=1/3;r[Math.max(i-1,0)]+=2/3;return r});
+let s='';
+for(let i=0;i<4;i++){
+ const out1=(i==1),cu=out1?'var(--brand)':'var(--muted-foreground)',st=out1?1:3,w=out1?2:1.4;
+ if(i<3){
+  s+=`<g data-s="${i==1||i==2?st:3}">${arrowQ(X[i]+R-2,Y-8,(X[i]+X[i+1])/2,Y-46,X[i+1]-R+2,Y-8,i==1?'var(--brand)':'var(--muted-foreground)',i==1?2:1.4)}<text x="${(X[i]+X[i+1])/2}" y="${Y-36}" text-anchor="middle" font-size="12" fill="${i==1?'var(--brand)':'var(--muted-foreground)'}">1/3</text></g>`;
+ }
+ if(i>0){
+  s+=`<g data-s="${i==1?1:3}">${arrowQ(X[i]-R+2,Y+8,(X[i]+X[i-1])/2,Y+46,X[i-1]+R-2,Y+8,i==1?'var(--brand)':'var(--muted-foreground)',i==1?2:1.4)}<text x="${(X[i]+X[i-1])/2}" y="${Y+52}" text-anchor="middle" font-size="12" fill="${i==1?'var(--brand)':'var(--muted-foreground)'}">2/3</text></g>`;
+ }
+}
+// loops: stay at 0 (down blocked), stay at 3 (up blocked)
+s+=`<g data-s="3">${arrowQ(X[0]-12,Y-15,X[0]-70,Y,X[0]-12,Y+15,'var(--muted-foreground)',1.4)}<text x="${X[0]-52}" y="${Y+4}" text-anchor="middle" font-size="12" fill="var(--muted-foreground)">2/3</text></g>`;
+s+=`<g data-s="3">${arrowQ(X[3]+12,Y-15,X[3]+70,Y,X[3]+12,Y+15,'var(--muted-foreground)',1.4)}<text x="${X[3]+52}" y="${Y+4}" text-anchor="middle" font-size="12" fill="var(--muted-foreground)">1/3</text></g>`;
+let nodes='';
+for(let i=0;i<4;i++)nodes+=`<circle cx="${X[i]}" cy="${Y}" r="${R}" fill="var(--card)" stroke="${i==1?'var(--brand)':'var(--foreground)'}" stroke-width="${i==1?2.4:1.4}" style="opacity:1"/><text x="${X[i]}" y="${Y+5}" text-anchor="middle" font-size="14" font-weight="600" fill="var(--foreground)">${i}</text>`;
+nodes+=`<text x="${X[0]}" y="14" font-size="11" text-anchor="middle" fill="var(--subtle-foreground)">пусто</text><text x="${X[3]}" y="14" font-size="11" text-anchor="middle" fill="var(--subtle-foreground)">полно</text>`;
+let mx='<table class="mx"><tr><th></th>'+[0,1,2,3].map(j=>`<th>в ${j}</th>`).join('')+'<th>сумма</th></tr>';
+for(let i=0;i<4;i++){
+ mx+=`<tr><th>из ${i}</th>`+P[i].map(v=>`<td class="${i==1?'r1':'c'}" data-s="${i==1?2:3}">${v?frac(v):'0'}</td>`).join('')+`<td class="sm" data-s="${i==1?2:3}">= ${frac(P[i].reduce((a,b)=>a+b,0))}</td></tr>`;
+}
+mx+='</table>';
+$('fig').innerHTML=`<div class="ttl">Очередь: число людей, 0–3</div><svg width="440" height="130" viewBox="0 0 440 130">${s}${nodes}</svg><div class="ttl" style="margin-top:6px">Матрица переходов P</div>${mx}`;
+const S=[
+ {t:'Состояния',stage:0,ms:900,d:'Состояние — число людей в очереди, 0–3. Этого достаточно: что будет дальше, зависит только от него.'},
+ {t:'Куда можно выйти из состояния 1',stage:1,ms:900,d:'За такт с вероятностью 1/3 приходит человек (1→2), иначе уходит обслуженный (1→0, вероятность 2/3). Других исходов нет: две стрелки, вероятности в сумме 1.'},
+ {t:'Эти исходы — строка 1 матрицы',stage:2,ms:700,d:'Строка — «откуда», столбец — «куда». В столбец 0 пишем 2/3, в столбец 2 пишем 1/3, в остальные нули.'},
+ {t:'Остальные состояния',stage:3,ms:400,d:'Так же для 0, 2, 3. У границы стрелка упирается в саму себя: в 0 «уход» ничего не меняет (петля 2/3), в 3 «приход» теряется (петля 1/3). Каждая строка суммируется в 1.'}];
+
+// stepper engine: every element of the figure exists from the start; steps only fade them in (data-s = first stage shown, data-u = stage at which it hides)
+let k=0;window.stepperBusy=false;let busyT=null;
+function stageApply(i,anim){
+ const s=S[i],f=$('fig');k=i;
+ f.style.setProperty('--dur',(anim?(s.ms||600):0)+'ms');
+ f.querySelectorAll('[data-s]').forEach(e=>{const on=+e.dataset.s<=s.stage&&(e.dataset.u===undefined||s.stage<+e.dataset.u);e.classList.toggle('on',on)});
+ if(window.onStage)window.onStage(s.stage);
+ $('steps').innerHTML=S.map((q,j)=>`<div class="txt ${j==i?'on':j<i?'done':''}" data-i="${j}"><span class="n">${j+1}</span><span><b>${q.t}</b><span class="d">${q.d}</span></span></div>`).join('');
+ $('prev').disabled=i==0;$('next').disabled=i==S.length-1;$('cnt').textContent=`шаг ${i+1} из ${S.length}`;
+ clearTimeout(busyT);if(anim){window.stepperBusy=true;busyT=setTimeout(()=>{window.stepperBusy=false},(s.ms||600)+80)}else window.stepperBusy=false;
+}
+function go(i){i=Math.max(0,Math.min(S.length-1,i));stageApply(i,i==k+1)}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+function initStepper(){let hmax=0;for(let i=0;i<S.length;i++){stageApply(i,false);hmax=Math.max(hmax,$('steps').offsetHeight)}
+ $('steps').style.minHeight=hmax+'px';stageApply(0,false)}
+
+initStepper();
+</script>

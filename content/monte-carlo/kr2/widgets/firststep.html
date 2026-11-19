@@ -1,0 +1,120 @@
+
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.note{font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.lab{font:12px var(--font-mono);color:var(--muted-foreground)}
+.idx{font-size:10px;color:var(--subtle-foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+[data-s]{opacity:0;transition:opacity var(--dur,0ms) ease}
+[data-s].on{opacity:1}
+svg text{font-family:var(--font-sans)}
+.mono{font-family:var(--font-mono)}
+.ok{color:var(--success)}.bad{color:var(--destructive)}
+</style>
+
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig" style="position:relative"></div><div id="steps"></div></div>
+</div>
+
+<style>.eq{font:14px var(--font-mono);min-height:24px;margin:8px 0 0;color:var(--foreground)}.eq span{position:absolute;left:0;white-space:nowrap}</style>
+<script>
+
+const $=id=>document.getElementById(id);
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+function frac(x,maxd=400){ // continued-fraction reconstruction of a rational from a float
+ if(Math.abs(x-Math.round(x))<1e-9)return String(Math.round(x));
+ let h1=1,h0=0,k1=0,k0=1,b=x;
+ for(let i=0;i<30;i++){const a=Math.floor(b);[h1,h0]=[a*h1+h0,h1];[k1,k0]=[a*k1+k0,k1];
+  if(Math.abs(x-h1/k1)<1e-10||k1>maxd)break;b=1/(b-a)}
+ return h1+'/'+k1}
+function solve(A,b){const n=b.length,M=A.map((r,i)=>[...r,b[i]]);
+ for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;[M[c],M[p]]=[M[p],M[c]];
+  for(let r=0;r<n;r++)if(r!==c){const f=M[r][c]/M[c][c];for(let j=c;j<=n;j++)M[r][j]-=f*M[c][j]}}
+ return M.map((r,i)=>r[n]/r[i])}
+function arrowQ(x1,y1,cx,cy,x2,y2,col,w=1.6,dash=''){
+ const dx=x2-cx,dy=y2-cy,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,s=7;
+ const bx=x2-ux*s,by=y2-uy*s,px=-uy*s*.5,py=ux*s*.5;
+ return `<path d="M${x1} ${y1}Q${cx} ${cy} ${bx} ${by}" fill="none" stroke="${col}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''}/><polygon points="${x2},${y2} ${bx+px},${by+py} ${bx-px},${by-py}" fill="${col}"/>`}
+
+const MODE=(window.frameElement&&window.frameElement.dataset.mode)||'h';
+const X=[50,150,250,350,450],Y=82,R=20,sR=.25,sL=.5,sS=.25; // right, left, stay
+// unknowns u1..u3 : u_i = c + sR u_{i+1} + sL u_{i-1} + sS u_i, boundary b0,b4
+const b=MODE=='h'?[0,1]:[0,0],c=MODE=='h'?0:1;
+const A=[0,1,2].map(i=>[0,1,2].map(j=>(i==j?1-sS:0)-(j==i+1?sR:0)-(j==i-1?sL:0)));
+const rhs=[0,1,2].map(i=>c+(i==2?sR*b[1]:0)+(i==0?sL*b[0]:0));
+const u=solve(A,rhs),val=[b[0],...u,b[1]],nm=MODE=='h'?'h':'t';
+const sub=['₀','₁','₂','₃','₄'];
+let s='';
+s+=`<path d="M${X[0]} ${Y}H${X[4]}" stroke="var(--border)" stroke-width="1.4"/>`;
+// arrows out of state 2
+s+=`<g data-s="1">${arrowQ(X[2]+R-2,Y-8,(X[2]+X[3])/2,Y-30,X[3]-R+2,Y-8,'var(--brand)',2)}</g>`;
+s+=`<g data-s="1">${arrowQ(X[2]-R+2,Y-8,(X[2]+X[1])/2,Y-30,X[1]+R-2,Y-8,'var(--brand)',2)}</g>`;
+s+=`<text data-s="1" data-u="2" x="${(X[2]+X[3])/2}" y="${Y-36}" text-anchor="middle" font-size="12" fill="var(--brand)">1/4</text><text data-s="1" data-u="2" x="${(X[2]+X[1])/2}" y="${Y-36}" text-anchor="middle" font-size="12" fill="var(--brand)">1/2</text>`;
+s+=`<text data-s="2" x="${(X[2]+X[3])/2}" y="${Y-36}" text-anchor="middle" font-size="12" fill="var(--brand)">1/3</text><text data-s="2" x="${(X[2]+X[1])/2}" y="${Y-36}" text-anchor="middle" font-size="12" fill="var(--brand)">2/3</text>`;
+// loop on 2 (below the line), crossed at stage 2
+s+=`<g data-s="1">${arrowQ(X[2]-9,Y+17,X[2],Y+62,X[2]+9,Y+17,'var(--warning)',2,'')}<text x="${X[2]+34}" y="${Y+66}" font-size="12" fill="var(--warning)">1/4</text></g>`;
+s+=`<path data-s="2" d="M${X[2]-16} ${Y+34}L${X[2]+16} ${Y+52}" stroke="var(--destructive)" stroke-width="2.4"/>`;
+for(let i=0;i<5;i++){
+ const bd=(i==0||i==4);
+ s+=`<circle cx="${X[i]}" cy="${Y}" r="${R}" fill="${bd?'color-mix(in srgb,var(--chart-1) 28%,transparent)':'var(--card)'}" stroke="${i==2?'var(--brand)':'var(--foreground)'}" stroke-width="${i==2?2.4:1.4}"/><text x="${X[i]}" y="${Y-27+0}" font-size="10" text-anchor="middle" fill="var(--subtle-foreground)" style="display:none">${i}</text>`;
+ s+=`<text x="${X[i]}" y="${Y+4}" text-anchor="middle" font-size="13" font-weight="600" fill="var(--foreground)">${i}</text>`;
+ // value under the node
+ const showAt=bd?0:3;
+ s+=`<text x="${X[i]}" y="${Y+90}" text-anchor="middle" class="mono" font-size="13" fill="${bd?'var(--foreground)':'var(--brand)'}" font-weight="600" ${bd?'':'data-s="3"'} >${nm}${sub[i]} = ${frac(val[i])}</text>`;
+ if(!bd)s+=`<text x="${X[i]}" y="${Y+90}" text-anchor="middle" class="mono" font-size="13" fill="var(--subtle-foreground)" data-s="0" data-u="3">${nm}${sub[i]} = ?</text>`;
+}
+const e1=MODE=='h'?'h₂ = 1/4·h₃ + 1/2·h₁ + 1/4·h₂':'t₂ = 1 + 1/4·t₃ + 1/2·t₁ + 1/4·t₂';
+const e2=MODE=='h'?'h₂ = 1/3·h₃ + 2/3·h₁':'t₂ = 4/3 + 1/3·t₃ + 2/3·t₁';
+const e0=MODE=='h'?'на границе: h₀ = 0, h₄ = 1':'на границе: t₀ = 0, t₄ = 0';
+const eq=`<div class="eq" style="position:relative;height:24px"><span data-s="0" data-u="1">${e0}</span><span data-s="1" data-u="2">${e1}</span><span data-s="2" data-u="3">${e2}</span><span data-s="3">решаем три уравнения вместе</span></div>`;
+const ttl=MODE=='h'?'h<sub>i</sub> — вероятность выйти через правую границу, старт i':'t<sub>i</sub> — среднее число шагов до выхода на границу, старт i';
+$('fig').innerHTML=`<div class="ttl">${ttl}</div><svg width="500" height="${Y+104}" viewBox="0 0 500 ${Y+104}">${s}</svg>${eq}`;
+const S=MODE=='h'?[
+ {t:'Граница',stage:0,ms:900,d:'В 0 и 4 цепь стоит. Из 0 до правой границы дойти нельзя: h₀ = 0. В 4 мы уже там: h₄ = 1. Остальные h неизвестны.'},
+ {t:'Один шаг из состояния 2',stage:1,ms:900,d:'Из 2 идём вправо (1/4), влево (1/2) или остаёмся (1/4). После шага всё начинается заново из нового места, поэтому h₂ = 1/4·h₃ + 1/2·h₁ + 1/4·h₂.'},
+ {t:'Выкинуть петлю',stage:2,ms:700,d:'Петля возвращает в то же состояние, и ничего не изменилось. Её вероятность 1/4 убираем, оставшиеся 1/4 и 1/2 делим на 3/4: получаем 1/3 и 2/3. Теперь h₂ = 1/3·h₃ + 2/3·h₁.'},
+ {t:'Решить систему',stage:3,ms:500,d:'Те же уравнения для 1 и 3 с границей h₀ = 0, h₄ = 1 дают три линейных уравнения на три неизвестных. Решение показано под состояниями.'}]:[
+ {t:'Граница',stage:0,ms:900,d:'В 0 и 4 цепь уже вышла: t₀ = t₄ = 0. Остальные t неизвестны.'},
+ {t:'Один шаг из состояния 2',stage:1,ms:900,d:'Шаг стоит 1, а дальше — среднее по новому месту: t₂ = 1 + 1/4·t₃ + 1/2·t₁ + 1/4·t₂. Единица стоит перед суммой, потому что шаг сделан в любом случае.'},
+ {t:'Выкинуть петлю',stage:2,ms:700,d:'Из t₂ − 1/4·t₂ = 3/4·t₂ получаем t₂ = 4/3 + 1/3·t₃ + 2/3·t₁: в среднем в состоянии 2 «застреваем» на 1/(1 − 1/4) = 4/3 шага, прежде чем сдвинуться.'},
+ {t:'Решить систему',stage:3,ms:500,d:'Те же уравнения для 1 и 3 с границей t₀ = t₄ = 0 дают три линейных уравнения. Решение показано под состояниями.'}];
+
+// stepper engine: every element of the figure exists from the start; steps only fade them in (data-s = first stage shown, data-u = stage at which it hides)
+let k=0;window.stepperBusy=false;let busyT=null;
+function stageApply(i,anim){
+ const s=S[i],f=$('fig');k=i;
+ f.style.setProperty('--dur',(anim?(s.ms||600):0)+'ms');
+ f.querySelectorAll('[data-s]').forEach(e=>{const on=+e.dataset.s<=s.stage&&(e.dataset.u===undefined||s.stage<+e.dataset.u);e.classList.toggle('on',on)});
+ if(window.onStage)window.onStage(s.stage);
+ $('steps').innerHTML=S.map((q,j)=>`<div class="txt ${j==i?'on':j<i?'done':''}" data-i="${j}"><span class="n">${j+1}</span><span><b>${q.t}</b><span class="d">${q.d}</span></span></div>`).join('');
+ $('prev').disabled=i==0;$('next').disabled=i==S.length-1;$('cnt').textContent=`шаг ${i+1} из ${S.length}`;
+ clearTimeout(busyT);if(anim){window.stepperBusy=true;busyT=setTimeout(()=>{window.stepperBusy=false},(s.ms||600)+80)}else window.stepperBusy=false;
+}
+function go(i){i=Math.max(0,Math.min(S.length-1,i));stageApply(i,i==k+1)}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+function initStepper(){let hmax=0;for(let i=0;i<S.length;i++){stageApply(i,false);hmax=Math.max(hmax,$('steps').offsetHeight)}
+ $('steps').style.minHeight=hmax+'px';stageApply(0,false)}
+
+initStepper();
+</script>
