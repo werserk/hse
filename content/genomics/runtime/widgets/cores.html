@@ -1,0 +1,37 @@
+<!-- Fig. 1.4: independent targets split across cores; each block labels one cohort haplotype. Static. -->
+<style>
+.w{font-family:var(--font-sans);display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+svg{display:block;overflow:visible}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .gl{font-size:13px;font-weight:600;fill:var(--foreground)}
+svg .bl{font-family:var(--font-mono);font-size:12px;fill:var(--foreground)}
+svg .grid{stroke:var(--border)}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground);font-weight:600}
+.side p{margin:0 0 10px}
+.side p:last-child{margin:0}
+</style>
+<div class="w"><div id="fig"></div><div class="side" id="side"></div></div>
+<script>
+const T=['1a','1b','2a','2b','3a','3b'];          // the toy cohort of Fig. 1.1: 2N = 6 targets
+const K=[1,2,3];                                   // cores
+const L=70,U=40,RH=26,GG=18,TOP=6;                 // left margin, px per target, lane height, gap between groups
+const split=k=>Array.from({length:k},(_,c)=>T.slice(c*T.length/k,(c+1)*T.length/k));   // contiguous equal shares
+let y=TOP,s='';
+for(const k of K){
+ s+=`<text class="gl" x="0" y="${y+RH*k/2+5}">${k} ${k==1?'ядро':'ядра'}</text>`;
+ split(k).forEach((tg,c)=>{const yy=y+c*RH;
+  s+=`<text x="${L-8}" y="${yy+17}" text-anchor="end">${c+1}</text>`;
+  tg.forEach((t,i)=>{s+=`<rect x="${L+i*U+1}" y="${yy+3}" width="${U-2}" height="${RH-6}" rx="3" fill="var(--muted)" stroke="var(--border)"/>`+
+   `<text class="bl" x="${L+i*U+U/2}" y="${yy+17}" text-anchor="middle">${t}</text>`;});
+  s+=`<text x="${L+tg.length*U+8}" y="${yy+17}">${c==0?tg.length+' '+(tg.length>4?'целей':'цели'):''}</text>`;});
+ y+=k*RH+GG;}
+const H=y-GG;
+for(let i=0;i<=T.length;i++)s=`<line class="grid" x1="${L+i*U}" x2="${L+i*U}" y1="${TOP-4}" y2="${H}" stroke-dasharray="2 3"/>`+s;
+s+=`<text x="${L}" y="${H+16}">0</text><text x="${L+T.length*U}" y="${H+16}" text-anchor="middle">${T.length}</text><text x="${L+T.length*U}" y="${H+31}" text-anchor="end">время, в блоках</text>`;
+document.getElementById('fig').innerHTML=`<svg width="${L+T.length*U+70}" height="${H+38}">${s}</svg>`;
+document.getElementById('side').innerHTML=
+ `<p><b>Блок</b> — разметка одного гаплотипа: прочитать его, сравнить с панелью, записать ответ.</p>`+
+ `<p>Каждое ядро держит свою копию панели и ничего не берёт у других ядер.</p>`+
+ `<p>${T.length} целей: ${T.length/K[0]} блоков подряд на одном ядре, ${T.length/K[1]} на двух, ${T.length/K[2]} на трёх.</p>`;
+</script>
