@@ -209,7 +209,13 @@ def tab_link(f, prefix, cls="", extra=""):
             f'{esc(f["label"])}{" ↗" if new else ""}</a>')
 
 
-def case_top(c): return f'<nav class="cs-top"><a href="{f"/#{c["slug"]}" if c["slug"] else "/"}">← Материалы</a></nav>'
+def home_of(e, c):
+    """The catalogue a case belongs to: the main page, or /beta/ until the owner has reviewed it."""
+    b = e.get("base", "")
+    return f"{b}/#{c['slug']}" if c["slug"] else f"{b}/"
+
+
+def case_top(e, c): return f'<nav class="cs-top"><a href="{home_of(e, c)}">← Материалы</a></nav>'
 
 
 def case_chrome(e, c, active, prefix):
@@ -217,13 +223,13 @@ def case_chrome(e, c, active, prefix):
     switcher between the materials. `prefix` leads from the page to the case folder. Slides and documents use it too."""
     cs = c["slug"]
     kick = " · ".join(x for x in [esc(e.get("number", "")),
-                                  f'<a href="{f"/#{cs}" if cs else "/"}" title="{esc(c.get("full", ""))}">{esc(c["title"])}</a>' if cs else ""] if x)
+                                  f'<a href="{home_of(e, c)}" title="{esc(c.get("full", ""))}">{esc(c["title"])}</a>' if cs else ""] if x)
     event = e.get("event") if e.get("event") != c["title"] else ""
     st = e.get("status")
     meta = "".join(f"<span>{esc(x)}</span>" for x in [ru_date(e.get("date", "")), event] if x) + \
            (f'<span class="cs-pill {esc(st)}">{esc(STATUS.get(st, st))}</span>' if st else "")
     tabs = "".join(tab_link(f, prefix, "cs-tab on" if f["key"] == active else "cs-tab", " data-speaker" if f["key"] == "speaker" else "") for f in e["formats"])
-    return (f'{case_top(c)}<header class="cs-head"><p class="cs-kick">{kick}{meta}</p><h1>{esc(e["title"])}</h1></header>'
+    return (f'{case_top(e, c)}<header class="cs-head"><p class="cs-kick">{kick}{meta}</p><h1>{esc(e["title"])}</h1></header>'
             f'<nav class="cs-tabs">{tabs}</nav>')
 
 
@@ -237,7 +243,7 @@ def case_page(e, c, active, main, style, cover, prefix="", side="", css="", js="
     title, date, status, summary, and below it the choice of materials. A material's page has the shared header (case_chrome)."""
     cs = c["slug"]
     if active == "overview":
-        course_url = f"/#{cs}" if cs else "/"
+        course_url = home_of(e, c)
         kick = " · ".join(x for x in [esc(e.get("number", "")),
                                       f'<a href="{course_url}" title="{esc(c.get("full", ""))}">{esc(c["title"])}</a>' if cs else ""] if x)
         event = e.get("event") if e.get("event") != c["title"] else ""
@@ -246,7 +252,7 @@ def case_page(e, c, active, main, style, cover, prefix="", side="", css="", js="
         pill = f'<span class="cs-pill {esc(st)}">{esc(STATUS.get(st, st))}</span>' if st else ""
         lead = f'<p class="cs-lead">{esc(e["summary"])}</p>' if e.get("summary") else ""
         cv = f'<span class="cs-cv"><img src="{esc(prefix + cover)}" alt="" onerror="this.parentNode.remove()"></span>' if cover else ""
-        head = case_top(c) + (f'<header class="cs-card">{cv}<div class="cs-info"><p class="cs-kick">{kick}</p><h1>{esc(e["title"])}</h1>'
+        head = case_top(e, c) + (f'<header class="cs-card">{cv}<div class="cs-info"><p class="cs-kick">{kick}</p><h1>{esc(e["title"])}</h1>'
                               f'<div class="cs-meta">{meta}{pill}</div>{lead}</div></header>')
     else:
         head = case_chrome(e, c, active, prefix)
@@ -443,6 +449,24 @@ def inspect_case(e, pdf):
 
 # ---------- catalogue: sections by subject, case cards ----------
 
+REVIEW = ("beta", "reviewed")
+BETA_HEAD = '<meta name="robots" content="noindex, nofollow">'
+BETA_NOTE = ('<div class="beta-note" role="note" style="position:fixed;left:12px;bottom:12px;z-index:2147483647;'
+             'padding:6px 12px;border-radius:999px;background:#b3261e;color:#fff;font:600 13px/1.2 system-ui,sans-serif;'
+             'box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none">β · не проверено автором</div>')
+
+
+def mark_beta(root):
+    """Every page under /beta/: noindex, and a banner that the author has not reviewed it (not inside a prebuilt site's frame)."""
+    for f in root.rglob("*.html"):
+        doc = read(f)
+        if "noindex" not in doc:  # a fragment without <head> (a copied widget) gets the tag first, in its implied head
+            doc = re.sub(r"(?i)<head\b[^>]*>", lambda m: m[0] + BETA_HEAD, doc, count=1) if re.search(r"(?i)<head\b", doc) else BETA_HEAD + doc
+        if not re.search(r"/(site|widgets)/", "/" + f.relative_to(root).as_posix()) and "beta-note" not in doc:
+            doc = re.sub(r"(?i)<body\b[^>]*>", lambda m: m[0] + BETA_NOTE, doc, count=1)
+        f.write_text(doc, encoding="utf-8")
+
+
 def load_content():
     courses = []
     for cdir in sorted(p for p in CONTENT.iterdir() if (p / "course.json").exists()):
@@ -450,8 +474,11 @@ def load_content():
         c["entries"] = []
         for edir in sorted(p for p in cdir.iterdir() if (p / "entry.json").exists()):
             e = json.loads(read(edir / "entry.json")); e["slug"] = edir.name; e["dir"] = edir; e["course"] = c["slug"]
+            e["review"] = e.get("review", "beta")  # only the owner sets "reviewed"; until then the case lives under /beta/
+            if e["review"] not in REVIEW: sys.exit(f"{edir}/entry.json: review must be one of {', '.join(REVIEW)}")
+            e["base"] = "" if e["review"] == "reviewed" else "/beta"
             if e.get("status") != "planned":
-                e["href"] = e["url"] if e.get("type") == "link" else f"/{c['slug']}/{edir.name}/"
+                e["href"] = e["url"] if e.get("type") == "link" else f"{e['base']}/{c['slug']}/{edir.name}/"
             c["entries"].append(e)
         c["entries"].sort(key=lambda e: e.get("date", ""), reverse=True)
         courses.append(c)
@@ -468,7 +495,7 @@ def page(cfg, title, body, style, cls="", head=""):
 
 def card(e):
     """A card is a preview and the title, with the case's number above it (owner, 2026-11-18, 2026-11-19)."""
-    cov = f'<img src="/{esc(e["course"])}/{esc(e["slug"])}/{esc(e["cover_name"])}" alt="" loading="lazy">' if e.get("cover_name") else ""
+    cov = f'<img src="{esc(e.get("base", ""))}/{esc(e["course"])}/{esc(e["slug"])}/{esc(e["cover_name"])}" alt="" loading="lazy">' if e.get("cover_name") else ""
     inner = f'<span class="cv">{cov}</span><span class="t">' + (f'<span class="no">{esc(e["number"])}</span>' if e.get("number") else "") + f'{esc(e["title"])}</span>'
     if not e.get("href"): return f'<div class="card soon" title="Скоро">{inner}</div>'
     ext = ' target="_blank" rel="noopener"' if e.get("type") == "link" else ""
@@ -491,9 +518,9 @@ def catalogue(courses):
     return "".join(section(c) for c in courses)
 
 
-def redirect(cfg, c, style):
+def redirect(cfg, c, style, base=""):
     """/<course>/ stays a working URL: subjects are not a page any more, it opens the catalogue at the subject's section."""
-    to = f"/#{c['slug']}"
+    to = f"{base}/#{c['slug']}"
     return page(cfg, c["title"], f'<main><p>Страницы предмета больше нет: <a href="{to}">кейсы «{esc(c["title"])}»</a>.</p></main>'
                 f'<script>location.replace({json.dumps(to)})</script>', style,
                 head=f'<meta http-equiv="refresh" content="0; url={to}"><link rel="canonical" href="https://{cfg.get("domain", "")}/">')
@@ -566,7 +593,7 @@ def build_entry(cfg, c, e, dest, style, pdf):
     if p["doc"]:
         (dest / "doc").mkdir()
         if p["doc"].lower().endswith(".pdf"): src = f"../{p['doc']}#view=FitH"
-        else: src = "https://view.officeapps.live.com/op/embed.aspx?src=" + urllib.parse.quote(f"https://{cfg['domain']}/{e['course']}/{slug}/{p['doc']}", safe="")
+        else: src = "https://view.officeapps.live.com/op/embed.aspx?src=" + urllib.parse.quote(f"https://{cfg['domain']}{e.get('base', '')}/{e['course']}/{slug}/{p['doc']}", safe="")
         pack_frame(dest / "doc", style, e["title"], src, chrome("doc"), f"{p['doc']} · {file_size(d / p['doc'])}", [("Скачать", f"../{p['doc']}", True)])
     toc, widgets = [], 0
     if p["md"]:  # the konspekt lives in notes/, one level down: links written for the case folder get "../"
@@ -600,19 +627,31 @@ def build_site(out, style=None, pdf=False):
     shutil.copy(KIT / "theme.css", out / "assets" / "theme.css")
     shutil.copytree(KIT / "katex" / "fonts", out / "assets" / "katex" / "fonts")
     courses = load_content()
-    head = f'<header class="hero"><h1><a href="/">{esc(cfg["title"])}</a></h1></header>'
     foot = f'<footer class="foot">{esc(cfg.get("footer", ""))}</footer>'
     for c in courses:
         for e in c["entries"]:
-            build_entry(cfg, c, e, out / c["slug"] / e["slug"], style, pdf)
-            if not e.get("cover_name") and e.get("cover"): e["cover_name"] = make_cover(e, out / c["slug"] / e["slug"])  # planned/link cases
-        (out / c["slug"]).mkdir(exist_ok=True)
-        (out / c["slug"] / "index.html").write_text(redirect(cfg, c, style), encoding="utf-8")
-    (out / "index.html").write_text(page(cfg, cfg["title"], head + f"<main>{catalogue(courses)}</main>" + foot, style), encoding="utf-8")
-    (out / "404.html").write_text(page(cfg, "Не найдено", head + '<main><p>Такой страницы нет. <a href="/">На главную</a></p></main>', style), encoding="utf-8")
+            dest = out / e["base"].strip("/") / c["slug"] / e["slug"]
+            build_entry(cfg, c, e, dest, style, pdf)
+            if not e.get("cover_name") and e.get("cover"): e["cover_name"] = make_cover(e, dest)  # planned/link cases
+    # the main catalogue shows only what the owner reviewed; the rest is the beta catalogue at /beta/
+    for base in ("", "/beta"):
+        root = out / base.strip("/"); root.mkdir(parents=True, exist_ok=True)
+        part = [dict(c, entries=[e for e in c["entries"] if e["base"] == base]) for c in courses]
+        part = [c for c in part if c["entries"]]
+        title = cfg["title"] + (" · beta" if base else "")
+        head = f'<header class="hero"><h1><a href="{base}/">{esc(title)}</a></h1></header>'
+        for c in part:
+            (root / c["slug"]).mkdir(parents=True, exist_ok=True)
+            (root / c["slug"] / "index.html").write_text(redirect(cfg, c, style, base), encoding="utf-8")
+        lead = '<p class="beta-lead">Черновые материалы: автор их ещё не проверил.</p>' if base else ""
+        (root / "index.html").write_text(page(cfg, title, head + f"<main>{lead}{catalogue(part) or '<p class="empty">Пока пусто.</p>'}</main>" + foot, style), encoding="utf-8")
+    mark_beta(out / "beta")
+    (out / "404.html").write_text(page(cfg, "Не найдено", f'<header class="hero"><h1><a href="/">{esc(cfg["title"])}</a></h1></header>'
+                                       '<main><p>Такой страницы нет. <a href="/">На главную</a></p></main>', style), encoding="utf-8")
     if cfg.get("domain"): (out / "CNAME").write_text(cfg["domain"] + "\n")
     (out / ".nojekyll").write_text("")
-    print("site", out, sum(len(c["entries"]) for c in courses), "cases")
+    n = [e["base"] for c in courses for e in c["entries"]]
+    print("site", out, n.count(""), "reviewed cases,", n.count("/beta"), "beta")
 
 
 def new_entry(path, title, date="", event=""):

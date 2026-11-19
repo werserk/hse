@@ -62,6 +62,7 @@ Old links `/<course>/<case>/#anchor` (konspekt sections) forward to `notes/#anch
 | `number` | `"01"`: above the title on the card and the page; keep it out of `title` |
 | `date` | `YYYY-MM-DD`: shown as «19 ноября 2026»; cases are sorted by it, newest first |
 | `event` | where it was presented; shown on the page when it differs from the subject |
+| `review` | `beta` (default when absent) or `reviewed`. A beta case builds under `/beta/<course>/<case>/`, is listed only in the `/beta/` catalogue (not on the home page), and every page of it gets `noindex` and the badge «β · не проверено автором». Only the owner sets `reviewed`, after reviewing the case; that moves it to `/<course>/<case>/` and the home page |
 | `status` | `ready` («готов»), `draft` («черновик»), or `planned` (dashed card, nothing is built). No status: no label |
 | `cover` | a file in the folder, or a slide number; default: the deck's first figure slide, the document's first page, the konspekt's first screen |
 | `notes` | konspekt file name if it is not `notes.md` |

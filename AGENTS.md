@@ -65,14 +65,17 @@ Optional fields add materials: `"video"` (file or YouTube/Rutube link), `"code"`
 
    For regression scripts with Playwright, pass `screen=` larger than the viewport. Otherwise a desktop page counts as fullscreen (F11) and hides the header; touch screens never do.
 
-5. **Publish.**
+5. **Publish as beta.**
+   - A new case is beta: it goes to `/beta/<course>/<entry>/`, not to the home page (README § `entry.json`, `review`).
+     Never set `"review": "reviewed"` yourself; the owner does that after reviewing the case.
    - Commit only your entry folder and push to `main`; CI deploys in about a minute.
-   - Check that `https://hse.werserk.dev/<course>/<entry>/` and `…/slides/` return 200 and look right.
+   - Check that `https://hse.werserk.dev/beta/<course>/<entry>/` and `…/slides/` return 200 and look right.
 
 ## Ownership and limits
 
 - A talk's thread owns its entry folder. `build.py`, `kit/`, `assets/`, `site.json` and this file belong to the
   hse.werserk.dev platform thread: ask it for changes instead of editing them.
 - Content is in Russian; code, file names and docs for agents are in English.
-- Everything pushed is public: no secrets, no private data, no unpublished third-party material.
+- Everything pushed is public, beta included (it is only unlisted): no secrets, no private data, no unpublished third-party
+  material, no homework solutions, no contacts.
 - On a talk day, do not move or break a presentation URL without telling the presenter.
