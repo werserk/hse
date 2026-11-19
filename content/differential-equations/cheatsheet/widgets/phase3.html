@@ -1,0 +1,53 @@
+<!-- Fig. 3.2: phase portrait of x' = 2-2sqrt(1+x+y), y' = exp(5x/4+2y+y^2)-1 near its two equilibria; trajectories are integrated here (RK4). -->
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start;font-family:var(--font-sans)}
+svg text{font:12px var(--font-sans);fill:var(--foreground)}
+svg .ax{font:11px var(--font-mono);fill:var(--muted-foreground)}
+.n{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px;max-width:290px}
+.n b{color:var(--foreground)}.n p{margin:0 0 9px}
+.t{font-size:14px;font-weight:600;margin:0 0 8px;color:var(--foreground)}
+.k{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+</style>
+<div class="g"><div><div class="t">Фазовый портрет</div><svg id="s" width="440" height="360"></svg></div><div class="n" id="n"></div></div>
+<script>
+const f=(x,y)=>2-2*Math.sqrt(Math.max(0,1+x+y)), g=(x,y)=>Math.exp(1.25*x+2*y+y*y)-1;
+const W=440,H=360,L=34,B=24,X0=-1.2,X1=2.0,Y0=-1.9,Y1=1.1;
+const px=v=>L+(v-X0)/(X1-X0)*(W-L-6), py=v=>H-B-(v-Y0)/(Y1-Y0)*(H-B-6);
+const inside=(x,y)=>x>X0&&x<X1&&y>Y0&&y<Y1&&1+x+y>0.02;
+function rk(x,y,sign,dt=0.01,n=900){const pts=[[x,y]];
+ const F=(x,y)=>[sign*f(x,y),sign*g(x,y)];
+ for(let i=0;i<n;i++){const k1=F(x,y),k2=F(x+dt/2*k1[0],y+dt/2*k1[1]),k3=F(x+dt/2*k2[0],y+dt/2*k2[1]),k4=F(x+dt*k3[0],y+dt*k3[1]);
+  x+=dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);y+=dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
+  if(!inside(x,y))break;pts.push([x,y]);}
+ return pts}
+const line=(p,st)=>`<polyline fill="none" style="${st}" points="${p.map(q=>px(q[0]).toFixed(1)+','+py(q[1]).toFixed(1)).join(' ')}"/>`;
+const arrow=(p,i,c)=>{if(p.length<i+3)return'';const a=p[i],b=p[i+2],ax=px(b[0])-px(a[0]),ay=py(b[1])-py(a[1]),l=Math.hypot(ax,ay)||1,ux=ax/l,uy=ay/l,cx=px(b[0]),cy=py(b[1]);
+ return `<polygon points="${cx},${cy} ${cx-8*ux+4*uy},${cy-8*uy-4*ux} ${cx-8*ux-4*uy},${cy-8*uy+4*ux}" style="fill:${c}"/>`};
+let s='';
+// grid + axes
+s+=`<line x1="${px(X0)}" y1="${py(0)}" x2="${px(X1)}" y2="${py(0)}" style="stroke:var(--border)"/><line x1="${px(0)}" y1="${py(Y0)}" x2="${px(0)}" y2="${py(Y1)}" style="stroke:var(--border)"/>`;
+for(const v of [-1,0,1,2])s+=`<text class="ax" x="${px(v)}" y="${H-8}" text-anchor="middle">${v}</text>`;
+for(const v of [-1,0,1])s+=`<text class="ax" x="${L-6}" y="${py(v)+4}" text-anchor="end">${v}</text>`;
+// isoclines: f=0 is x+y=0; g=0 is 5x/4+2y+y^2=0 -> x=-(2y+y^2)*4/5
+s+=line([[X0,-X0],[X1,-X1]].filter(()=>true).map(q=>q),'stroke:var(--chart-4);stroke-dasharray:5 4;stroke-width:1.3');
+const gp=[];for(let yy=Y0;yy<=Y1;yy+=0.02)gp.push([-(2*yy+yy*yy)*0.8,yy]);
+s+=line(gp.filter(q=>q[0]>X0&&q[0]<X1),'stroke:var(--chart-3);stroke-dasharray:5 4;stroke-width:1.3');
+// forbidden region 1+x+y<0
+s+=`<polygon points="${px(X0)},${py(-1-X0)} ${px(X0)},${py(Y0)} ${px(-1-Y0)},${py(Y0)}" style="fill:var(--muted)"/>`;
+// Jacobian at saddle: [[-1,-1],[5/4,2]] eigenvalues 3/2 (dir (2,-5)), -1/2 (dir (2,-1))
+const dirs=[[2,-5],[2,-1]].map(v=>{const l=Math.hypot(...v);return[v[0]/l,v[1]/l]});
+const e=0.02;
+for(const [d,col] of [[dirs[0],'--destructive'],[dirs[1],'--chart-2']])for(const sg of [1,-1]){
+  const unst=d===dirs[0],p=rk(sg*e*d[0],sg*e*d[1],unst?1:-1,0.01,1500);s+=line(p,`stroke:var(${col});stroke-width:2.2`);
+  const q=unst?p:p.slice().reverse(); // the stable branch is integrated backwards: reverse it so the arrow points into the saddle
+  s+=arrow(q,unst?Math.min(40,q.length-3):Math.max(0,q.length-45),`var(${col})`)}
+// spirals into the focus (3/4,-3/4)
+for(const [a,b] of [[1.4,-1.5],[0.2,-1.15],[0.95,0.2],[1.8,-0.6],[0.2,0.05]]){
+  const p=rk(a,b,1,0.01,1400);s+=line(p,'stroke:var(--chart-5);stroke-width:1.5');s+=arrow(p,Math.min(60,p.length-3),'var(--chart-5)')}
+// equilibria
+s+=`<circle cx="${px(0)}" cy="${py(0)}" r="5" style="fill:var(--destructive);stroke:var(--background);stroke-width:1.5"/><text x="${px(0)+8}" y="${py(0)-8}" style="font-weight:600">седло</text>`;
+s+=`<circle cx="${px(0.75)}" cy="${py(-0.75)}" r="5" style="fill:var(--chart-5);stroke:var(--background);stroke-width:1.5"/><text x="${px(0.75)+8}" y="${py(-0.75)-8}" style="font-weight:600">фокус</text>`;
+s+=`<text class="ax" x="${px(X1)-2}" y="${py(0)-4}" text-anchor="end">x</text><text class="ax" x="${px(0)+5}" y="${py(Y1)+10}">y</text>`;
+document.getElementById('s').innerHTML=s;
+document.getElementById('n').innerHTML=`<p><b>Седло</b> (0, 0): <span style="color:var(--destructive)">красная</span> линия — неустойчивая сепаратриса (направление (2, −5), λ = 3/2), <span style="color:var(--chart-2)">синяя</span> — устойчивая (направление (2, −1), λ = −1/2). Остальные траектории проходят мимо седла вдоль них.</p><p><b>Фокус</b> (¾, −¾): траектории навиваются на точку по спирали.</p><p><span class="k" style="border-color:var(--chart-4);border-top-style:dashed"></span>изоклина ẋ = 0 (x + y = 0)<br><span class="k" style="border-color:var(--chart-3);border-top-style:dashed"></span>изоклина ẏ = 0</p><p>Серый угол — там 1 + x + y &lt; 0, правая часть не определена.</p>`;
+</script>

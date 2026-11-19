@@ -1,0 +1,50 @@
+<!-- Fig. 3.1: the (tr J, det J) plane: where an equilibrium of a 2D system is a saddle, node, focus or non-hyperbolic. -->
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start;font-family:var(--font-sans)}
+svg text{font:12px var(--font-sans);fill:var(--foreground)}
+svg .ax{font:12px var(--font-mono);fill:var(--muted-foreground)}
+svg .small{font:11px var(--font-mono);fill:var(--muted-foreground)}
+.n{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px;max-width:300px}
+.n b{color:var(--foreground)}
+.n p{margin:0 0 9px}
+.t{font-size:14px;font-weight:600;margin:0 0 8px;color:var(--foreground)}
+</style>
+<div class="g"><div><div class="t">Плоскость (tr, det) матрицы Якоби</div><svg id="s" width="420" height="330"></svg></div>
+<div class="n" id="n"></div></div>
+<script>
+const W=420,H=330,L=44,R=14,T=10,B=34,X0=-4,X1=4,Y0=-2,Y1=4;
+const x=v=>L+(v-X0)/(X1-X0)*(W-L-R), y=v=>H-B-(v-Y0)/(Y1-Y0)*(H-B-T);
+const P=[]; // points of the parabola det=tr^2/4
+for(let t=-4;t<=4.001;t+=0.1)P.push([x(t),y(Math.min(Y1,t*t/4))]);
+const par=P.map(p=>p.join(',')).join(' ');
+const reg=(poly,c,o)=>`<polygon points="${poly}" style="fill:color-mix(in srgb,var(${c}) ${o}%,transparent)"/>`;
+let s='';
+// regions
+s+=reg(`${x(X0)},${y(0)} ${x(X1)},${y(0)} ${x(X1)},${y(Y0)} ${x(X0)},${y(Y0)}`,'--destructive',18);
+const left=[],right=[];
+for(let t=-4;t<=0.001;t+=0.1)left.push(`${x(t)},${y(t*t/4)}`);
+for(let t=0;t<=4.001;t+=0.1)right.push(`${x(t)},${y(t*t/4)}`);
+s+=reg(`${x(0)},${y(0)} ${left.slice().reverse().join(' ')} ${x(-4)},${y(0)}`,'--success',26);       // stable node: det>0, tr<0, below parabola
+s+=reg(`${x(0)},${y(0)} ${right.join(' ')} ${x(4)},${y(0)}`,'--warning',26);                            // unstable node
+s+=reg(`${left.join(' ')} ${x(0)},${y(Y1)} ${x(-4)},${y(Y1)}`,'--success',10);                          // stable focus: above parabola, tr<0
+s+=reg(`${right.join(' ')} ${x(4)},${y(Y1)} ${x(0)},${y(Y1)}`,'--warning',10);
+// axes
+s+=`<line x1="${x(X0)}" y1="${y(0)}" x2="${x(X1)}" y2="${y(0)}" style="stroke:var(--border)"/>`;
+s+=`<line x1="${x(0)}" y1="${y(Y0)}" x2="${x(0)}" y2="${y(Y1)}" style="stroke:var(--foreground);stroke-width:2"/>`;
+s+=`<polyline points="${par}" fill="none" style="stroke:var(--foreground);stroke-dasharray:4 3"/>`;
+for(const v of [-4,-2,2,4])s+=`<text class="ax" x="${x(v)}" y="${H-B+16}" text-anchor="middle">${v}</text>`;
+for(const v of [-2,2,4])s+=`<text class="ax" x="${L-8}" y="${y(v)+4}" text-anchor="end">${v}</text>`;
+s+=`<text class="ax" x="${x(X1)}" y="${H-6}" text-anchor="end">tr</text><text class="ax" x="${L+6}" y="${T+10}">det</text>`;
+// labels
+const lab=(a,b,t,anchor='middle')=>`<text x="${x(a)}" y="${y(b)}" text-anchor="${anchor}">${t}</text>`;
+s+=lab(0,-1,'седло: det &lt; 0');
+s+=lab(-2.5,0.9,'узел, устойч.');s+=lab(2.5,0.9,'узел, неуст.');
+s+=lab(-2.2,3.1,'фокус, устойч.');s+=lab(2.2,3.1,'фокус, неуст.');
+s+=`<text class="small" x="${x(0.1)}" y="${y(Y1)+13}">tr = 0: центр или</text><text class="small" x="${x(0.1)}" y="${y(Y1)+25}">негиперболика</text>`;
+s+=`<text class="small" transform="translate(${x(3.0)},${y(2.6)}) rotate(-36)">D = 0</text>`;
+// the two equilibria of §3
+const pt=(tr,d,t)=>`<circle cx="${x(tr)}" cy="${y(d)}" r="5" style="fill:var(--brand);stroke:var(--background);stroke-width:1.5"/><text x="${x(tr)+9}" y="${y(d)+4}" style="font-weight:600">${t}</text>`;
+s+=pt(1,-0.75,'A');s+=pt(-0.5,0.75,'B');
+document.getElementById('s').innerHTML=s;
+document.getElementById('n').innerHTML=`<p>Матрица <b>J</b> определяется двумя числами: следом <b>tr</b> и определителем <b>det</b>. Собственные значения — корни λ² − tr·λ + det = 0; пунктир <b>D = tr² − 4 det = 0</b> разделяет вещественные корни и комплексные.</p><p><b>A</b> и <b>B</b> — две точки равновесия из примера этой главы: A (tr = 1, det = −¾) — седло, B (tr = −½, det = ¾) — устойчивый фокус.</p>`;
+</script>
