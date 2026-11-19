@@ -30,8 +30,8 @@ subject (`course.json`) with a card per case: a preview and the title, with the 
 its own: `/<course>/` redirects to its section on the home page.
 
 A case lives at `/<course>/<case>/` and its page is the **overview**: the branded card (cover, number, subject, title, date,
-status, summary), a tile per material with what it holds («22 слайда», «19 виджетов · 5 разделов»), the konspekt's contents,
-files and links. An optional `overview.md` (Markdown, as the konspekt) is shown above the tiles. Only the materials that
+status, summary), a tile per material with what it holds («22 слайда», «19 виджетов · 5 разделов»), files and links, and below them
+the konspekt itself, rendered inline with its contents on the side (`notes/` keeps the standalone copy). An optional `overview.md` (Markdown, as the konspekt) is shown above the tiles. Only the materials that
 exist get a tile. Each material has its own URL, and **every page has the same header**: back arrow, number · subject, date,
 status, the title underlined, and the switcher (Обзор · Конспект · Слайды …). `kit/head.css` styles it and `case_chrome()` in
 `build.py` renders it once for every page type (konspekt, slides, PDF, document, code, video). Slides and the PDF are read inside

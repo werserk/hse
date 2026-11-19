@@ -5,8 +5,8 @@ This repo is public and every push to `main` deploys https://hse.werserk.dev. Bu
 ## What a case is
 
 A catalogue card is a **case** («кейс»). The items inside it are its **materials**: a **konspekt** (the text, its page) plus
-slides, speaker mode, PDF, document, code, video. The case's own page is the **overview**: the card and a tile per material
-it has. Each material opens on its own page under the same header (`case_chrome()` in `build.py`, styles in `kit/head.css`) with the same switcher (Обзор · Конспект · Слайды …, PDF at `pdf/`); change the header there only, never per page type;
+slides, speaker mode, PDF, document, code, video. The case's own page is the **overview**: the card, a tile per material
+it has, and the konspekt read inline under them. Each material opens on its own page under the same header (`case_chrome()` in `build.py`, styles in `kit/head.css`) with the same switcher (Обзор · Конспект · Слайды …, PDF at `pdf/`); change the header there only, never per page type;
 full schema of `entry.json`: README § Cases and materials.
 
 ```
@@ -24,8 +24,8 @@ content/<course>/<entry>/              published as
 
 A document-only case (a PDF or PPTX) names it in `"file"`. It opens at `/doc/` under the same header.
 An external link is `"type": "link", "url": …`. `"status": "planned"` shows a dashed card and builds nothing.
-Without `notes.md` the case has no «Конспект» tile; the overview shows what exists. The old address `/<course>/<entry>/#anchor`
-forwards to `notes/#anchor`, so links to konspekt sections written before the overview keep working.
+Without `notes.md` the case has no «Конспект» tile; the overview shows what exists. Section anchors work on the overview itself
+(`/<course>/<entry>/#anchor`); `notes/` stays as the standalone konspekt page.
 Optional fields add materials: `"video"` (file or YouTube/Rutube link), `"code"` (a `code/` folder or a link), `"links"`, `"status"` (`ready`/`draft`).
 
 ## Workflow
@@ -70,6 +70,26 @@ Optional fields add materials: `"video"` (file or YouTube/Rutube link), `"code"`
      Never set `"review": "reviewed"` yourself; the owner does that after reviewing the case.
    - Commit only your entry folder and push to `main`; CI deploys in about a minute.
    - Check that `https://hse.werserk.dev/beta/<course>/<entry>/` and `…/slides/` return 200 and look right.
+
+## Decomposition and naming
+
+- A case is a topic, not a file: it answers one question of the subject (a method, a model, a class of problems),
+  usually one lecture or one paper. Cut along the course's own structure, never along assessments or homework.
+- 3–6 chapters, each building on the previous; about 15–50 KB of konspekt. More than 7 loosely related chapters is
+  several cases; under ~10 KB, merge into a neighbour.
+- A case reads alone: question and prerequisites (links), chapters, traps and limits, sources. A derivation lives in
+  one case; others recap in a paragraph and link.
+- One readable body per case: the konspekt inline on the case page, or a short info page for a hub. Decks, PDFs,
+  widgets and links are supporting materials in the row, never a second body. No PDF-only cases.
+- At most one hub case per course: problem map (cue → case/chapter), mock tests, whole-course print sheets. It links,
+  it does not derive. Only the hub may name an assessment in its title.
+- Topics of the programme not written yet appear as `"status": "planned"` cards.
+- Title: «Topic: qualifier», 2–6 words, the course's own term. No format, event, version or homework number in it.
+- `summary`: the question the case answers, one sentence ≤ 160 chars, «Как…/Почему…», no formulas.
+- Download labels say content and use, not file version. `event` is the occasion, never the course name again.
+- Slugs are English topic names (`markov-chains`, not `kr2`). Reference examples: `genomics/loter`, `genomics/runtime`.
+
+(Rationale and the per-course layout: `docs/cases-proposal.md`.)
 
 ## Ownership and limits
 

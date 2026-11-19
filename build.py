@@ -186,7 +186,7 @@ def konspekt(src, style, md_name, up=""):
     md, restore = math_out(read(src / md_name))
     body = restore(inline_local(md_to_html(md), src, style, src / md_name, keys=False))
     if up: body = re.sub(r'(\s(?:src|href|poster)=")(?!https?:|//|/|#|data:|mailto:|\.\./)([^"]+)"', lambda m: f'{m[1]}{up}{m[2]}"', body)
-    toc = [(int(l), i, re.sub(r"<[^>]+>", "", t)) for l, i, t in re.findall(r'<h([23]) id="([^"]+)">(.*?)</h\1>', body)]
+    toc = [(int(l), i, t) for l, i, t in re.findall(r'<h([23]) id="([^"]+)">(.*?)</h\1>', body)]
     return body, toc
 
 
