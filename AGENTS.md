@@ -63,7 +63,7 @@ Optional fields add materials: `"video"` (file or YouTube/Rutube link), `"code"`
    - on the slides: «Конспект» and «Обзор» in the header go back; PgDn/PgUp move slides, also after a click inside a widget; S opens the speaker view; O lists the slides;
    - the PDF has one page per slide and opens at `pdf/` under the same header; the speaker tab (↗) opens a window that follows the slides.
 
-   For regression scripts with Playwright, pass `screen=` larger than the viewport. Otherwise the page counts as fullscreen and hides the header.
+   For regression scripts with Playwright, pass `screen=` larger than the viewport. Otherwise a desktop page counts as fullscreen (F11) and hides the header; touch screens never do.
 
 5. **Publish.**
    - Commit only your entry folder and push to `main`; CI deploys in about a minute.

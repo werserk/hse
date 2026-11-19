@@ -98,7 +98,7 @@ Write `deck.html` with one `<section class="slide">` per slide; see `kit/starter
 - Local `<link rel="stylesheet">` and `<script src>` are inlined; other files (images, video) are copied.
   Remote (CDN) scripts, styles and fonts are not inlined: the offline copy needs them bundled locally.
 - Layout: the shared case header on top, the slide (16:9, fits the window) under it, and the controls under the slide: ‹ counter › (click or
-  **O** = list of slides), fullscreen, HTML. Fullscreen (**F**, or `?bare`) shows the slide alone; the header slides in when the mouse reaches the top.
+  **O** = list of slides), fullscreen, HTML. Fullscreen (**F**, or `?bare`; also an F11 window on a desktop, never on a touch screen) shows the slide alone; the header slides in when the mouse reaches the top.
   The speaker tab opens a separate window (it has «← Обзор»).
 - Keys: → / Space / PgDn next, ← / PgUp back, Home/End, F fullscreen, S speaker view, O slide list; `#n` = slide n.
   A focused widget forwards these keys to the deck, so a clicker keeps working after a click on a

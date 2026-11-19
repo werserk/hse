@@ -5,7 +5,7 @@
   body.classList.add('deck-body');
   const slides = [...document.querySelectorAll('section.slide')];
   const meta = (n) => document.querySelector(`meta[name="deck:${n}"]`)?.content;
-  const params = new URLSearchParams(location.search), speaker = params.has('speaker'), bare = params.has('bare');
+  const params = new URLSearchParams(location.search), speaker = params.has('speaker'), bare = params.has('bare'), touch = matchMedia('(pointer: coarse)').matches;
   let cur = 0, step = 0, peer = null;
 
   const stage = document.createElement('div');
@@ -50,7 +50,7 @@
   const h = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
   if (!speaker) {
     // The case's header (from <template id="deck-chrome">), then the viewer: the slides, and under them the controls.
-    // Fullscreen (F, ?bare, a window as big as the screen) drops the header and the controls; the header returns when the mouse is at the top.
+    // Fullscreen (F, ?bare; on a desktop also an F11 window as big as the screen, never on a touch screen) drops the header and the controls; the header returns when the mouse is at the top.
     const tpl = document.getElementById('deck-chrome');
     const chrome = h('div', 'deck-chrome'); if (tpl) chrome.append(tpl.content);
     const btn = (a, text, title) => { const b = Object.assign(h('button', '', text), { title, type: 'button' }); b.dataset.a = a; return b; };
@@ -78,7 +78,7 @@
       b.blur();
     });
     const doFit = () => {
-      const fs = !!document.fullscreenElement || bare || (innerHeight >= screen.height - 1 && innerWidth >= screen.width - 1);  // ?bare: no header (card previews, embedding)
+      const fs = !!document.fullscreenElement || bare || (!touch && innerHeight >= screen.height - 1 && innerWidth >= screen.width - 1);  // ?bare: no header (card previews, embedding)
       body.classList.toggle('fs', fs);
       let w, hh, x = 0, y = 0;
       if (fs) {
