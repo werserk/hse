@@ -1,9 +1,5 @@
-// Konspekt page: widget heights, active section in the contents.
+// Konspekt page: active section in the contents (widget heights: the listener in the page head, see build.py).
 (() => {
-  addEventListener('message', (e) => {
-    if (e.data?.type !== 'widget-height') return;
-    for (const f of document.querySelectorAll('iframe.widget')) if (f.contentWindow === e.source) f.style.height = `${e.data.h}px`;
-  });
   const links = [...document.querySelectorAll('.nt-toc a')];
   const io = new IntersectionObserver((es) => es.forEach((x) => {
     if (x.isIntersecting) links.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === `#${x.target.id}`));

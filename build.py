@@ -228,6 +228,8 @@ def case_page(e, c, active, main, style, cover, prefix="", side="", css="", js="
     return f"""<!doctype html><html lang="ru" data-style="{style}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(e["title"])}{" — " + esc(c["title"]) if cs else ""}</title>
 <script>if(/[?&]bare(&|$)/.test(location.search))document.documentElement.classList.add("bare")</script>
+<script>/* in the head: a widget reports its height once it loads, possibly before the end of the page is parsed */
+addEventListener("message",e=>{{if(e.data?.type!=="widget-height")return;for(const f of document.querySelectorAll("iframe.widget"))if(f.contentWindow===e.source)f.style.height=e.data.h+"px"}})</script>
 <style>{read(KIT / 'theme.css')}
 {read(KIT / 'case.css')}{css}</style></head>
 <body class="cs"><div class="cs-wrap"><nav class="cs-top"><a href="{course_url}">← Материалы</a></nav>
