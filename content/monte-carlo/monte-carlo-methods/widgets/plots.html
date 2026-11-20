@@ -1,0 +1,119 @@
+<!-- Static figures of the Monte Carlo konspekt (lecture 5, slides 2–4); the figure is chosen by data-mode on the iframe.
+     Running integral of slide 4: I = ∫_0^{π/2} sin x dx = 1. Every number is computed here from seeded samples
+     and closed forms, never typed by hand. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 4px}
+.note{font-size:12.5px;line-height:1.5;color:var(--muted-foreground);margin-top:4px}
+.note b{color:var(--foreground);font-weight:600}
+.ok{color:var(--success);font-weight:600}.no{color:var(--destructive);font-weight:600}
+svg{display:block}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+</style>
+<div class="w" id="fig"></div>
+<script>
+const mode=(window.frameElement&&window.frameElement.dataset.mode)||'area';
+const $=id=>document.getElementById(id);
+const PI=Math.PI,H2=PI/2;
+const f=(x,d=2)=>{let t=x.toFixed(d);if(/^-0[.,]?0*$/.test(t))t=t.slice(1);return t.replace('.',',').replace(/^-/,'−')};
+const C=i=>`var(--chart-${i})`;
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function frame(W,H,o){
+ const L=o.L??34,R=o.R??8,T=o.T??8,B=o.B??28;
+ const X=x=>L+(W-L-R)*(x-o.x0)/(o.x1-o.x0),Y=y=>T+(H-T-B)*(1-(y-o.y0)/(o.y1-o.y0));
+ let s=`<line class="ax" x1="${L}" y1="${Y(o.y0)}" x2="${W-R}" y2="${Y(o.y0)}"/>`+(o.noy?'':`<line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${H-B}"/>`);
+ (o.xt||[]).forEach(([v,l])=>s+=`<text x="${X(v)}" y="${H-B+14}" text-anchor="middle">${l}</text>`);
+ (o.yt||[]).forEach(([v,l])=>s+=`<text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${l}</text>`);
+ if(o.xl)s+=`<text x="${W-R}" y="${H-2}" text-anchor="end" fill="var(--subtle-foreground)">${o.xl}</text>`;
+ return {X,Y,s,L,R,T,B,W,H};
+}
+function path(F,fn,x0,x1,n=240){let d='';for(let i=0;i<=n;i++){const x=x0+(x1-x0)*i/n;d+=(i?'L':'M')+F.X(x).toFixed(1)+' '+F.Y(fn(x)).toFixed(1)}return d}
+const svg=(F,inner)=>`<svg width="${F.W}" height="${F.H}" viewBox="0 0 ${F.W} ${F.H}">${F.s}${inner}</svg>`;
+const XT=[[0,'0'],[PI/8,'π/8'],[PI/4,'π/4'],[3*PI/8,'3π/8'],[H2,'π/2']];
+const NUMS=window.NUMS={};
+
+// ---------- Fig 1.1: the same area two ways: hit-or-miss in 2D and the mean of sin in 1D ----------
+if(mode==='area'){
+ const n=100,R=mulberry32(11),P=[...Array(n)].map(()=>[H2*R(),R()]);
+ const k=P.filter(([x,y])=>y<=Math.sin(x)).length;
+ const Ia=H2*k/n,Ib=H2*P.reduce((a,[x])=>a+Math.sin(x),0)/n;
+ const va=H2-1,vb=PI*PI/8-1; // exact Var of one term |Ω| f(X): hit-or-miss and mean value
+ Object.assign(NUMS,{k,Ia,Ib,va,vb,sea:Math.sqrt(va/n),seb:Math.sqrt(vb/n)});
+ const o={x0:0,x1:H2,y0:0,y1:1.08,xt:XT,yt:[[0,'0'],[0.5,'0,5'],[1,'1']],xl:'x'};
+ const A=frame(350,230,o),B=frame(350,230,o);
+ let a=`<rect x="${A.X(0)}" y="${A.Y(1)}" width="${A.X(H2)-A.X(0)}" height="${A.Y(0)-A.Y(1)}" fill="none" stroke="var(--muted-foreground)" stroke-dasharray="4 3"/>`;
+ a+=`<path d="${path(A,Math.sin,0,H2)}L${A.X(H2)} ${A.Y(0)}L${A.X(0)} ${A.Y(0)}Z" fill="color-mix(in srgb,${C(1)} 12%,transparent)"/><path d="${path(A,Math.sin,0,H2)}" fill="none" stroke="${C(1)}" stroke-width="2"/>`;
+ P.forEach(([x,y])=>{const u=y<=Math.sin(x);a+=`<circle cx="${A.X(x)}" cy="${A.Y(y)}" r="2.6" fill="${u?'var(--success)':'var(--subtle-foreground)'}"/>`});
+ a+=`<text x="${A.X(0.08)}" y="${A.Y(1)-3}" fill="var(--muted-foreground)">Ω, |Ω| = π/2</text><text x="${A.X(1.05)}" y="${A.Y(0.35)}" fill="${C(1)}">S</text>`;
+ let b=`<path d="${path(B,Math.sin,0,H2)}" fill="none" stroke="${C(1)}" stroke-width="2"/>`;
+ P.forEach(([x])=>{b+=`<line x1="${B.X(x)}" y1="${B.Y(0)}" x2="${B.X(x)}" y2="${B.Y(Math.sin(x))}" stroke="${C(2)}" stroke-opacity=".45"/><circle cx="${B.X(x)}" cy="${B.Y(Math.sin(x))}" r="2.2" fill="${C(2)}"/>`});
+ b+=`<text x="${B.X(1.0)}" y="${B.Y(1)-3}" fill="${C(1)}">f(x) = sin x</text>`;
+ $('fig').innerHTML=`<div class="row">
+ <div><div class="ttl">а) Доля точек под кривой</div>${svg(A,a)}
+ <div class="note">f — индикатор S в Ω = [0, π/2] × [0, 1].<br>Под кривой <b>${k}</b> из ${n} точек: I<sub>${n}</sub> = (π/2)·${k}/${n} = <b>${f(Ia,3)}</b>.<br>Стандартная ошибка √((π/2 − 1)/n) = ${f(NUMS.sea,3)}.</div></div>
+ <div><div class="ttl">б) Среднее значение sin x</div>${svg(B,b)}
+ <div class="note">Ω = [0, π/2], те же ${n} абсцисс x<sub>i</sub>.<br>I<sub>${n}</sub> = (π/2)·среднее sin x<sub>i</sub> = <b>${f(Ib,3)}</b>.<br>Стандартная ошибка √((π²/8 − 1)/n) = ${f(NUMS.seb,3)}.</div></div></div>`;
+}
+
+// ---------- Fig 2.1: same integral, flat vs peaked integrand; 2000 repeated estimates with n = 20 ----------
+if(mode==='peaky'){
+ const s=0.08,erf=x=>{const t=1/(1+0.3275911*Math.abs(x)),y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return x>=0?y:-y};
+ const Phi=z=>0.5*(1+erf(z/Math.SQRT2)),Z=Phi((H2-1)/s)-Phi(-1/s);
+ const g=x=>Math.exp(-((x-1)**2)/(2*s*s))/(s*Math.sqrt(2*PI)*Z); // truncated normal density on [0, π/2]: integral exactly 1
+ // exact Var of one term (π/2) f(X): (π/2)∫f² − 1, the integral by Simpson
+ const simpson=(fn,a,b,m=4000)=>{const h=(b-a)/m;let t=fn(a)+fn(b);for(let i=1;i<m;i++)t+=(i%2?4:2)*fn(a+i*h);return t*h/3};
+ const n=20,REP=2000,vs=PI*PI/8-1,vg=H2*simpson(x=>g(x)**2,0,H2)-1;
+ const R=mulberry32(5),xs=[...Array(n)].map(()=>H2*R());
+ const R2=mulberry32(77),es=[[],[]];
+ for(let r=0;r<REP;r++){let a=0,b=0;for(let i=0;i<n;i++){const x=H2*R2();a+=Math.sin(x);b+=g(x)}es[0].push(H2*a/n);es[1].push(H2*b/n)}
+ const sd=v=>{const m=v.reduce((a,b)=>a+b,0)/v.length;return Math.sqrt(v.reduce((a,b)=>a+(b-m)**2,0)/(v.length-1))};
+ const one=[H2*xs.reduce((a,x)=>a+Math.sin(x),0)/n,H2*xs.reduce((a,x)=>a+g(x),0)/n];
+ Object.assign(NUMS,{vs,vg,ratio:vg/vs,sdS:Math.sqrt(vs/n),sdG:Math.sqrt(vg/n),empS:sd(es[0]),empG:sd(es[1]),one,zeroG:es[1].filter(v=>v<0.05).length});
+ const cols=[{fn:Math.sin,ym:5.4,v:vs,e:es[0],name:'f = sin x',ok:true},{fn:g,ym:5.4,v:vg,e:es[1],name:'узкий пик, площадь 1',ok:false}];
+ let html='<div class="row">';
+ cols.forEach((c,j)=>{
+  const T=frame(350,150,{x0:0,x1:H2,y0:0,y1:c.ym,xt:XT,yt:[[0,'0'],[1,'1'],[5,'5']],B:22});
+  let t=`<path d="${path(T,c.fn,0,H2,600)}" fill="none" stroke="${C(1)}" stroke-width="2"/>`;
+  xs.forEach(x=>{const y=Math.min(c.fn(x),c.ym);t+=`<line x1="${T.X(x)}" y1="${T.Y(0)}" x2="${T.X(x)}" y2="${T.Y(y)}" stroke="${C(2)}" stroke-opacity=".5"/><circle cx="${T.X(x)}" cy="${T.Y(y)}" r="2.4" fill="${C(2)}"/>`});
+  const bw=0.05,nb=60,cnt=Array(nb).fill(0);c.e.forEach(v=>{const b=Math.floor(v/bw);if(b>=0&&b<nb)cnt[b]++});
+  const dens=cnt.map(q=>q/(REP*bw)),sdT=Math.sqrt(c.v/n);
+  const Hh=frame(350,150,{x0:0,x1:3,y0:0,y1:4.2,xt:[[0,'0'],[0.5,'0,5'],[1,'1'],[1.5,'1,5'],[2,'2'],[2.5,'2,5'],[3,'3']],yt:[[0,'0'],[2,'2'],[4,'4']],xl:'I₂₀',B:26});
+  let h='';dens.forEach((d,b)=>{if(d>0)h+=`<rect x="${Hh.X(b*bw)+0.5}" y="${Hh.Y(Math.min(d,4.2))}" width="${Hh.X(bw)-Hh.X(0)-1}" height="${Hh.Y(0)-Hh.Y(Math.min(d,4.2))}" fill="${C(2)}" opacity=".55"/>`});
+  h+=`<path d="${path(Hh,x=>Math.min(4.2,Math.exp(-((x-1)**2)/(2*sdT*sdT))/(sdT*Math.sqrt(2*PI))),0,3,400)}" fill="none" stroke="var(--foreground)" stroke-width="1.3"/>`;
+  h+=`<line x1="${Hh.X(1)}" y1="${Hh.T}" x2="${Hh.X(1)}" y2="${Hh.Y(0)}" stroke="var(--warning)" stroke-dasharray="3 3"/>`;
+  html+=`<div><div class="ttl">${j?'б':'а'}) ${c.name}</div>${svg(T,t)}${svg(Hh,h)}
+  <div class="note"><span class="${c.ok?'ok':'no'}">${c.ok?'✓':'✗'}</span> Var<sub>U</sub>((π/2)f) = <b>${f(c.v,3)}</b>, с. о. I<sub>${n}</sub> = ${f(sdT,3)}.<br>По ${REP} повторам: ${f(sd(c.e),3)}. Кривая — <i>N</i>(1, ${f(c.v,3)}/${n}).</div></div>`;
+ });
+ $('fig').innerHTML=html+'</div>';
+}
+
+// ---------- Fig 3.1: importance sampling of slide 4: three densities q and the values f(X)w(X) ----------
+if(mode==='is'){
+ const n=50,simpson=(fn,a,b,m=4000)=>{const h=(b-a)/m;let t=fn(a)+fn(b);for(let i=1;i<m;i++)t+=(i%2?4:2)*fn(a+i*h);return t*h/3};
+ const Q=[
+  {name:'q = 2/π (равномерная)',q:x=>2/PI,inv:u=>H2*u},
+  {name:'q = 8x/π²',q:x=>8*x/(PI*PI),inv:u=>H2*Math.sqrt(u)},
+  {name:'q = sin x = f/I',q:x=>Math.sin(x),inv:u=>Math.acos(1-u)}];
+ let html='<div class="row" style="gap:18px">';
+ Q.forEach((c,j)=>{
+  const R=mulberry32(21),xs=[...Array(n)].map(()=>c.inv(1-R())); // 1−u ∈ (0,1]: avoids x = 0 for the linear q
+  const fw=xs.map(x=>Math.sin(x)/c.q(x)),In=fw.reduce((a,b)=>a+b,0)/n;
+  // exact Var_q(fw) = ∫ f²/q dx − 1 (integrand bounded: sin²x/x → 0 at 0)
+  let v=simpson(x=>x===0?0:Math.sin(x)**2/c.q(x),0,H2)-1;if(v<1e-9)v=0; // q = f/I: exactly zero up to rounding
+  NUMS['q'+j]={v,se:Math.sqrt(v/n),In,min:Math.min(...fw),max:Math.max(...fw)};
+  const T=frame(240,150,{x0:0,x1:H2,y0:0,y1:1.35,xt:[[0,'0'],[PI/4,'π/4'],[H2,'π/2']],yt:[[0,'0'],[0.5,'0,5'],[1,'1']],B:22,L:30});
+  let t=`<path d="${path(T,Math.sin,0,H2)}" fill="none" stroke="${C(1)}" stroke-width="2.4"/><path d="${path(T,c.q,0,H2)}" fill="none" stroke="${C(2)}" stroke-width="2" stroke-dasharray="${j==2?'6 4':''}"/>`;
+  xs.forEach(x=>t+=`<line x1="${T.X(x)}" y1="${T.Y(0)}" x2="${T.X(x)}" y2="${T.Y(0)-6}" stroke="${C(2)}"/>`);
+  const S=frame(240,74,{x0:0,x1:1.7,y0:0,y1:1,xt:[[0,'0'],[0.5,'0,5'],[1,'1'],[1.5,'1,5']],B:34,L:30,T:4,noy:true,xl:'f(Xᵢ)w(Xᵢ)'});
+  const RJ=mulberry32(3);let s=`<line x1="${S.X(1)}" y1="${S.T}" x2="${S.X(1)}" y2="${S.Y(0)}" stroke="var(--warning)" stroke-dasharray="3 3"/>`;
+  fw.forEach(z=>s+=`<circle cx="${S.X(z)}" cy="${S.Y(0.15+0.7*RJ())}" r="2.4" fill="${C(2)}" fill-opacity=".7"/>`);
+  html+=`<div><div class="ttl">${'абв'[j]}) ${c.name}</div><div class="note" style="margin:0"><span style="color:${C(1)}">━</span> f = sin x&nbsp;&nbsp;<span style="color:${C(2)}">━</span> q</div>${svg(T,t)}${svg(S,s)}
+  <div class="note">Var<sub>q</sub>(fw) = <b>${v?f(v,v<0.1?4:3):'0'}</b><br>с. о. при n = ${n}: ${f(Math.sqrt(v/n),3)}<br>I<sub>${n}</sub> = ${f(In,3)}</div></div>`;
+ });
+ $('fig').innerHTML=html+'</div>';
+}
+</script>

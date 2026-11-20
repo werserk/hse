@@ -1,0 +1,180 @@
+<!-- Steppers of the Monte Carlo konspekt (lecture 5, slides 5–8); the figure is chosen by data-mode on the iframe:
+     snis   — self-normalised importance sampling of the thumbtack posterior Π(θ) = θ⁴(1−θ)⁸ with q = U(0, 1);
+     adapt  — adaptive parametric IS: Student t₅(μ, σ) proposal fitted by the IS estimate of cv²;
+     reject — rejection sampling of the same Π under the envelope M·U(0, 1).
+     Every number is computed here from seeded samples and quadrature, never typed by hand. -->
+<meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+svg{display:block}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><svg id="fig" width="430" height="390" viewBox="0 0 430 390"></svg><div id="steps"></div></div>
+</div>
+<script>
+const mode=(window.frameElement&&window.frameElement.dataset.mode)||'snis';
+const $=id=>document.getElementById(id);
+const NUMS=window.NUMS={};
+const f=(x,d=2)=>{let t=x.toFixed(d);if(/^-0[.,]?0*$/.test(t))t=t.slice(1);return t.replace('.',',').replace(/^-/,'−')};
+const C=i=>`var(--chart-${i})`;
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function lgam(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)}
+const simpson=(fn,a,b,m=2000)=>{const h=(b-a)/m;let t=fn(a)+fn(b);for(let i=1;i<m;i++)t+=(i%2?4:2)*fn(a+i*h);return t*h/3};
+// thumbtack of the Bayes chapter: likelihood θ³(1−θ)⁷ (3 heads of 10) × prior Beta(2, 2) ∝ θ⁴(1−θ)⁸
+const Pi=t=>t<=0||t>=1?0:t**4*(1-t)**8;
+const cInv=Math.exp(lgam(5)+lgam(9)-lgam(14)); // ∫Π = B(5, 9) = 1/6435
+const p=t=>Pi(t)/cInv,MU=5/14;
+// panel helper: x-range [x0,x1] on [L, L+W], y-range [y0,y1] on [T+H, T]
+function panel(o){const X=x=>o.L+o.W*(x-o.x0)/(o.x1-o.x0),Y=y=>o.T+o.H*(1-(y-o.y0)/(o.y1-o.y0));
+ let s=`<line class="ax" x1="${o.L}" y1="${Y(o.y0)}" x2="${o.L+o.W}" y2="${Y(o.y0)}"/><line class="ax" x1="${o.L}" y1="${o.T}" x2="${o.L}" y2="${o.T+o.H}"/>`;
+ (o.xt||[]).forEach(([v,l])=>s+=`<text x="${X(v)}" y="${o.T+o.H+(o.xo??14)}" text-anchor="middle">${l}</text>`);
+ (o.yt||[]).forEach(([v,l])=>s+=`<text x="${o.L-5}" y="${Y(v)+4}" text-anchor="end">${l}</text>`);
+ if(o.yl)s+=`<text x="${o.L+4}" y="${o.T+9}">${o.yl}</text>`;
+ if(o.xl)s+=`<text x="${o.L+o.W}" y="${o.T+o.H+(o.xo??14)+14}" text-anchor="end" fill="var(--subtle-foreground)">${o.xl}</text>`;
+ return {...o,X,Y,s};}
+const curve=(P,fn,a,b,n=300)=>{let d='';for(let i=0;i<=n;i++){const x=a+(b-a)*i/n;d+=(i?'L':'M')+P.X(x).toFixed(1)+' '+P.Y(Math.min(fn(x),P.y1*1.02)).toFixed(1)}return d};
+const hold=(x,y,w,h,label)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="var(--border)" stroke-dasharray="4 4" rx="4"/><text x="${x+w/2}" y="${y+h/2+4}" text-anchor="middle" fill="var(--subtle-foreground)">${label}</text>`;
+const T01=[[0,'0'],[0.25,'0,25'],[0.5,'0,5'],[0.75,'0,75'],[1,'1']];
+let S=[],fig=()=>'';
+
+// ================= Fig 4.1: self-normalised IS =================
+if(mode==='snis'){
+ const n=20,R=mulberry32(4),th=[...Array(n)].map(()=>R()),w=th.map(Pi),W=w.reduce((a,b)=>a+b,0),wt=w.map(x=>x/W);
+ const mt=wt.reduce((a,x,i)=>a+x*th[i],0),mean=th.reduce((a,b)=>a+b,0)/n;
+ const se=Math.sqrt(w.reduce((a,x,i)=>a+x*x*(th[i]-mt)**2,0))/W;
+ const iw=wt.indexOf(Math.max(...wt));
+ Object.assign(NUMS,{mt,mean,se,wmax:wt[iw],thmax:th[iw],W});
+ const A=panel({L:40,W:370,T:10,H:150,x0:0,x1:1,y0:0,y1:5.4,yt:[[0,'0'],[2,'2'],[4,'4']],yl:'Π(θ), ×10⁻⁴',xt:T01,xo:26});
+ const B=panel({L:40,W:370,T:232,H:118,x0:0,x1:1,y0:0,y1:Math.max(...wt)*1.18,yt:[[0,'0'],[0.1,'0,1'],[0.2,'0,2'],[0.3,'0,3']].filter(([v])=>v<=Math.max(...wt)*1.18),yl:'w̃ᵢ',xt:T01,xl:'θ'});
+ S=[
+  {t:'Цель и предложение',fill:0,d:'Π(θ) = θ⁴(1 − θ)⁸ — апостериорное кнопки без нормирующего множителя. Площадь под Π (здесь 1/6435) считаем неизвестной. Разыгрывать умеем только из q = U(0, 1).'},
+  {t:'Розыгрыш из q',fill:n,ms:250,d:`${n} точек θᵢ ~ U(0, 1), штрихи под осью. Они легли равномерно, а не там, где Π велико. Их простое среднее ${f(mean,3)} оценивает E<sub>q</sub>θ = 0,5, а не E<sub>p</sub>θ.`},
+  {t:'Веса',fill:n,d:`wᵢ = Π(θᵢ)/q(θᵢ) = Π(θᵢ), потому что q = 1 на [0, 1]. Вес точки — высота Π над ней: самый тяжёлый вес у θ = ${f(th[iw],2)}, у точек правее 0,8 веса почти нулевые.`},
+  {t:'Нормировка и оценка',fill:n,d:`w̃ᵢ = wᵢ / Σwⱼ, сумма w̃ᵢ равна 1, неизвестный множитель сократился. Оценка Σ w̃ᵢθᵢ = <b style="display:inline;color:var(--warning)">${f(mt,3)}</b>, точный ответ 5/14 ≈ 0,357. Её с. о. по выборке √(Σw̃ᵢ²(θᵢ − ${f(mt,3)})²) = ${f(se,3)}.`}];
+ fig=(k,fill,cur)=>{
+  let s=A.s+`<path d="${curve(A,t=>Pi(t)*1e4,0,1)}L${A.X(1)} ${A.Y(0)}L${A.X(0)} ${A.Y(0)}Z" fill="color-mix(in srgb,${C(1)} 12%,transparent)"/><path d="${curve(A,t=>Pi(t)*1e4,0,1)}" fill="none" stroke="${C(1)}" stroke-width="2"/>`;
+  s+=`<text x="${A.X(0.6)}" y="${A.Y(3.2)}" fill="${C(1)}">Π(θ) = θ⁴(1 − θ)⁸</text>`;
+  s+=`<rect x="${A.X(0)}" y="${A.Y(0)+5}" width="${A.W}" height="9" fill="color-mix(in srgb,${C(2)} 10%,transparent)"/><text x="${A.X(1)+4}" y="${A.Y(0)+13}" fill="${C(2)}">q</text>`;
+  for(let i=0;i<fill;i++){const x=A.X(th[i]);
+   s+=`<line x1="${x}" y1="${A.Y(0)+4}" x2="${x}" y2="${A.Y(0)+15}" stroke="${C(2)}" stroke-width="${i==cur?3:1.6}"/>`;
+   if(k>=2)s+=`<line x1="${x}" y1="${A.Y(0)}" x2="${x}" y2="${A.Y(Pi(th[i])*1e4)}" stroke="${C(2)}" stroke-width="2.4" stroke-opacity=".75"/><circle cx="${x}" cy="${A.Y(Pi(th[i])*1e4)}" r="2.4" fill="${C(2)}"/>`;}
+  if(k<3)return s+hold(B.L,B.T,B.W,B.H,'нормированные веса — шаг 4');
+  s+=B.s;th.forEach((t,i)=>s+=`<rect x="${B.X(t)-2}" y="${B.Y(wt[i])}" width="4" height="${B.Y(0)-B.Y(wt[i])}" fill="${C(2)}" opacity=".8"/>`);
+  s+=`<line x1="${B.X(MU)}" y1="${B.T}" x2="${B.X(MU)}" y2="${B.Y(0)}" stroke="var(--success)" stroke-dasharray="4 3"/><line x1="${B.X(mt)}" y1="${B.T}" x2="${B.X(mt)}" y2="${B.Y(0)}" stroke="var(--warning)" stroke-width="2"/>`;
+  s+=`<line x1="${B.X(mean)}" y1="${B.T+36}" x2="${B.X(mean)}" y2="${B.Y(0)}" stroke="var(--subtle-foreground)" stroke-dasharray="2 3"/>`;
+  s+=`<text x="${B.X(Math.max(mt,MU))+5}" y="${B.T+10}" stroke="var(--background)" stroke-width="3" paint-order="stroke" fill="var(--warning)">оценка ${f(mt,3)}</text><text x="${B.X(Math.max(mt,MU))+5}" y="${B.T+24}" stroke="var(--background)" stroke-width="3" paint-order="stroke" fill="var(--success)">точно 5/14 = ${f(MU,3)}</text><text x="${B.X(mean)+4}" y="${B.T+46}" stroke="var(--background)" stroke-width="3" paint-order="stroke" fill="var(--subtle-foreground)">среднее θᵢ</text>`;
+  return s;};
+}
+
+// ================= Fig 5.1: adaptive parametric IS =================
+if(mode==='adapt'){
+ const nu=5,m=200,lp=[0.5,0.3];
+ const tden=(x,mu,s)=>{const z=(x-mu)/s;return Math.exp(lgam((nu+1)/2)-lgam(nu/2)-0.5*Math.log(nu*Math.PI)-(nu+1)/2*Math.log(1+z*z/nu))/s};
+ const R=mulberry32(9),gauss=()=>Math.sqrt(-2*Math.log(1-R()))*Math.cos(2*Math.PI*R());
+ const xs=[...Array(m)].map(()=>{const z=gauss();let v=0;for(let i=0;i<nu;i++)v+=gauss()**2;return lp[0]+lp[1]*z/Math.sqrt(v/nu)});
+ const qp=xs.map(x=>tden(x,...lp)),wp=xs.map((x,j)=>Pi(x)/qp[j]);
+ const den=(wp.reduce((a,b)=>a+b,0)/m)**2;
+ // IS estimate of cv² for a candidate λ from the one fixed sample of q′ (slide 7, step 3)
+ const cvh=(mu,s)=>{let a=0;for(let j=0;j<m;j++)if(wp[j]>0)a+=wp[j]*wp[j]*qp[j]/tden(xs[j],mu,s);return a/m/den-1};
+ const cvx=(mu,s)=>simpson(t=>p(t)**2/tden(t,mu,s),0,1)-1; // exact (1)
+ const MU0=0.1,MU1=0.7,S0=0.03,S1=0.4;
+ function argmin(fn){let b=[0,0,Infinity];for(let i=0;i<=60;i++)for(let j=0;j<=37;j++){const mu=MU0+(MU1-MU0)*i/60,s=S0+(S1-S0)*j/37,v=fn(mu,s);if(v<b[2])b=[mu,s,v]}
+  let st=[0.01,0.01];for(let it=0;it<60;it++){let moved=false;for(const [dm,ds] of [[1,0],[-1,0],[0,1],[0,-1]]){const c=[b[0]+dm*st[0],b[1]+ds*st[1]];if(c[1]<=0.005)continue;const v=fn(...c);if(v<b[2]){b=[...c,v];moved=true}}if(!moved)st=st.map(x=>x/2)}return b}
+ const est=argmin(cvh),ex=argmin(cvx);
+ const out=xs.filter(x=>x<=0||x>=1).length;
+ Object.assign(NUMS,{cvStart:cvx(...lp),cvhStart:cvh(...lp),est,ex,cvAtEst:cvx(est[0],est[1]),out});
+ const NX=48,NY=30,cells=[];for(let i=0;i<NX;i++)for(let j=0;j<NY;j++){const mu=MU0+(MU1-MU0)*(i+0.5)/NX,s=S0+(S1-S0)*(j+0.5)/NY;cells.push([i,j,cvh(mu,s)])}
+ const A=panel({L:40,W:370,T:12,H:140,x0:-0.1,x1:1.1,y0:0,y1:3.8,yt:[[0,'0'],[1,'1'],[2,'2'],[3,'3']],xt:[[0,'0'],[0.5,'0,5'],[1,'1']],xo:24,xl:'θ'});
+ const B=panel({L:40,W:370,T:218,H:140,x0:MU0,x1:MU1,y0:S0,y1:S1,yt:[[0.1,'0,1'],[0.2,'0,2'],[0.3,'0,3'],[0.4,'0,4']],xt:[[0.1,'0,1'],[0.3,'0,3'],[0.5,'0,5'],[0.7,'0,7']],xl:'μ',yl:'σ'});
+ const lv=v=>Math.max(0,Math.min(1,(Math.log10(Math.max(v,1e-3))-Math.log10(0.03))/(Math.log10(30)-Math.log10(0.03))));
+ S=[
+  {t:'Начальное λ′',fill:0,d:`Цель p = Beta(5, 9) нарисована для проверки, алгоритм знает только Π. Начальное предложение q′ = t₅(θ | μ′ = 0,5, σ′ = 0,3) шире цели и сдвинуто вправо. Его cv² по формуле (1): ${f(NUMS.cvStart,2)}.`},
+  {t:'Выборка из q′',fill:m,d:`m = ${m} точек x⁽ʲ⁾ ~ q′ (штрихи под осью). ${out} из них вне [0, 1], там Π = 0 и вес нулевой. Веса w′ⱼ = Π(x⁽ʲ⁾)/q′(x⁽ʲ⁾) считаем один раз.`},
+  {t:'c̃v² по одной выборке',fill:m,d:`Для каждого λ = (μ, σ) — то же среднее по тем же точкам, только с множителем q′/q<sub>λ</sub>; новых розыгрышей нет. Темнее — меньше. Минимум λ* = (${f(est[0],3)}; ${f(est[1],3)}), точный минимум (1) — (${f(ex[0],3)}; ${f(ex[1],3)}).`},
+  {t:'Новое предложение',fill:m,d:`q<sub>λ*</sub> легло на цель. Точное cv² упало с ${f(NUMS.cvStart,2)} до ${f(NUMS.cvAtEst,3)} (минимум по семейству t₅ — ${f(ex[2],3)}). Дальше — свежая выборка из q<sub>λ*</sub> и оценка раздела 4.`}];
+ fig=(k,fill)=>{
+  let s=A.s+`<path d="${curve(A,p,-0.1,1.1,400)}" fill="none" stroke="${C(1)}" stroke-width="2"/><text x="${A.X(0.2)-36}" y="${A.Y(3.3)}" fill="${C(1)}">p</text>`;
+  s+=`<path d="${curve(A,t=>tden(t,...lp),-0.1,1.1)}" fill="none" stroke="${C(2)}" stroke-width="1.6" stroke-dasharray="5 4"/><text x="${A.X(0.86)}" y="${A.Y(0.95)}" fill="${C(2)}">q′</text>`;
+  if(fill)xs.forEach((x,j)=>{if(x<-0.1||x>1.1)return;s+=`<line x1="${A.X(x)}" y1="${A.Y(0)+4}" x2="${A.X(x)}" y2="${A.Y(0)+12}" stroke="${wp[j]>0?C(2):'var(--subtle-foreground)'}" stroke-opacity=".55"/>`});
+  if(k>=3)s+=`<path d="${curve(A,t=>tden(t,est[0],est[1]),-0.1,1.1,400)}" fill="none" stroke="${C(2)}" stroke-width="2.2"/><text x="${A.X(est[0])+30}" y="${A.Y(2.6)}" fill="${C(2)}">q<tspan baseline-shift="sub" font-size="9">λ*</tspan></text>`;
+  if(k<2)return s+hold(B.L,B.T,B.W,B.H,'c̃v²(λ; λ′) по μ и σ — шаг 3');
+  const cw=B.W/NX,ch=B.H/NY;s+=cells.map(([i,j,v])=>`<rect x="${(B.L+i*cw).toFixed(1)}" y="${(B.T+B.H-(j+1)*ch).toFixed(1)}" width="${(cw+0.4).toFixed(1)}" height="${(ch+0.4).toFixed(1)}" fill="color-mix(in srgb,${C(2)} ${Math.round(92-88*lv(v))}%,var(--background))"/>`).join('')+B.s;
+  const mk=(x,y,lab,dx,dy,r,st)=>`<circle cx="${B.X(x)}" cy="${B.Y(y)}" r="${r}" ${st}/><text x="${B.X(x)+dx}" y="${B.Y(y)+dy}" text-anchor="${dx<0?'end':'start'}" stroke="var(--background)" stroke-width="3" paint-order="stroke" fill="var(--foreground)">${lab}</text>`;
+  s+=mk(lp[0],lp[1],'λ′',9,4,5,'fill="var(--background)" stroke="var(--foreground)" stroke-width="1.5"');
+  s+=mk(ex[0],ex[1],'точный минимум (1)',14,26,10,'fill="none" stroke="var(--warning)" stroke-width="1.6" stroke-dasharray="3 2"');
+  s+=mk(est[0],est[1],'λ*',-12,-6,4.5,'fill="var(--warning)" stroke="var(--background)"');
+  s+=`<text x="${B.L+B.W}" y="${B.T-6}" text-anchor="end" fill="var(--subtle-foreground)">светлее — больше c̃v² (лог. шкала 0,03…30)</text>`;
+  return s;};
+}
+
+// ================= Fig 6.1: rejection sampling =================
+if(mode==='reject'){
+ const N=200,M=Pi(1/3),R=mulberry32(1),pr=[...Array(N)].map(()=>{const y=R(),u=R();return {y,u,h:u*M,acc:u*M<=Pi(y)}});
+ const acc=pr.filter(o=>o.acc),nAcc=acc.length;
+ Object.assign(NUMS,{M,k:nAcc,rate:nAcc/N,theory:cInv/M,first:pr.slice(0,3).map(o=>[o.y,o.u,o.acc,Pi(o.y)/M])});
+ const A=panel({L:40,W:370,T:12,H:170,x0:0,x1:1,y0:0,y1:5.4,yt:[[0,'0'],[2,'2'],[4,'4']],yl:'×10⁻⁴',xt:T01,xl:''});
+ const B=panel({L:40,W:370,T:228,H:120,x0:0,x1:1,y0:0,y1:4.2,yt:[[0,'0'],[2,'2'],[4,'4']],xt:T01,xl:'θ'});
+ const one=i=>{const o=pr[i];return `y = ${f(o.y,3)} ~ q (штрих), u = ${f(o.u,3)}, высота u·Mq(y) = ${f(o.h*1e4,2)}·10⁻⁴. `+(Pi(o.y)/M<1e-3?`Π(y) ≈ 0, A(y) = Π(y)/(Mq(y)) ≈ 0. `:`Π(y) = ${f(Pi(o.y)*1e4,2)}·10⁻⁴, A(y) = Π(y)/(Mq(y)) = ${f(Pi(o.y)/M,3)}. `)+``+(o.acc?'u ≤ A(y): точка под Π, <b style="display:inline;color:var(--success)">принимаем</b> x = y.':'u > A(y): точка над Π, <b style="display:inline;color:var(--destructive)">отвергаем</b> и разыгрываем заново.')};
+ S=[
+  {t:'Огибающая Mq',fill:0,d:`Π(θ) = θ⁴(1 − θ)⁸, предложение q = U(0, 1). Наименьшее M, при котором Mq ≥ Π, — максимум Π: M = Π(1/3) = 2⁸/3¹² ≈ ${f(M*1e4,2)}·10⁻⁴. Прямая Mq касается Π в θ = 1/3.`},
+  {t:'Предложение 1',fill:2,ms:900,d:one(0)},
+  {t:'Предложение 2',fill:4,ms:900,d:one(1)},
+  {t:'Предложение 3',fill:6,ms:900,d:one(2)},
+  {t:`Ещё ${N-3} предложений`,fill:2*N,ms:15,d:`Точки (y, u·Mq(y)) равномерно заполняют прямоугольник под Mq. Принятые (зелёные) — те, что под Π, их ${nAcc} из ${N} = ${f(nAcc/N,3)}. Теория: ∫Π/M = 1/(cM) = ${f(cInv/M,3)}.`},
+  {t:'Принятые θ',fill:2*N,d:`Гистограмма ${nAcc} принятых θ (плотность) и π = cΠ = Beta(5, 9), c = 6435. Отвергнутые предложения в выборку не попадают, на их месте ничего не повторяется.`}];
+ fig=(k,fill,cur)=>{
+  let s=A.s+`<path d="${curve(A,t=>Pi(t)*1e4,0,1)}" fill="none" stroke="${C(1)}" stroke-width="2"/><text x="${A.X(0.03)}" y="${A.Y(3.4)}" stroke="var(--background)" stroke-width="3" paint-order="stroke" fill="${C(1)}">Π(θ)</text>`;
+  s+=`<line x1="${A.X(0)}" y1="${A.Y(M*1e4)}" x2="${A.X(1)}" y2="${A.Y(M*1e4)}" stroke="${C(2)}" stroke-width="1.6" stroke-dasharray="6 4"/><text x="${A.X(0.72)}" y="${A.Y(M*1e4)-6}" fill="${C(2)}">Mq(θ) = M</text>`;
+  const last=k>=1&&k<=3?(fill-1)>>1:-1;
+  for(let e=0;e<fill;e++){const o=pr[e>>1];
+   if(e%2==0){if((e>>1)==last||e==cur)s+=`<line x1="${A.X(o.y)}" y1="${A.Y(0)}" x2="${A.X(o.y)}" y2="${A.Y(M*1e4)}" stroke="${C(2)}" stroke-dasharray="3 3"/><text x="${A.X(o.y)}" y="${A.Y(0)+26}" text-anchor="middle" fill="${C(2)}">y</text>`;continue}
+   const x=A.X(o.y),y=A.Y(o.h*1e4),big=(e>>1)==last,r=big?4.5:2.4,col=o.acc?'var(--success)':'var(--destructive)';
+   s+=o.acc?`<circle cx="${x}" cy="${y}" r="${r}" fill="${col}"/>`:`<path d="M${x-r} ${y-r}L${x+r} ${y+r}M${x-r} ${y+r}L${x+r} ${y-r}" stroke="${col}" stroke-width="${big?2:1.4}"/>`;}
+  if(k<5)return s+hold(B.L,B.T,B.W,B.H,'гистограмма принятых — шаг 6');
+  const bw=0.05,cnt=Array(20).fill(0);acc.forEach(o=>cnt[Math.min(19,Math.floor(o.y/bw))]++);
+  s+=B.s;cnt.forEach((c,b)=>{const d=c/(nAcc*bw);if(d>0)s+=`<rect x="${B.X(b*bw)+0.5}" y="${B.Y(d)}" width="${B.X(bw)-B.X(0)-1}" height="${B.Y(0)-B.Y(d)}" fill="var(--success)" opacity=".5"/>`});
+  s+=`<path d="${curve(B,p,0,1)}" fill="none" stroke="${C(1)}" stroke-width="2"/><text x="${B.X(0.5)}" y="${B.Y(2.4)}" fill="${C(1)}">π = Beta(5, 9)</text>`;
+  return s;};
+}
+
+// ---------- stepper engine (konspekt-chapter template) ----------
+let k=0,fill=0,cur=-1,timer=null;window.stepperBusy=false;
+function draw(){
+ $('fig').innerHTML=fig(k,fill,cur);
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;cur=-1;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ if(fwd&&s.ms&&s.fill>fill){ // animate only one step forward; end in the full static state
+  window.stepperBusy=true;
+  const t=timer=setInterval(()=>{cur=fill;fill++;draw();if(fill>=s.fill){clearInterval(t);setTimeout(()=>{if(timer===t){cur=-1;draw();window.stepperBusy=false}},Math.max(s.ms,300))}},s.ms);
+  draw();return;
+ }
+ fill=s.fill;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+// reserve the tallest step-list height, so the frame does not resize between steps
+let hmax=0;for(k=0;k<S.length;k++){fill=S[k].fill;draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;fill=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>
