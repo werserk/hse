@@ -1,0 +1,94 @@
+<!-- Fig 1.1: Normal–Normal model with one observation, step by step on one axis (g/L).
+     Running example: haemoglobin θ of one patient, population prior N(140, 10²), device noise σ = 5, one reading y = 120.
+     All numbers are computed here from these five inputs. -->
+<meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+svg [data-s]{transition:opacity .8s ease}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><svg id="fig" width="420" height="250" viewBox="0 0 420 250"></svg><div id="steps"></div></div>
+</div>
+<script>
+const f=(x,d=2)=>x.toFixed(d).replace('.',',');
+const N=(x,m,v)=>Math.exp(-((x-m)**2)/(2*v))/Math.sqrt(2*Math.PI*v);
+const mu=140,tau=10,sig=5,y=120;
+const pP=1/tau**2,pD=1/sig**2,U2=1/(pP+pD),M=U2*(y*pD+mu*pP),w=pD/(pP+pD);
+const eV=sig**2+tau**2,ev=N(y,mu,eV),qV=sig**2+U2;
+const S=[
+ {t:'Априорное θ ~ N(μ, τ²)',d:`До измерения известно только, что в популяции гемоглобин около μ = ${mu} г/л с разбросом τ = ${tau}.`},
+ {t:'Краевое правдоподобие p(y)',d:`Что покажет прибор, пока θ неизвестна: y = θ + ε, сумма двух независимых нормальных, N(${mu}, ${sig}² + ${tau}² = ${eV}), с. о. ${f(Math.sqrt(eV),1)}. Прибор показал y = ${y}; p(y) = ${f(ev,4)}.`},
+ {t:'Правдоподобие N(y; θ, σ²)',d:`Плотность показания ${y} при каждом θ. Как функция θ это колокол с центром ${y} и шириной σ = ${sig}: прибор точнее, чем разброс по популяции.`},
+ {t:'Апостериорное N(M, U²)',d:`Точности складываются: 1/${sig**2} + 1/${tau**2} = ${f(pP+pD,2)}, U² = ${f(U2,0)}, U = ${f(Math.sqrt(U2),2)}. M = ${f(w,1)}·${y} + ${f(1-w,1)}·${mu} = ${f(M,0)}: ближе к измерению, у него точность в ${f(pD/pP,0)} раза выше.`},
+ {t:'Предсказательное для ỹ',d:`Следующее показание: ỹ = θ + ε̃, N(${f(M,0)}, ${sig**2} + ${f(U2,0)} = ${f(qV,0)}), с. о. ${f(Math.sqrt(qV),2)}: шум прибора плюс оставшаяся неуверенность в θ.`}];
+let k=0,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+const W=420,H=250,L=40,R=10,T=12,B=34,x0=88,x1=176,y1=0.1;
+const X=x=>L+(W-L-R)*(x-x0)/(x1-x0),Y=v=>T+(H-T-B)*(1-v/y1);
+const path=fn=>{let d='';for(let i=0;i<=300;i++){const x=x0+(x1-x0)*i/300;d+=(i?'L':'M')+X(x).toFixed(1)+' '+Y(fn(x)).toFixed(1)}return d};
+function fig(){
+ const o=(a,b=99)=>k>=a&&k<=b?1:k>b?.25:0;
+ let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(0)}"/>`;
+ [90,100,110,120,130,140,150,160,170].forEach(v=>s+=`<text x="${X(v)}" y="${Y(0)+14}" text-anchor="middle">${v}</text>`);
+ [0,0.05,0.1].forEach(v=>s+=`<text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${f(v,2)}</text>`);
+ s+=`<text x="${W-R}" y="${H-3}" text-anchor="end" fill="var(--subtle-foreground)">θ или показание y, г/л</text>`;
+ // observed reading
+ s+=`<line data-s x1="${X(y)}" y1="${T}" x2="${X(y)}" y2="${Y(0)}" stroke="var(--warning)" stroke-dasharray="3 3" opacity="${k>=1?1:0}"/>`;
+ s+=`<text data-s x="${X(y)}" y="${T+8}" text-anchor="middle" fill="var(--warning)" font-weight="600" opacity="${k>=1?1:0}">y = ${y}</text>`;
+ // prior
+ s+=`<path d="${path(x=>N(x,mu,tau**2))}" fill="none" stroke="var(--chart-2)" stroke-width="2.2"/>`;
+ s+=`<text x="${X(mu+7)}" y="${Y(N(mu,mu,tau**2))-4}" fill="var(--chart-2)">априорное</text>`;
+ // evidence (prior predictive of y)
+ s+=`<path data-s d="${path(x=>N(x,mu,eV))}" fill="none" stroke="var(--chart-3)" stroke-width="1.8" stroke-dasharray="6 3" opacity="${o(1,1)}"/>`;
+ s+=`<circle data-s cx="${X(y)}" cy="${Y(ev)}" r="3.5" fill="var(--chart-3)" opacity="${o(1,1)}"/>`;
+ s+=`<text data-s x="${X(153)}" y="${Y(N(153,mu,eV))-6}" fill="var(--chart-3)" opacity="${o(1,1)}">p(y): N(${mu}, ${eV})</text>`;
+ // likelihood
+ s+=`<path data-s d="${path(x=>N(y,x,sig**2))}" fill="none" stroke="var(--chart-4)" stroke-width="2" stroke-dasharray="5 3" opacity="${o(2)}"/>`;
+ s+=`<text data-s x="${X(y)-8}" y="${Y(N(0,0,sig**2))-4}" text-anchor="end" fill="var(--chart-4)" opacity="${o(2,2)}">правдоподобие</text>`;
+ // posterior
+ s+=`<path data-s d="${path(x=>N(x,M,U2))}" fill="none" stroke="var(--chart-1)" stroke-width="2.6" opacity="${o(3)}"/>`;
+ s+=`<line data-s x1="${X(M)}" y1="${Y(N(M,M,U2))}" x2="${X(M)}" y2="${Y(0)}" stroke="var(--chart-1)" stroke-dasharray="3 3" opacity="${o(3)}"/>`;
+ s+=`<text data-s x="${X(M)+8}" y="${Y(N(M,M,U2))+4}" fill="var(--chart-1)" opacity="${k>=3?1:0}">апостериорное, M = ${f(M,0)}</text>`;
+ // posterior predictive
+ s+=`<path data-s d="${path(x=>N(x,M,qV))}" fill="none" stroke="var(--chart-5)" stroke-width="2" opacity="${o(4)}"/>`;
+ s+=`<text data-s x="${X(M+10)}" y="${Y(N(M+10,M,qV))-4}" fill="var(--chart-5)" opacity="${o(4)}">ỹ: N(${f(M,0)}, ${f(qV,0)})</text>`;
+ return s;
+}
+const list=()=>S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+function chrome(){$('steps').innerHTML=list();$('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`}
+function draw(){$('fig').innerHTML=fig();chrome()}
+function go(i){
+ clearTimeout(timer);i=Math.max(0,Math.min(S.length-1,i));const fwd=i==k+1;
+ if(fwd){ // fade the new curves in: keep the old nodes, switch their opacities so the CSS transition runs
+  draw();k=i;const old=$('fig');window.stepperBusy=true;
+  requestAnimationFrame(()=>{const t=new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${fig()}</svg>`,'image/svg+xml');
+   const nodes=[...t.documentElement.children],cur=[...old.children];
+   if(nodes.length===cur.length)nodes.forEach((n,j)=>{const op=n.getAttribute('opacity');if(op!==null)cur[j].setAttribute('opacity',op)});else old.innerHTML=fig();
+   chrome();timer=setTimeout(()=>{window.stepperBusy=false},900)});
+  return;
+ }
+ k=i;window.stepperBusy=false;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

@@ -1,0 +1,89 @@
+<!-- Static plots of the normal-models konspekt; the figure is chosen by data-mode on the iframe.
+     Every number is computed here from the running-example data, never typed by hand. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+.note{font-size:12px;line-height:1.5;color:var(--muted-foreground);margin-top:4px}
+.row{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+.lg{display:flex;flex-direction:column;gap:3px;margin:8px 0;font:12px var(--font-mono);color:var(--muted-foreground)}
+.sw{display:inline-block;width:14px;height:3px;vertical-align:3px;margin-right:6px}
+.mono{font-family:var(--font-mono)}
+.ar{display:inline-block;transform:translateY(-0.12em);font-family:var(--font-sans,sans-serif)}
+.pad{padding-bottom:14px}
+.bars{display:grid;grid-template-columns:52px 210px auto;column-gap:10px;row-gap:7px;align-items:center;font-size:12px;margin-top:4px}
+.bars .l{font:12px var(--font-mono);color:var(--muted-foreground);text-align:right}
+.bars .b{display:flex;height:16px;border-radius:3px;overflow:hidden}
+.bars .v{font:12px var(--font-mono);color:var(--muted-foreground)}
+.bars .h{font-size:11px;color:var(--subtle-foreground)}
+</style>
+<div class="w" id="fig"></div>
+<script>
+const mode=(window.frameElement&&window.frameElement.dataset.mode)||'limits';
+const $=id=>document.getElementById(id);
+function lgam(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)}
+const N=(x,m,v)=>Math.exp(-((x-m)**2)/(2*v))/Math.sqrt(2*Math.PI*v);
+const invg=(x,a,b)=>x<=0?0:Math.exp(a*Math.log(b)-lgam(a)-(a+1)*Math.log(x)-b/x); // Inv-Gamma(a, b)
+const ichi=(x,nu,s2)=>invg(x,nu/2,nu*s2/2);                                         // scaled Inv-χ²(ν, s²)
+const f=(x,d=2)=>x.toFixed(d).replace('.',',');
+const C=i=>`var(--chart-${i})`,AR='<span class="ar">→</span>';
+function frame(W,H,o){
+ const L=o.L??38,R=o.R??10,T=o.T??8,B=o.B??34;
+ const X=x=>L+(W-L-R)*(x-o.x0)/(o.x1-o.x0),Y=y=>T+(H-T-B)*(1-(y-o.y0)/(o.y1-o.y0));
+ let s=`<line class="ax" x1="${L}" y1="${Y(o.y0)}" x2="${W-R}" y2="${Y(o.y0)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(o.y0)}"/>`;
+ (o.xt||[]).forEach(v=>s+=`<text x="${X(v)}" y="${Y(o.y0)+14}" text-anchor="middle">${String(v).replace('.',',')}</text>`);
+ (o.yt||[]).forEach(v=>s+=`<text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${String(v).replace('.',',')}</text>`);
+ if(o.xl)s+=`<text x="${W-R}" y="${H-3}" text-anchor="end" fill="var(--subtle-foreground)">${o.xl}</text>`;
+ return {X,Y,s,L,R,T,B,W,H,cid:`c${W}${H}${L}`,clip:`<clipPath id="c${W}${H}${L}"><rect x="${L}" y="${T-2}" width="${W-L-R}" height="${H-T-B+2}"/></clipPath>`};
+}
+function path(F,fn,x0,x1,n=300){let d='';for(let i=0;i<=n;i++){const x=x0+(x1-x0)*i/n;d+=(i?'L':'M')+F.X(x).toFixed(1)+' '+F.Y(fn(x)).toFixed(1)}return d}
+const svg=(F,inner)=>`<svg width="${F.W}" height="${F.H}" viewBox="0 0 ${F.W} ${F.H}"><defs>${F.clip}</defs>${F.s}<g clip-path="url(#${F.cid})">${inner}</g></svg>`;
+
+// running example: four readings of one patient, device noise σ = 5, population prior N(140, 10²)
+const Y4=[120,127,116,125],n=Y4.length,yb=Y4.reduce((a,b)=>a+b)/n,sig=5,mu=140,tau=10;
+const post=(t,nn)=>{const P=nn/sig**2+1/t**2;return {U2:1/P,M:(nn*yb/sig**2+mu/t**2)/P}};
+
+// ---------- Fig 2.1: two limits to the noninformative prior ----------
+if(mode==='limits'){
+ const T=[5,10,30],cols=[C(2),C(3),C(1)];
+ const F=frame(330,210,{x0:110,x1:136,y0:0,y1:0.19,xt:[112,116,120,124,128,132,136],yt:[0,0.05,0.1,0.15],xl:'θ, г/л'});
+ let s='';
+ T.forEach((t,i)=>{const p=post(t,n);s+=`<path d="${path(F,x=>N(x,p.M,p.U2),110,136)}" fill="none" stroke="${cols[i]}" stroke-width="2"/>`});
+ s+=`<path d="${path(F,x=>N(x,yb,sig**2/n),110,136)}" fill="none" stroke="var(--foreground)" stroke-width="1.6" stroke-dasharray="5 3"/>`;
+ s+=`<line x1="${F.X(yb)}" y1="${F.T}" x2="${F.X(yb)}" y2="${F.Y(0)}" stroke="var(--warning)" stroke-dasharray="2 3"/><text x="${F.X(yb)-4}" y="${F.T+10}" text-anchor="end" fill="var(--warning)">ȳ = ${yb}</text>`;
+ const lg=T.map((t,i)=>{const p=post(t,n);return `<span><i class="sw" style="background:${cols[i]}"></i>τ = ${t}: M = ${f(p.M,1)}, U = ${f(Math.sqrt(p.U2),2)}</span>`}).join('')+
+  `<span><i class="sw" style="background:var(--foreground)"></i>τ ${AR} ∞: N(ȳ, σ²/n), с. о. ${f(sig/Math.sqrt(n),2)}</span>`;
+ const NN=[1,4,16,64,256];
+ const rows=NN.map(nn=>{const P=nn/sig**2+1/tau**2,wp=(1/tau**2)/P;
+  return `<div class="l">n = ${nn}</div><div class="b"><span style="width:${(wp*100).toFixed(2)}%;background:${C(2)}"></span><span style="flex:1;background:color-mix(in srgb,var(--chart-4) 45%,transparent)"></span></div><div class="v">${f(wp,3)} · U = ${f(Math.sqrt(1/P),2)} / σ/√n = ${f(sig/Math.sqrt(nn),2)}</div>`}).join('');
+ $('fig').innerHTML=`<div class="pad">
+ <div class="ttl">а) τ ${AR} ∞ при n = ${n}</div><div class="g">${svg(F,s)}<div class="lg" style="margin-top:20px">${lg}</div></div>
+ <div style="margin-top:14px"><div class="ttl">б) n ${AR} ∞ при τ = ${tau}</div>
+  <div class="bars"><div></div><div class="h"><span style="color:${C(2)}">■</span> вес априорного &nbsp; <span style="color:${C(4)}">■</span> вес данных</div><div class="h">вес априорного · U / σ/√n</div>${rows}</div>
+  <div class="note" style="max-width:420px;margin-top:10px">Вес априорного в M равен (1/τ²) / (n/σ² + 1/τ²). С ростом n он стремится к 0, а U — к σ/√n: апостериорное приближается к N(ȳ, σ²/n), как в а).</div></div></div>`;
+}
+
+// ---------- Fig 3.1: scaled inverse χ² prior and posterior for σ² ----------
+if(mode==='invchi2'){
+ const th=150,Z=[146,153,149,157,145],m=Z.length,v=Z.reduce((a,z)=>a+(z-th)**2,0)/m;
+ const nu0=4,s0=25,nu=nu0+m,sn=(nu0*s0+m*v)/nu;
+ const mean=(a,s)=>a>2?a*s/(a-2):Infinity,modeF=(a,s)=>a*s/(a+2);
+ const lik=x=>invg(x,m/2-1,m*v/2); // likelihood (σ²)^(−m/2) e^(−mv/2σ²), normalised in σ² for drawing
+ const F=frame(380,220,{x0:0,x1:80,y0:0,y1:0.06,xt:[0,10,20,30,40,50,60,70,80],yt:[0,0.02,0.04,0.06],xl:'σ², (г/л)²'});
+ let s=`<path d="${path(F,x=>ichi(x,nu0,s0),0.01,80)}" fill="none" stroke="${C(2)}" stroke-width="2.2"/>`;
+ s+=`<path d="${path(F,lik,0.01,80)}" fill="none" stroke="${C(4)}" stroke-width="2" stroke-dasharray="5 3"/>`;
+ s+=`<path d="${path(F,x=>ichi(x,nu,sn),0.01,80)}" fill="none" stroke="${C(1)}" stroke-width="2.6"/>`;
+ s+=`<line x1="${F.X(v)}" y1="${F.T}" x2="${F.X(v)}" y2="${F.Y(0)}" stroke="var(--warning)" stroke-dasharray="2 3"/><text x="${F.X(v)+4}" y="${F.T+10}" fill="var(--warning)">v = ${f(v,0)}</text>`;
+ $('fig').innerHTML=`<div class="g"><div>${svg(F,s)}
+ <div class="lg"><span><i class="sw" style="background:${C(2)}"></i>априорное Inv-χ²(${nu0}, ${s0})</span><span><i class="sw" style="background:${C(4)}"></i>правдоподобие (нормировано по σ²)</span><span><i class="sw" style="background:${C(1)}"></i>апостериорное Inv-χ²(${nu}, ${f(sn,1)})</span></div></div>
+ <div class="side" style="max-width:250px"><b>Эталон</b> θ = ${th}, показания ${Z.join(', ')}.<br>Отклонения ${Z.map(z=>z-th).join(', ')}; v = ${Z.reduce((a,z)=>a+(z-th)**2,0)}/${m} = ${f(v,0)}.<br><br>
+ <b>Обновление:</b> ν = ${nu0} + ${m} = ${nu};<br>масштаб (${nu0}·${s0} + ${m}·${f(v,0)}) / ${nu} = ${f(sn,1)}.<br><br>
+ Мода: ${f(modeF(nu0,s0),1)} → ${f(modeF(nu,sn),1)}.<br>Среднее: ${f(mean(nu0,s0),1)} → ${f(mean(nu,sn),1)}.<br>Правый хвост длинный, поэтому среднее больше масштаба и моды.</div></div>`;
+}
+</script>

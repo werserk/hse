@@ -1,0 +1,117 @@
+<!-- Fig 5.1: both parameters unknown, flat prior p(θ, σ²) ∝ 1/σ². How the marginal p(θ | y) becomes Student's t:
+     joint posterior → p(σ² | y) = Inv-χ²(n−1, s²) → slices N(ȳ, σ²/n) → Monte Carlo average of slices → exact t.
+     Running example: four readings 120, 127, 116, 125. Every number is computed here. -->
+<meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+svg [data-s]{transition:opacity .8s ease}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><svg id="fig" width="440" height="400" viewBox="0 0 440 400"></svg><div id="steps"></div></div>
+</div>
+<script>
+function lgam(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)}
+const f=(x,d=2)=>x.toFixed(d).replace('.',',');
+const N=(x,m,v)=>Math.exp(-((x-m)**2)/(2*v))/Math.sqrt(2*Math.PI*v);
+const ichi=(x,nu,s2)=>x<=0?0:Math.exp((nu/2)*Math.log(nu*s2/2)-lgam(nu/2)-(nu/2+1)*Math.log(x)-nu*s2/(2*x));
+const tden=(x,nu,m,sc)=>{const z=(x-m)/sc;return Math.exp(lgam((nu+1)/2)-lgam(nu/2)-0.5*Math.log(nu*Math.PI)-(nu+1)/2*Math.log(1+z*z/nu))/sc};
+const Yd=[120,127,116,125],n=Yd.length,yb=Yd.reduce((a,b)=>a+b)/n,s2=Yd.reduce((a,y)=>a+(y-yb)**2,0)/(n-1),sc=Math.sqrt(s2/n);
+const joint=(t,v)=>v<=0?0:Math.exp(-(n/2+1)*Math.log(v)-((n-1)*s2+n*(yb-t)**2)/(2*v));
+// Monte Carlo: σ²_j = (n−1)s²/X_j, X_j ~ χ²_{n−1} as a sum of squared standard normals (seeded, so the figure is fixed)
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R=mulberry32(7),gauss=()=>Math.sqrt(-2*Math.log(1-R()))*Math.cos(2*Math.PI*R());
+const NS=300,draws=[...Array(NS)].map(()=>{let x=0;for(let i=0;i<n-1;i++)x+=gauss()**2;return (n-1)*s2/x});
+const mc=t=>draws.reduce((a,v)=>a+N(t,yb,v/n),0)/NS;
+const SL=[10,25,80];
+// quantiles by numeric integration: median of Inv-χ²(n−1, s²) and t_{n−1; 0.975}
+let med,tq;{let acc=0,h=0.01;for(let v=h/2;;v+=h){acc+=ichi(v,n-1,s2)*h;if(acc>=0.5){med=v;break}}}
+{let acc=0.5,h=1e-4;for(let z=h/2;;z+=h){acc+=tden(z,n-1,0,1)*h;if(acc>=0.975){tq=z;break}}}
+const S=[
+ {t:'Совместное апостериорное',d:`p(θ, σ² | y) ∝ (σ²)^(−n/2−1) · exp(−[(n−1)s² + n(ȳ−θ)²] / 2σ²) при n = ${n}, ȳ = ${yb}, s² = ${f(s2,1)}. Чем больше σ², тем шире допустимые θ: облако расширяется кверху.`},
+ {t:'Краевое по σ²: Inv-χ²(n−1, s²)',d:`Проинтегрировали облако по θ (справа). Inv-χ²(${n-1}, ${f(s2,1)}): мода ${f((n-1)*s2/(n+1),1)}, медиана около ${f(med,0)}, длинный хвост вверх (за краем рисунка).`},
+ {t:'Срезы: θ | σ², y ~ N(ȳ, σ²/n)',d:`При фиксированном σ² облако в сечении — нормальный колокол около ȳ шириной σ/√n. Три среза: σ² = ${SL.join(', ')}, с. о. ${SL.map(v=>f(Math.sqrt(v/n),2)).join(', ')}.`},
+ {t:'Монте-Карло: среднее срезов',d:`Разыграли ${NS} значений σ²ⱼ из Inv-χ²(${n-1}, ${f(s2,1)}) (точки справа) и усреднили колокола: p(θ | y) ≈ (1/N) Σ N(θ; ȳ, σ²ⱼ/n). Широкие колокола от больших σ²ⱼ дают тяжёлые хвосты.`},
+ {t:'Точно: t₃(ȳ, s/√n)',d:`Интеграл по σ² берётся явно: распределение Стьюдента с ${n-1} степенями свободы, центр ${yb}, масштаб s/√n = ${f(sc,2)}. Тонкая линия точной плотности легла на кривую Монте-Карло из шага 4, теперь красный пунктир. 95 %-ный интервал: ${yb} ± ${f(tq*sc,1)}.`}];
+let k=0,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+// layout: joint panel (top left), σ² marginal sideways (top right), θ panel (bottom)
+const L=40,Wj=300,Tj=10,Hj=170,t0=104,t1=140,v0=0,v1=120,MR=L+Wj+8,MW=80,Tb=Tj+Hj+40,Hb=140,y1b=0.27;
+const X=t=>L+Wj*(t-t0)/(t1-t0),Yv=v=>Tj+Hj*(1-(v-v0)/(v1-v0)),Yb=d=>Tb+Hb*(1-d/y1b);
+const mmax=ichi((n-1)*s2/(n+1),n-1,s2),Xm=d=>MR+MW*d/mmax;
+const pth=(fn,a=t0,b=t1)=>{let d='';for(let i=0;i<=240;i++){const t=a+(b-a)*i/240;d+=(i?'L':'M')+X(t).toFixed(1)+' '+Yb(Math.min(fn(t),y1b*1.05)).toFixed(1)}return d};
+// heatmap cells (computed once)
+const GX=48,GY=40,cells=[];let jmax=0;
+for(let i=0;i<GX;i++)for(let j=0;j<GY;j++){const t=t0+(i+.5)*(t1-t0)/GX,v=v0+(j+.5)*(v1-v0)/GY,d=joint(t,v);cells.push([i,j,d]);jmax=Math.max(jmax,d)}
+function fig(){
+ const o=(a,b=99)=>k>=a&&k<=b?1:k>b?.3:0;
+ let s='';
+ // joint panel
+ s+=`<line class="ax" x1="${L}" y1="${Yv(0)}" x2="${L+Wj}" y2="${Yv(0)}"/><line class="ax" x1="${L}" y1="${Tj}" x2="${L}" y2="${Yv(0)}"/>`;
+ const cw=Wj/GX,ch=Hj/GY;
+ cells.forEach(([i,j,d])=>{const a=Math.pow(d/jmax,0.6);if(a>0.02)s+=`<rect x="${(L+i*cw).toFixed(1)}" y="${(Yv(v0+(j+1)*(v1-v0)/GY)).toFixed(1)}" width="${(cw+.4).toFixed(1)}" height="${(ch+.4).toFixed(1)}" fill="var(--chart-1)" opacity="${(a*.85).toFixed(2)}"/>`});
+ [0,40,80,120].forEach(v=>s+=`<text x="${L-5}" y="${Yv(v)+4}" text-anchor="end">${v}</text>`);
+ s+=`<text x="${L+4}" y="${Tj+10}" fill="var(--subtle-foreground)">σ²</text>`;
+ [108,116,124,132,140].forEach(t=>s+=`<text x="${X(t)}" y="${Yv(0)+13}" text-anchor="middle">${t}</text>`);
+ // slices on the joint panel
+ SL.forEach((v,i)=>s+=`<line data-s x1="${L}" y1="${Yv(v)}" x2="${L+Wj}" y2="${Yv(v)}" stroke="var(--chart-4)" stroke-width="1.4" stroke-dasharray="4 3" opacity="${o(2,2)}"/><text data-s x="${L+Wj-4}" y="${Yv(v)-3}" text-anchor="end" fill="var(--chart-4)" opacity="${o(2,2)}">σ² = ${v}</text>`);
+ // σ² marginal, sideways
+ let dm='';for(let i=0;i<=200;i++){const v=v0+(v1-v0)*i/200+0.01;dm+=(i?'L':'M')+Xm(ichi(v,n-1,s2)).toFixed(1)+' '+Yv(v).toFixed(1)}
+ s+=`<line data-s class="ax" x1="${MR}" y1="${Tj}" x2="${MR}" y2="${Yv(0)}" opacity="${o(1)}"/>`;
+ s+=`<path data-s d="${dm}" fill="none" stroke="var(--chart-2)" stroke-width="2" opacity="${o(1)}"/>`;
+ s+=`<text data-s x="${MR+4}" y="${Tj+10}" fill="var(--chart-2)" opacity="${o(1)}">p(σ² | y)</text>`;
+ // MC draws as ticks on the marginal axis
+ let tk='';draws.forEach(v=>{if(v<v1)tk+=`M${MR-6} ${Yv(v).toFixed(1)}h5`});
+ s+=`<path data-s d="${tk}" stroke="var(--foreground)" stroke-width="1" opacity="${k>=3?0.5:0}"/>`;
+ // θ panel
+ s+=`<line class="ax" x1="${L}" y1="${Yb(0)}" x2="${L+Wj}" y2="${Yb(0)}"/><line class="ax" x1="${L}" y1="${Tb}" x2="${L}" y2="${Yb(0)}"/>`;
+ [0,0.1,0.2].forEach(d=>s+=`<text x="${L-5}" y="${Yb(d)+4}" text-anchor="end">${f(d,1)}</text>`);
+ [108,116,124,132,140].forEach(t=>s+=`<text x="${X(t)}" y="${Yb(0)+14}" text-anchor="middle">${t}</text>`);
+ s+=`<text x="${L+Wj}" y="${Yb(0)+28}" text-anchor="end" fill="var(--subtle-foreground)">θ, г/л</text>`;
+ s+=`<text x="${L+4}" y="${Tb+2}" fill="var(--subtle-foreground)">плотность θ</text>`;
+ SL.forEach(v=>s+=`<path data-s d="${pth(t=>N(t,yb,v/n))}" fill="none" stroke="var(--chart-4)" stroke-width="1.4" stroke-dasharray="4 3" opacity="${o(2,2)}"/>`);
+ s+=`<path data-s d="${pth(mc)}" fill="none" stroke="var(--chart-1)" stroke-width="2.6" stroke-dasharray="${k>=4?'7 4':'none'}" opacity="${o(3)}"/>`;
+ s+=`<text data-s x="${X(127)}" y="${Yb(mc(127))-6}" fill="var(--chart-1)" opacity="${k>=3?1:0}">Монте-Карло: среднее ${NS} срезов</text>`;
+ // exact Student density: thin line on top of the Monte Carlo curve, with a leader to its label
+ s+=`<path data-s d="${pth(t=>tden(t,n-1,yb,sc))}" fill="none" stroke="var(--foreground)" stroke-width="1.3" opacity="${o(4)}"/>`;
+ const tx=124.5;s+=`<line data-s x1="${X(tx)}" y1="${Yb(tden(tx,n-1,yb,sc))}" x2="${X(128)}" y2="${Yb(0.19)+3}" stroke="var(--foreground)" stroke-width=".8" opacity="${o(4)}"/>`;
+ s+=`<text data-s x="${X(128)+3}" y="${Yb(0.19)+4}" fill="var(--foreground)" opacity="${o(4)}">точно: t₃(${yb}; ${f(sc,2)})</text>`;
+ return s;
+}
+const list=()=>S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+function chrome(){$('steps').innerHTML=list();$('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`}
+function draw(){$('fig').innerHTML=fig();chrome()}
+function go(i){
+ clearTimeout(timer);i=Math.max(0,Math.min(S.length-1,i));const fwd=i==k+1;
+ if(fwd){
+  draw();k=i;const old=$('fig');window.stepperBusy=true;
+  requestAnimationFrame(()=>{const t=new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${fig()}</svg>`,'image/svg+xml');
+   const nodes=[...t.documentElement.children],cur=[...old.children];
+   if(nodes.length===cur.length)nodes.forEach((nd,j)=>{['opacity','stroke-dasharray'].forEach(a=>{const v=nd.getAttribute(a);if(v!==null)cur[j].setAttribute(a,v)})});else old.innerHTML=fig();
+   chrome();timer=setTimeout(()=>{window.stepperBusy=false},900)});
+  return;
+ }
+ k=i;window.stepperBusy=false;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>
