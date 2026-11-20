@@ -1,0 +1,40 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;font-family:var(--font-sans);align-items:start}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.row{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--border)}
+.row:first-of-type{border-top:0}
+.om{display:flex;gap:10px;width:330px;flex-wrap:wrap}
+.o{display:flex;flex-direction:column;align-items:center;gap:2px}
+.s{display:flex;gap:2px}
+.s span{box-sizing:border-box;width:20px;height:20px;border-radius:4px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font:11px var(--font-mono);color:var(--muted-foreground)}
+.s span.i{background:var(--chart-1);border-color:var(--chart-1);color:var(--background);font-weight:600}
+.o small{font:10px var(--font-mono);color:var(--subtle-foreground)}
+.ar{font-size:15px;color:var(--muted-foreground)}
+.v{width:44px;font:13px var(--font-mono);color:var(--foreground);font-weight:600}
+.bar{height:16px;background:var(--chart-1);border-radius:3px}
+.bw{display:flex;align-items:center;gap:6px;width:150px;font:12px var(--font-mono);color:var(--muted-foreground)}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+.hd{display:flex;gap:10px;font-size:12px;color:var(--muted-foreground);margin-bottom:2px}
+</style>
+<div class="g">
+<div>
+<div class="t">Ω → значение X → вероятность</div>
+<div class="hd"><span style="width:330px">исходы ω (контакты 1, 2, 3) и вес каждого</span><span style="width:16px"></span><span style="width:44px">X</span><span>f<sub>X</sub>(x)</span></div>
+<div id="rows"></div>
+</div>
+<div class="side" id="side"></div>
+</div>
+<script>
+const p=0.2,n=3;
+const outs=[];for(let m=0;m<8;m++){const b=[0,1,2].map(i=>(m>>(2-i))&1);outs.push(b)}
+const w=b=>b.reduce((a,x)=>a*(x?p:1-p),1);
+const fmt=x=>x.toFixed(3).replace('.',',');
+let h='';
+for(let x=0;x<=n;x++){
+ const g=outs.filter(b=>b.reduce((a,c)=>a+c,0)==x);const f=g.reduce((a,b)=>a+w(b),0);
+ h+=`<div class="row"><div class="om">${g.map(b=>`<div class="o"><div class="s">${b.map(c=>`<span class="${c?'i':''}">${c?'+':'−'}</span>`).join('')}</div><small>${fmt(w(b))}</small></div>`).join('')}</div><span class="ar">→</span><span class="v">X = ${x}</span><div class="bw"><div class="bar" style="width:${Math.max(2,f*190)}px"></div>${fmt(f)}</div></div>`;
+}
+document.getElementById('rows').innerHTML=h;
+document.getElementById('side').innerHTML=`<b>+</b> заразился (p = 0,2), <b>−</b> нет. Контакты независимы, поэтому вес строки — произведение: у «+ − −» он 0,2·0,8·0,8 = 0,128.<br><br><b>X</b> — число плюсов. Три строки с одним плюсом переходят в X = 1, поэтому f<sub>X</sub>(1) = 3·0,128 = 0,384.<br><br>Сумма столбца f<sub>X</sub> равна 1.`;
+</script>

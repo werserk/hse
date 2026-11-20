@@ -1,0 +1,41 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;font-family:var(--font-sans);align-items:start}
+svg text{font-family:var(--font-sans);font-size:12px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600;font-size:13px}
+svg text.m{fill:var(--foreground);font-family:var(--font-mono);font-size:12px}
+.om{fill:none;stroke:var(--border);stroke-width:1.5}
+.a{fill:color-mix(in srgb,var(--chart-1) 16%,transparent);stroke:var(--chart-1);stroke-width:1.8}
+.b{fill:color-mix(in srgb,var(--chart-2) 14%,transparent);stroke:var(--chart-2);stroke-width:1.5}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+</style>
+<div class="g"><div><div class="t">Ω и массы шести кусков</div><svg id="s"></svg></div>
+<div class="side" id="side"></div></div>
+<script>
+// region masses: B1 (inside A), A outside all B, A∩B2, B2 outside A, B3, rest of Ω
+const m={b1:0.1,a0:0.3,ab2:0.12,b2:0.04,b3:0.1,rest:0.34};
+const W=340,H=250;
+let s=`<rect class="om" x="6" y="6" width="${W-12}" height="${H-12}" rx="4"/>`;
+s+=`<ellipse class="a" cx="130" cy="125" rx="98" ry="82"/>`;
+s+=`<circle class="b" cx="88" cy="118" r="30"/>`;
+s+=`<circle class="b" cx="222" cy="140" r="38"/>`;
+s+=`<circle class="b" cx="286" cy="60" r="28"/>`;
+const t=(x,y,c,txt,anc='middle')=>s+=`<text class="${c}" x="${x}" y="${y}" text-anchor="${anc}">${txt}</text>`;
+const f=v=>v.toFixed(2).replace('.',',');
+t(20,24,'k','Ω','start');t(70,62,'k','A');
+t(88,113,'k','B₁');t(88,130,'m',f(m.b1));
+t(150,175,'m',f(m.a0));
+t(244,126,'k','B₂');t(207,146,'m',f(m.ab2));t(245,166,'m',f(m.b2));
+t(286,55,'k','B₃');t(286,72,'m',f(m.b3));
+t(290,225,'m',f(m.rest));
+const e=document.getElementById('s');e.setAttribute('viewBox',`0 0 ${W} ${H}`);e.setAttribute('width',W);e.setAttribute('height',H);e.innerHTML=s;
+const PA=m.b1+m.a0+m.ab2,PB2=m.ab2+m.b2,PB4=m.a0+m.rest,r3=v=>v.toFixed(3).replace('.',',');
+const sum=Object.values(m).reduce((a,b)=>a+b,0);
+document.getElementById('side').innerHTML=
+`Сумма всех кусков = <b>${f(sum)}</b>; P(A) = ${f(m.b1)} + ${f(m.a0)} + ${f(m.ab2)} = <b>${f(PA)}</b>.<br><br>`+
+`<b>P(A | B₁)</b> = ${f(m.b1)} / ${f(m.b1)} = <b>1</b>: B₁ целиком внутри A.<br>`+
+`<b>P(A | B₂)</b> = ${f(m.ab2)} / ${f(PB2)} = <b>${f(m.ab2/PB2)}</b>.<br>`+
+`<b>P(B₁ | A)</b> = ${f(m.b1)} / ${f(PA)} ≈ <b>${r3(m.b1/PA)}</b>.<br><br>`+
+`B₁, B₂, B₃ не покрывают Ω. Разбиение получится с четвёртым куском B₄ = (B₁∪B₂∪B₃)ᶜ, P(B₄) = ${f(PB4)}.`;
+</script>

@@ -1,0 +1,41 @@
+<style>
+.w{font-family:var(--font-sans)}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.nd{font-size:13px;font-weight:600;fill:var(--foreground)}
+.box{fill:var(--card);stroke:var(--border);stroke-width:1.2}
+.e{stroke:var(--muted-foreground);stroke-width:1.4;fill:none}
+.lim{stroke-dasharray:5 4}
+.mx{stroke:var(--chart-1);stroke-width:4}
+.mxi{stroke:var(--background);stroke-width:1.4;fill:none}
+svg text.h{paint-order:stroke;stroke:var(--background);stroke-width:4px;stroke-linejoin:round}
+.ah{fill:var(--muted-foreground)}.ahm{fill:var(--chart-1)}
+.lg{display:flex;gap:18px;font-size:12px;color:var(--muted-foreground);margin:0 0 6px 4px}
+.lg i{display:inline-block;width:26px;height:0;vertical-align:4px;margin-right:6px;border-top:1.5px solid var(--muted-foreground)}
+</style>
+<div class="w"><div class="lg"><span><i></i>сумма, частный случай, время</span><span><i style="border-top-style:dashed"></i>предел</span><span><i style="border-top:4px double var(--chart-1)"></i>смесь</span></div><svg id="s"></svg></div>
+<script>
+const W=720,H=410,bw=50,bh=15;
+const N={Bern:[70,75],Bin:[260,75],Mult:[460,75],BetaBin:[640,75],Geom:[70,205],NB:[260,205],Pois:[460,205],Norm:[640,205],Gamma:[260,330],Exp:[460,330]};
+const lab={Bern:'Bern',Bin:'Bin',Mult:'Mult',BetaBin:'Beta-Bin',Geom:'Geom',NB:'NB',Pois:'Pois',Norm:'Normal',Exp:'Exp',Gamma:'Gamma'};
+function clip(a,b){const [x1,y1]=N[a],[x2,y2]=N[b],dx=x2-x1,dy=y2-y1,t=Math.min(bw/Math.abs(dx||1e-9),bh/Math.abs(dy||1e-9));return [x1+dx*t,y1+dy*t,x2-dx*t-Math.sign(dx)*2*(Math.abs(dx)>Math.abs(dy)?1:0),y2-dy*t-Math.sign(dy)*2*(Math.abs(dy)>=Math.abs(dx)?1:0)]}
+let s=`<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path class="ahm" d="M0 0L10 5L0 10z"/></marker></defs>`;
+let L='';
+const T=(x,y,t,anc='middle')=>{L+=`<text class="h" x="${x}" y="${y}" text-anchor="${anc}">${t}</text>`};
+function line(a,b,cls){const [x1,y1,x2,y2]=clip(a,b);s+=`<path class="e ${cls}" d="M${x1} ${y1}L${x2} ${y2}" marker-end="url(#a)"/>`}
+function mix(d){s+=`<path class="e mx" d="${d}"/><path class="mxi" d="${d}" marker-end="url(#m)"/>`}
+line('Bern','Bin','');T(165,68,'сумма n');
+line('Mult','Bin','');T(360,68,'склеить до 2');
+line('Bern','Geom','');T(78,144,'нули до','start');T(78,158,'первой «1»','start');
+line('Geom','NB','');T(165,198,'сумма r');
+line('Bin','Pois','lim');T(352,130,'n→∞, np→λ');
+line('Bin','Norm','lim');T(552,170,'n→∞');
+line('NB','Pois','lim');T(360,198,'r→∞');T(360,224,'среднее λ');
+line('Pois','Norm','lim');T(550,198,'λ→∞');
+line('Pois','Exp','');T(468,272,'промежутки','start');
+line('Exp','Gamma','');T(360,323,'сумма n');
+s+=`<path class="e lim" d="M${N.Gamma[0]} ${N.Gamma[1]+bh}C${N.Gamma[0]} 400 ${N.Norm[0]} 400 ${N.Norm[0]} ${N.Norm[1]+bh+2}" marker-end="url(#a)"/>`;T(632,300,'α→∞','end');
+mix(`M${N.Bin[0]} ${N.Bin[1]-bh}C${N.Bin[0]} 12 ${N.BetaBin[0]} 12 ${N.BetaBin[0]} ${N.BetaBin[1]-bh-2}`);T(450,22,'p ~ Beta');
+mix(`M${N.Gamma[0]} ${N.Gamma[1]-bh}L${N.NB[0]} ${N.NB[1]+bh+2}`);T(268,262,'Pois с гамма-','start');T(268,276,'интенсивностью','start');T(268,290,'(Exp → Geom)','start');
+for(const k in N){const [x,y]=N[k];s+=`<rect class="box" x="${x-bw}" y="${y-bh}" width="${2*bw}" height="${2*bh}" rx="6"/><text class="nd" x="${x}" y="${y+4.5}" text-anchor="middle">${lab[k]}</text>`}
+const e=document.getElementById('s');e.setAttribute('viewBox',`0 0 ${W} ${H}`);e.setAttribute('width',W);e.setAttribute('height',H);e.innerHTML=s+L;
+</script>

@@ -1,0 +1,33 @@
+<style>
+.w{font-family:var(--font-sans)}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+svg text.h{fill:var(--foreground);font-size:12px;font-weight:600}
+.ax{stroke:var(--border)}
+.dv{stroke:var(--border);stroke-dasharray:3 3}
+.ev{fill:var(--chart-1)}
+.gp{stroke:var(--chart-2);stroke-width:2}
+.gm{stroke:var(--warning);stroke-width:3}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+</style>
+<div class="g"><svg id="s"></svg><div class="side" id="n"></div></div>
+<script>
+const E=[0.12,0.31,0.47,0.58,0.86,1.20,1.66,1.93,2.08,2.35,2.41,2.70],D=3,r=3;
+const cnt=[0,1,2].map(d=>E.filter(t=>t>=d&&t<d+1).length),gaps=E.map((t,i)=>t-(i?E[i-1]:0));
+const W=400,H=250,L=86,R=10,X=t=>L+(W-L-R)*t/D,f=(x,d=2)=>x.toFixed(d).replace('.',',');
+let s='';const row=(y,lab,sub)=>`<text x="0" y="${y+4}" class="h">${lab}</text><text x="0" y="${y+18}">${sub}</text>`;
+// ticks + day lines
+s+=`<line class="ax" x1="${L}" y1="40" x2="${W-R}" y2="40"/>`;for(let d=0;d<=D;d++)s+=`<line class="dv" x1="${X(d)}" y1="16" x2="${X(d)}" y2="${H-6}"/>`;
+for(let d=0;d<D;d++)s+=`<text x="${X(d+0.5)}" y="12" text-anchor="middle">день ${d+1}</text>`;
+s+=row(40,'события','моменты, дни');E.forEach(t=>s+=`<circle class="ev" cx="${X(t)}" cy="40" r="5"/>`);
+// Poisson counts
+s+=row(100,'Pois','число за день');cnt.forEach((c,d)=>s+=`<text x="${X(d+0.5)}" y="${104}" text-anchor="middle" class="k" style="font-size:15px;fill:var(--chart-1)">${c}</text>`);
+// gaps
+s+=row(160,'Exp','промежутки');E.forEach((t,i)=>{const a=i?E[i-1]:0,y=154+(i%2)*10;s+=`<line class="gp" x1="${X(a)+3}" y1="${y}" x2="${X(t)-3}" y2="${y}"/>`});
+// gamma: time to r-th
+s+=row(215,'Gamma',`время до ${r}-го`);s+=`<line class="gm" x1="${X(0)}" y1="215" x2="${X(E[r-1])}" y2="215"/><text x="${X(E[r-1])+6}" y="219" class="k">${f(E[r-1])} дня = ${gaps.slice(0,r).map(g=>f(g)).join(' + ')}</text>`;
+const e=document.getElementById('s');e.setAttribute('viewBox',`0 0 ${W} ${H}`);e.setAttribute('width',W);e.setAttribute('height',H);e.innerHTML=s;
+document.getElementById('n').innerHTML=`<b>Pois</b>: за каждый день считаем точки: ${cnt.join(', ')}. При интенсивности λ = 4 в день это значения Pois(4).<br><br><b>Exp</b>: отрезки между соседними точками (первый — от начала наблюдения). Каждый ~ Exp(λ), среднее 1/λ = 0,25 дня.<br><br><b>Gamma</b>: время до ${r}-го события — сумма первых ${r} промежутков, Gamma(${r}, θ = 1/λ).`;
+</script>

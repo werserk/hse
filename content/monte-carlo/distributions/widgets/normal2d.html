@@ -1,0 +1,50 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;font-family:var(--font-sans);align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+.ax{stroke:var(--border)}
+.c{fill:none;stroke:var(--chart-1);stroke-width:1.8}
+.f1{fill:color-mix(in srgb,var(--chart-1) 9%,transparent)}
+.mg{fill:color-mix(in srgb,var(--chart-2) 18%,transparent);stroke:var(--chart-2);stroke-width:1.6}
+.pa{stroke:var(--muted-foreground);stroke-width:1;stroke-dasharray:3 3}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+.side .m{font-family:var(--font-mono);font-size:12px;color:var(--foreground)}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+</style>
+<div class="g"><div><div class="t">N(0, Σ): линии уровня и краевые</div><svg id="s"></svg></div>
+<div class="side" id="side"></div></div>
+<script>
+const s11=1,s22=2,s12=0.6,s1=Math.sqrt(s11),s2=Math.sqrt(s22),rho=s12/(s1*s2),det=s11*s22-s12*s12;
+const l21=s12/s1,l22=Math.sqrt(s22-l21*l21); // Cholesky
+const xm=3.6,ym=4.8,sc=30,Lp=30,Tp=62,PW=2*xm*sc,PH=2*ym*sc,MH=48,W=Lp+PW+MH+44,H=Tp+PH+24;
+const X=x=>Lp+(x+xm)*sc,Y=y=>Tp+(ym-y)*sc;
+const phi=(x,v)=>Math.exp(-x*x/(2*v))/Math.sqrt(2*Math.PI*v);
+const f=(v,d=2)=>v.toFixed(d).replace('.',',');
+let s=`<line class="ax" x1="${X(-xm)}" y1="${Y(0)}" x2="${X(xm)}" y2="${Y(0)}"/><line class="ax" x1="${X(0)}" y1="${Y(-ym)}" x2="${X(0)}" y2="${Y(ym)}"/>`;
+s+=`<rect x="${X(-xm)}" y="${Y(ym)}" width="${PW}" height="${PH}" fill="none" class="ax" stroke="var(--border)"/>`;
+// contours: Mahalanobis radius c = 1,2,3 ; mass 1-exp(-c^2/2)
+const cs=[3,2,1];
+cs.forEach(c=>{let d='';for(let i=0;i<=120;i++){const a=2*Math.PI*i/120,u=c*Math.cos(a),v=c*Math.sin(a),x=u,y=l21*u+l22*v;d+=(i?'L':'M')+X(x).toFixed(1)+' '+Y(y).toFixed(1)}s+=`<path class="c f1" d="${d}Z"/>`});
+// principal axis
+const tr=s11+s22,ev=tr/2+Math.sqrt(tr*tr/4-det),vx=s12,vy=ev-s11,nv=Math.hypot(vx,vy),k=4.6;
+s+=`<line class="pa" x1="${X(-k*vx/nv)}" y1="${Y(-k*vy/nv)}" x2="${X(k*vx/nv)}" y2="${Y(k*vy/nv)}"/>`;
+cs.forEach(c=>{const m=1-Math.exp(-c*c/2);const yt=c*Math.sqrt(det/s11);s+=`<text x="${X(0)-3}" y="${Y(yt)-3}" text-anchor="end" class="k">${Math.round(m*100)}%</text>`});
+// top marginal y1 ~ N(0,1)
+let d=`M${X(-xm)} ${Tp-6}`;for(let i=0;i<=100;i++){const x=-xm+2*xm*i/100;d+=`L${X(x).toFixed(1)} ${(Tp-6-phi(x,s11)*MH/0.42).toFixed(1)}`}s+=`<path class="mg" d="${d}L${X(xm)} ${Tp-6}Z"/>`;
+s+=`<text x="${X(-xm)+2}" y="${Tp-14}">y₁ ~ N(0, 1)</text>`;
+// right marginal y2 ~ N(0,2)
+const R0=Lp+PW+6;d=`M${R0} ${Y(-ym)}`;for(let i=0;i<=100;i++){const y=-ym+2*ym*i/100;d+=`L${(R0+phi(y,s22)*MH/0.42).toFixed(1)} ${Y(y).toFixed(1)}`}s+=`<path class="mg" d="${d}L${R0} ${Y(ym)}Z"/>`;
+s+=`<text x="${R0}" y="${Tp-14}">y₂ ~ N(0, 2)</text>`;
+[-3,-2,-1,1,2,3].forEach(t=>{s+=`<text x="${X(t)}" y="${Y(-ym)+14}" text-anchor="middle">${t}</text>`});
+[-4,-2,2,4].forEach(t=>{s+=`<text x="${X(-xm)-5}" y="${Y(t)+4}" text-anchor="end">${t}</text>`});
+s+=`<text x="${X(xm)-4}" y="${Y(0)-4}" text-anchor="end">y₁</text><text x="${X(0)+5}" y="${Y(ym)+12}">y₂</text>`;
+const e=document.getElementById('s');e.setAttribute('viewBox',`0 0 ${W} ${H}`);e.setAttribute('width',W);e.setAttribute('height',H);e.innerHTML=s;
+const i11=s22/det,i12=-s12/det,i22=s11/det;
+document.getElementById('side').innerHTML=
+`<span class="m">Σ = [[1, 0,6], [0,6, 2]]</span><br>σ₁ = 1, σ₂ = √2 ≈ ${f(s2)}, <b>ρ = ${f(rho)}</b><br><br>`+
+`<b>det Σ</b> = σ₁²σ₂²(1 − ρ²) = 2 · ${f(1-rho*rho)} = <b>${f(det)}</b><br>`+
+`<span class="m">Σ⁻¹ ≈ [[${f(i11)}, ${f(i12)}], [${f(i12)}, ${f(i22)}]]</span><br><br>`+
+`Линии уровня — эллипсы, на которых показатель (y−μ)ᵀΣ⁻¹(y−μ) равен 1, 4 и 9. Внутри каждого лежит указанная доля вероятности, 1 − e^(−c²/2).<br><br>`+
+`ρ > 0 наклоняет эллипсы вдоль пунктирной главной оси. Тени по краям — краевые плотности: проекции не зависят от ρ.`;
+</script>

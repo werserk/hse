@@ -1,0 +1,26 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;font-family:var(--font-sans);align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+.ax{stroke:var(--border)}
+.sup{fill:color-mix(in srgb,var(--chart-1) 16%,transparent)}
+.tri{fill:color-mix(in srgb,var(--warning) 45%,transparent);stroke:var(--warning);stroke-width:1.4}
+.dg{stroke:var(--chart-1);stroke-width:1.8}
+.ln{stroke:var(--foreground);stroke-width:1.4;stroke-dasharray:5 3}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+</style>
+<div class="g"><div><div class="t">Носитель 0 &lt; x &lt; y и прямая x + y = 1</div><svg id="s"></svg></div>
+<div class="side">Светлая область — где плотность e<sup>−y</sup> положительна (над диагональю y = x).<br><br><b>Закрашенный треугольник</b> — часть носителя под прямой x + y = 1, то есть событие X + Y &lt; 1. Его вершины: (0, 0), (½, ½), (0, 1).<br><br>Внутренний интеграл по y идёт от диагонали до прямой, внешний по x — от 0 до ½. Ответ: 1 − (интеграл плотности по треугольнику) = <b id="v"></b>.</div></div>
+<script>
+const W=270,H=260,L=30,B=24,T=10,R=10,m=2.2,X=x=>L+(W-L-R)*x/m,Y=y=>T+(H-T-B)*(1-y/m);
+let s=`<path class="sup" d="M${X(0)} ${Y(0)}L${X(m)} ${Y(m)}L${X(0)} ${Y(m)}Z"/>`;
+s+=`<path class="tri" d="M${X(0)} ${Y(0)}L${X(0.5)} ${Y(0.5)}L${X(0)} ${Y(1)}Z"/>`;
+s+=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(0)}"/>`;
+s+=`<line class="dg" x1="${X(0)}" y1="${Y(0)}" x2="${X(m)}" y2="${Y(m)}"/><line class="ln" x1="${X(0)}" y1="${Y(1)}" x2="${X(1)}" y2="${Y(0)}"/>`;
+[0,0.5,1,1.5,2].forEach(v=>{const t=String(v).replace('.',',');s+=`<text x="${X(v)}" y="${Y(0)+15}" text-anchor="middle">${t}</text>`;if(v)s+=`<text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${t}</text>`});
+s+=`<text x="${X(1.55)}" y="${Y(1.75)}" class="k" style="fill:var(--chart-1)">y = x</text><text x="${X(0.95)}" y="${Y(0.2)}" class="k">x + y = 1</text><text x="${X(0.35)}" y="${Y(1.7)}">f = e⁻ʸ</text>`;
+const e=document.getElementById('s');e.setAttribute('viewBox',`0 0 ${W} ${H}`);e.setAttribute('width',W);e.setAttribute('height',H);e.innerHTML=s;
+document.getElementById('v').innerHTML='2e<sup>−1/2</sup> − e<sup>−1</sup> ≈ '+(2*Math.exp(-0.5)-Math.exp(-1)).toFixed(3).replace('.',',');
+</script>

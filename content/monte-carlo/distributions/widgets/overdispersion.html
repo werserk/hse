@@ -1,0 +1,28 @@
+<style>
+.w{font-family:var(--font-sans)}
+.p{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 2px}
+.c{font-size:12px;color:var(--muted-foreground);margin:0 0 6px;font-family:var(--font-mono)}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+.ax{stroke:var(--border)}
+.b2{fill:var(--chart-2)}.b1{fill:var(--chart-1)}
+.hl{fill:none;stroke:var(--warning);stroke-width:1.6;stroke-dasharray:4 2}
+</style>
+<div class="w"><div class="p" id="p"></div></div>
+<script>
+const lf=k=>{let s=0;for(let i=2;i<=k;i++)s+=Math.log(i);return s};
+const lg=x=>{const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)};
+const lam=4,r=2,p=r/(r+lam);
+const pois=k=>Math.exp(k*Math.log(lam)-lam-lf(k)),nb=k=>Math.exp(lg(k+r)-lg(r)-lf(k)+r*Math.log(p)+k*Math.log(1-p));
+const K=16,f=x=>x.toFixed(3).replace('.',',');
+const C=[{t:'Пуассон: интенсивность постоянна',c:`Pois(4): E = 4, Var = 4`,fn:pois,cl:'b2'},{t:'NB: интенсивность дня случайна',c:`NB(2, 1/3): E = 4, Var = ${(r*(1-p)/p/p).toFixed(0)}`,fn:nb,cl:'b1'}];
+const W=300,H=190,L=30,R=8,T=24,B=24,X=k=>L+(W-L-R)*(k+0.6)/(K+1),Y=y=>T+(H-T-B)*(1-y/0.22);
+document.getElementById('p').innerHTML=C.map(({t,c,fn,cl})=>{let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/>`;let tail=0;
+ for(let k=0;k<=K;k++){const q=fn(k);s+=`<rect class="${cl}" x="${X(k)-6}" y="${Y(q)}" width="12" height="${Y(0)-Y(q)}"/>`}
+ for(let k=0;k<8;k++)tail+=fn(k);tail=1-tail;
+ [0,4,8,12,16].forEach(v=>s+=`<text x="${X(v)}" y="${Y(0)+15}" text-anchor="middle">${v}</text>`);[0.1,0.2].forEach(v=>s+=`<text x="${L-4}" y="${Y(v)+4}" text-anchor="end">${String(v).replace('.',',')}</text>`);
+ s+=`<rect class="hl" x="${X(0)-9}" y="${T-2}" width="18" height="${Y(0)-T+2}"/><text x="${X(0)-9}" y="${T-6}" class="k">P(0) = ${f(fn(0))}</text>`;
+ s+=`<rect class="hl" x="${X(8)-9}" y="${Y(fn(8))-6}" width="${X(K)-X(8)+18}" height="${Y(0)-Y(fn(8))+6}"/><text x="${X(8)}" y="${Y(fn(8))-12}" class="k">P(≥ 8) = ${f(tail)}</text>`;
+ return `<div><div class="t">${t}</div><div class="c">${c}</div><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${s}</svg></div>`}).join('');
+</script>

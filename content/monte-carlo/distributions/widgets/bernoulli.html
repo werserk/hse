@@ -1,0 +1,67 @@
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.r{display:flex;align-items:center;gap:10px;margin:4px 0;min-height:26px}
+.l{width:44px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
+.s{display:flex;gap:3px;font-family:var(--font-mono);font-size:13px}
+.s span{box-sizing:border-box;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.idx span{height:14px;font-size:10px;color:var(--subtle-foreground)}
+.x span{background:var(--muted);color:var(--muted-foreground)}
+.x span.one{background:var(--chart-1);color:var(--background);font-weight:600}
+.a span{font-size:11px;color:var(--muted-foreground)}
+.a span.in{background:color-mix(in srgb,var(--chart-2) 28%,transparent);color:var(--foreground)}
+.a span.hit{background:var(--chart-2);color:var(--background);font-weight:700}
+.a span.z{background:color-mix(in srgb,var(--warning) 30%,transparent);color:var(--foreground)}
+.a span.end{border:2px solid var(--warning);font-weight:700;color:var(--foreground)}
+.res{font:12px var(--font-mono);color:var(--foreground);margin-left:6px;white-space:nowrap}
+.ph{visibility:hidden}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+const X=[0,0,1,0,1,1,0,0,0,1,0,1,0,0,1,0],P=X.length,n=10,r=3;
+const ones=X.map((v,i)=>v?i:-1).filter(i=>i>=0);
+const bin=X.slice(0,n).reduce((a,b)=>a+b,0),geo=ones[0],nb=ones[r-1]-(r-1);
+// gaps: zeros between consecutive ones
+const gaps=ones.slice(0,r).map((o,i)=>o-(i?ones[i-1]+1:0));
+const S=[
+ {t:'Бернулли',d:'Каждая клетка — одно испытание: 1 (успех) с вероятностью p, иначе 0. Испытания независимы.'},
+ {t:'Биномиальное',d:`Сколько единиц среди первых n = ${n}? Здесь Y = ${bin}. Y ~ Bin(n, p) — сумма n испытаний Бернулли.`},
+ {t:'Геометрическое',d:`Сколько нулей до первой единицы? Здесь Y = ${geo}. Y ~ Geom(p).`},
+ {t:'Отрицательное биномиальное',d:`Сколько нулей до r = ${r}-й единицы? Промежутки ${gaps.join(' + ')} = ${nb}. Каждый промежуток — Geom(p), поэтому NB(r, p) — сумма r геометрических.`}];
+let k=0;const $=id=>document.getElementById(id);
+const row=(lab,cls,f,res,vis=true)=>`<div class="r ${vis?'':'ph'}"><div class="l">${lab}</div><div class="s ${cls}">${Array.from({length:P},(_,j)=>f(j)).join('')}</div><div class="res">${res||''}</div></div>`;
+function fig(){
+ let h=row('','idx',j=>`<span>${j+1}</span>`)+row('Bern','x',j=>`<span class="${X[j]?'one':''}">${X[j]}</span>`);
+ h+=row('Bin','a',j=>j<n?`<span class="${X[j]?'hit':'in'}">${X[j]?'1':''}</span>`:'<span></span>',`Y = ${bin}`,k>=1);
+ h+=row('Geom','a',j=>j<geo?'<span class="z">0</span>':j==geo?'<span class="end">1</span>':'<span></span>',`Y = ${geo}`,k>=2);
+ let g=0;h+=row('NB','a',j=>{if(j>ones[r-1])return'<span></span>';if(X[j]){g++;return`<span class="end">${g}</span>`}return'<span class="z">0</span>'},`Y = ${gaps.join('+')} = ${nb}`,k>=3);
+ return h;
+}
+function draw(){
+ $('fig').innerHTML=fig();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){k=Math.max(0,Math.min(S.length-1,i));draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

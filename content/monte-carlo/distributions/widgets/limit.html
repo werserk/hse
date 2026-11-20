@@ -1,0 +1,59 @@
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 12px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600;font-size:12px}
+.ax{stroke:var(--border)}
+.b1{fill:var(--chart-1)}
+.po{fill:none;stroke:var(--chart-2);stroke-width:2}
+.lg{display:flex;gap:16px;font-size:12px;color:var(--muted-foreground);margin:4px 0 0 34px}
+.sw{display:inline-block;width:12px;height:10px;margin-right:5px;vertical-align:-1px}
+.txt{padding:8px 6px 8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit;font-family:var(--font-mono);font-weight:600}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div><svg id="fig"></svg><div class="lg"><span><i class="sw" style="background:var(--chart-1)"></i><span id="lb"></span></span><span><i class="sw" style="border:2px solid var(--chart-2);box-sizing:border-box"></i>Pois(4)</span></div></div><div id="steps"></div></div>
+</div>
+<script>
+const mode=(window.frameElement&&window.frameElement.dataset.mode)||'bin',lam=4,K=14;
+const lf=k=>{let s=0;for(let i=2;i<=k;i++)s+=Math.log(i);return s};
+const lg=x=>{const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)};
+const pois=k=>Math.exp(k*Math.log(lam)-lam-lf(k));
+const binp=(k,n)=>{const p=lam/n;return k>n?0:Math.exp(lf(n)-lf(k)-lf(n-k)+k*Math.log(p)+(n-k)*Math.log(1-p))};
+const nbp=(k,r)=>{const p=r/(r+lam);return Math.exp(lg(k+r)-lg(r)-lf(k)+r*Math.log(p)+k*Math.log(1-p))};
+const P=mode=='bin'?[5,10,20,100,2000]:[1,2,5,20,100];
+const fn=mode=='bin'?binp:nbp,name=mode=='bin'?'n':'r';
+const tv=v=>{let s=0;for(let k=0;k<=400;k++)s+=Math.abs(fn(k,v)-pois(k));return s/2};
+const vr=v=>mode=='bin'?lam*(1-lam/v):lam*(1+lam/v);
+const f=(x,d)=>x.toFixed(d).replace('.',',');
+document.getElementById('lb').textContent=mode=='bin'?'Bin(n, 4/n)':'NB(r, r/(r+4))';
+const S=P.map(v=>({t:`${name} = ${v}`,d:`${mode=='bin'?'p = '+f(lam/v,v>=1000?4:3):'p = '+f(v/(v+lam),3)} · Var = ${f(vr(v),v>=1000?3:2)}<br>P(Y = 4): ${f(fn(4,v),4)} против ${f(pois(4),4)}<br>расстояние TV = ${f(tv(v),v>=1000?4:3)}`}));
+const W=330,H=210,L=34,R=8,T=10,B=24,X=k=>L+(W-L-R)*(k+0.6)/(K+1.2),Y=y=>T+(H-T-B)*(1-y/0.42);
+let k=0;const $=id=>document.getElementById(id);
+function fig(){const v=P[k];let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/>`;
+ for(let j=0;j<=K;j++){const q=fn(j,v);s+=`<rect class="b1" x="${X(j)-6}" y="${Y(q)}" width="12" height="${Y(0)-Y(q)}"/>`}
+ for(let j=0;j<=K;j++){const q=pois(j);s+=`<rect class="po" x="${X(j)-8}" y="${Y(q)}" width="16" height="${Y(0)-Y(q)}"/>`}
+ for(let j=0;j<=K;j+=2)s+=`<text x="${X(j)}" y="${Y(0)+15}" text-anchor="middle">${j}</text>`;[0.2,0.4].forEach(y=>s+=`<text x="${L-5}" y="${Y(y)+4}" text-anchor="end">${f(y,1)}</text>`);
+ s+=`<text x="${W-R}" y="${T+12}" text-anchor="end" class="k">${name} = ${v}, TV = ${f(tv(v),v>=1000?4:3)}</text>`;return s}
+function draw(){$('fig').setAttribute('viewBox',`0 0 ${W} ${H}`);$('fig').setAttribute('width',W);$('fig').setAttribute('height',H);$('fig').innerHTML=fig();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`}
+function go(i){k=Math.max(0,Math.min(S.length-1,i));draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

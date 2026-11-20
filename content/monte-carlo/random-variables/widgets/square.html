@@ -1,0 +1,30 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;font-family:var(--font-sans);align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+.ax{stroke:var(--border)}
+.l1{stroke:var(--chart-1);stroke-width:2.2;fill:none}
+.l2{stroke:var(--muted-foreground);stroke-width:1.5;fill:none;stroke-dasharray:3 3}
+.hb{fill:color-mix(in srgb,var(--warning) 30%,transparent)}
+.vb{fill:color-mix(in srgb,var(--chart-1) 30%,transparent)}
+.mk{stroke:var(--warning);stroke-width:1.2;stroke-dasharray:4 3}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+</style>
+<div class="g"><div><div class="t">y = x², две ветви</div><svg id="s"></svg></div>
+<div class="side">Горизонтальная полоса <b>[y, y+dy]</b> собирает две вертикальные полосы по x: около <b>−√y</b> на убывающей ветви и около <b>+√y</b> на возрастающей.<br><br>Ширина каждой вертикальной полосы — <b>dy / (2√y)</b>: это модуль производной обратной функции.<br><br>Пунктирный колокол — плотность N(0,1). Вклад полосы — значение плотности в её точке, умноженное на ширину; f<sub>Y</sub>(y) — сумма двух вкладов.</div></div>
+<script>
+const W=330,H=270,L=30,R=12,T=12,B=26,xm=2.4,ym=4.2;
+const X=x=>L+(W-L-R)*(x+xm)/(2*xm),Y=y=>T+(H-T-B)*(1-y/ym);
+const y0=1.5,dy=0.35,a=Math.sqrt(y0),b=Math.sqrt(y0+dy);
+let s=`<rect class="hb" x="${L}" y="${Y(y0+dy)}" width="${W-L-R}" height="${Y(y0)-Y(y0+dy)}"/>`;
+s+=`<rect class="vb" x="${X(-b)}" y="${T}" width="${X(-a)-X(-b)}" height="${Y(0)-T}"/><rect class="vb" x="${X(a)}" y="${T}" width="${X(b)-X(a)}" height="${Y(0)-T}"/>`;
+s+=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/><line class="ax" x1="${X(0)}" y1="${T}" x2="${X(0)}" y2="${Y(0)}"/>`;
+let p='',q='';const xc=Math.sqrt(ym);for(let i=0;i<=120;i++){const x=-xm+2*xm*i/120,xp=-xc+2*xc*i/120;p+=(i?'L':'M')+X(xp)+' '+Y(xp*xp);q+=(i?'L':'M')+X(x)+' '+Y(3.2*Math.exp(-x*x/2)/Math.sqrt(2*Math.PI))}
+s+=`<path class="l2" d="${q}"/><path class="l1" d="${p}"/>`;
+[-2,-1,0,1,2].forEach(v=>s+=`<text x="${X(v)}" y="${Y(0)+15}" text-anchor="middle">${v}</text>`);
+s+=`<text x="${L+4}" y="${Y(y0+dy/2)+4}" class="k">y</text><text x="${X(-a)-2}" y="${T+12}" text-anchor="end" class="k">−√y</text><text x="${X(b)+3}" y="${T+12}" class="k">+√y</text>`;
+s+=`<text x="${X(1.25)}" y="${Y(3.6)}" text-anchor="middle" style="fill:var(--chart-1)">y = x²</text>`;
+const e=document.getElementById('s');e.setAttribute('viewBox',`0 0 ${W} ${H}`);e.setAttribute('width',W);e.setAttribute('height',H);e.innerHTML=s;
+</script>

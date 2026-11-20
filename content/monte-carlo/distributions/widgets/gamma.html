@@ -1,0 +1,23 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;font-family:var(--font-sans);align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+.ax{stroke:var(--border)}
+.mn{stroke:var(--warning);stroke-dasharray:4 3}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+.lg{display:flex;flex-direction:column;gap:4px;margin-top:10px;font:12px var(--font-mono)}
+.sw{display:inline-block;width:14px;height:3px;vertical-align:3px;margin-right:6px}
+</style>
+<div class="g"><svg id="s"></svg><div class="side"><b>Среднее у всех 5 дней</b> (пунктир), меняется форма α, масштаб θ = 5/α.<div class="lg" id="lg"></div><br>CV — коэффициент вариации σ/среднее = 1/√α.</div></div>
+<script>
+const A=[1,2,5,20],m=5,col=['var(--chart-1)','var(--chart-2)','var(--chart-3)','var(--chart-4)'];
+function lg(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)}
+const pdf=(x,a,th)=>x<=0?(a==1?1/th:0):Math.exp((a-1)*Math.log(x)-x/th-lg(a)-a*Math.log(th));
+const W=330,H=220,L=36,R=10,T=10,B=26,xm=15,ym=0.4,X=x=>L+(W-L-R)*x/xm,Y=y=>T+(H-T-B)*(1-y/ym);
+let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(0)}"/><line class="mn" x1="${X(m)}" y1="${T}" x2="${X(m)}" y2="${Y(0)}"/>`;
+[0,5,10,15].forEach(v=>s+=`<text x="${X(v)}" y="${Y(0)+15}" text-anchor="middle">${v}</text>`);[0.2,0.4].forEach(v=>s+=`<text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${String(v).replace('.',',')}</text>`);
+s+=`<text x="${X(12.5)}" y="${Y(0)+17}" text-anchor="middle">дни</text>`;
+A.forEach((a,i)=>{const th=m/a;let p='';for(let j=0;j<=300;j++){const x=xm*j/300;p+=(j?'L':'M')+X(x)+' '+Y(Math.min(pdf(x,a,th),ym*1.02))}s+=`<path d="${p}" fill="none" stroke="${col[i]}" stroke-width="2.2"/>`});
+const e=document.getElementById('s');e.setAttribute('viewBox',`0 0 ${W} ${H}`);e.setAttribute('width',W);e.setAttribute('height',H);e.innerHTML=`<defs><clipPath id="c"><rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}"/></clipPath></defs><g clip-path="url(#c)">${s}</g>`+[0,5,10,15].map(v=>`<text x="${X(v)}" y="${Y(0)+15}" text-anchor="middle">${v}</text>`).join('')+[0.2,0.4].map(v=>`<text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${String(v).replace('.',',')}</text>`).join('');
+document.getElementById('lg').innerHTML=A.map((a,i)=>`<span><i class="sw" style="background:${col[i]}"></i>α = ${a}, θ = ${String(m/a).replace('.',',')}, CV = ${(1/Math.sqrt(a)).toFixed(2).replace('.',',')}</span>`).join('');
+</script>

@@ -1,0 +1,26 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;font-family:var(--font-sans);align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+.ax{stroke:var(--border)}
+.b1{fill:var(--chart-1)}
+.fu{fill:var(--warning)}
+.cb{fill:color-mix(in srgb,var(--chart-3) 30%,transparent);stroke:var(--chart-3)}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+</style>
+<div class="g"><div><div class="t">f<sub>X</sub>(x), ожидание и вклады в дисперсию</div><svg id="s"></svg></div><div class="side" id="n"></div></div>
+<script>
+const p=0.2,pm=[0,1,2,3].map(k=>[1,3,3,1][k]*p**k*(1-p)**(3-k));
+const mu=pm.reduce((a,q,k)=>a+k*q,0),con=pm.map((q,k)=>(k-mu)**2*q),v=con.reduce((a,b)=>a+b,0);
+const fm=(x,d=3)=>x.toFixed(d).replace('.',',');
+const W=320,H=250,L=60,R=14,X=x=>L+(W-L-R)*(x+0.4)/3.8,Y=y=>130-110*y/0.55;
+let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/>`;
+pm.forEach((q,k)=>{s+=`<rect class="b1" x="${X(k)-12}" y="${Y(q)}" width="24" height="${Y(0)-Y(q)}"/><text x="${X(k)}" y="${Y(q)-4}" text-anchor="middle">${fm(q)}</text><text x="${X(k)}" y="${Y(0)+14}" text-anchor="middle" class="k">${k}</text>`});
+s+=`<path class="fu" d="M${X(mu)} ${Y(0)+18}l-7 12h14z"/><text x="${X(mu)}" y="${Y(0)+42}" text-anchor="middle" class="k" style="fill:var(--warning)">E(X) = ${fm(mu,1)}</text>`;
+s+=`<text x="${L-8}" y="${Y(0)+14}" text-anchor="end">x</text><text x="${L-8}" y="${Y(0)+42+28}" text-anchor="end">(x−μ)²f</text>`;
+const cy=Y(0)+60,cm=0.2;con.forEach((c,k)=>{const h=40*c/cm;s+=`<rect class="cb" x="${X(k)-12}" y="${cy+40-h}" width="24" height="${h}"/><text x="${X(k)}" y="${cy+54}" text-anchor="middle">${fm(c)}</text>`});
+const e=document.getElementById('s');e.setAttribute('viewBox',`0 0 ${W} ${H}`);e.setAttribute('width',W);e.setAttribute('height',H);e.innerHTML=s;
+document.getElementById('n').innerHTML=`<b>Ожидание</b>: Σ x·f(x) = ${fm(mu,1)} — значения, взвешенные по их вероятностям (▲).<br><br><b>Дисперсия</b>: сумма нижних вкладов ${con.map(c=>fm(c)).join(' + ')} = <b>${fm(v,2)}</b>.<br><br>Самый маленький столбик (x = 3) даёт заметный вклад: он далеко от среднего, а отклонение входит в квадрате.`;
+</script>

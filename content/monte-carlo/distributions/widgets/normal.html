@@ -1,0 +1,27 @@
+<style>
+.w{font-family:var(--font-sans)}
+.p{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 2px}
+.c{font-size:12px;color:var(--muted-foreground);margin:0 0 6px}
+.v{font-weight:700}.ok{color:var(--success)}.no{color:var(--destructive)}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+.ax{stroke:var(--border)}
+.b1{fill:color-mix(in srgb,var(--chart-1) 55%,transparent)}
+.nc{stroke:var(--foreground);stroke-width:1.8;fill:none}
+</style>
+<div class="w"><div class="p" id="p"></div></div>
+<script>
+const lf=k=>{let s=0;for(let i=2;i<=k;i++)s+=Math.log(i);return s};
+const pois=(k,l)=>Math.exp(k*Math.log(l)-l-lf(k));
+const npdf=(x,m,s)=>Math.exp(-((x-m)**2)/(2*s*s))/(s*Math.sqrt(2*Math.PI));
+const C=[{l:4,ok:false,c:'скошено вправо, у нормальной кривой хвост в отрицательных значениях'},{l:25,ok:true,c:'почти симметрично, кривая проходит по верхушкам столбиков'}];
+const W=300,H=180,L=34,R=8,T=10,B=24;
+document.getElementById('p').innerHTML=C.map(({l,ok,c})=>{
+ const k0=Math.max(0,Math.floor(l-4*Math.sqrt(l))),k1=Math.ceil(l+4*Math.sqrt(l)),x0=Math.min(-1.5,l-4.5*Math.sqrt(l)),x1=k1+1,ym=1.15*Math.max(pois(Math.floor(l),l),npdf(l,l,Math.sqrt(l)));
+ const X=x=>L+(W-L-R)*(x-x0)/(x1-x0),Y=y=>T+(H-T-B)*(1-y/ym),bw=Math.max(2,(X(1)-X(0))*0.8);
+ let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/>`;
+ for(let k=k0;k<=k1;k++){const q=pois(k,l);s+=`<rect class="b1" x="${X(k)-bw/2}" y="${Y(q)}" width="${bw}" height="${Y(0)-Y(q)}"/>`}
+ let p='';for(let i=0;i<=200;i++){const x=x0+(x1-x0)*i/200;p+=(i?'L':'M')+X(x)+' '+Y(npdf(x,l,Math.sqrt(l)))}s+=`<path class="nc" d="${p}"/>`;
+ const tk=l<10?[0,4,8,12]:[10,20,30,40];tk.forEach(v=>s+=`<text x="${X(v)}" y="${Y(0)+15}" text-anchor="middle">${v}</text>`);
+ return `<div><div class="t">λ = ${l} <span class="v ${ok?'ok':'no'}">${ok?'✓':'✗'}</span></div><div class="c">${c}</div><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${s}</svg></div>`}).join('');
+</script>
