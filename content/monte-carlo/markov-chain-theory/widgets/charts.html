@@ -1,0 +1,81 @@
+<!-- Static figures of "Цепи Маркова: классы и стационарность". Mode from the iframe's data-mode:
+     ck  — Fig 1.1: running chain graph + first column of P^n converging to pi_1 = 2/3;
+     cyc — Fig 3.1: cyclic chain of slide 13 coloured by cyclic class + P^n_{1,1} bars.
+     Every number is computed here from the matrices. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.figs{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.c1,.side b.c1{color:var(--chart-1)}.c2,.side b.c2{color:var(--chart-2)}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+svg .tk{font-size:10px;fill:var(--subtle-foreground)}
+@media(max-width:640px){.g{grid-template-columns:1fr}.side{border-left:0;border-top:2px solid var(--border);padding:8px 0 0;margin-top:10px}}
+</style>
+<div class="w"><div class="g"><div id="fig" class="figs"></div><div class="side" id="side"></div></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const mode=(window.frameElement&&window.frameElement.dataset.mode)||'ck';
+const mul=(A,B)=>A.map(r=>B[0].map((_,j)=>r.reduce((s,a,k)=>s+a*B[k][j],0)));
+const powers=(P,N)=>{const I=P.map((r,i)=>r.map((_,j)=>+(i==j)));const out=[I];for(let n=1;n<=N;n++)out.push(mul(out[n-1],P));return out};
+const f=(x,d=3)=>(+x.toFixed(d)).toString().replace('.',',');
+const fr={0.5:'1/2',1:'1',0.25:'1/4'};
+// ---- graph helpers: nodes {id:[x,y]}, curved arrows with labels
+const R=17;
+function arrow(x1,y1,cx,cy,x2,y2,col,w=1.5){
+ const dx=x2-cx,dy=y2-cy,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,s=7,bx=x2-ux*s,by=y2-uy*s,px=-uy*s*.5,py=ux*s*.5;
+ return `<path d="M${x1} ${y1}Q${cx} ${cy} ${bx} ${by}" fill="none" stroke="${col}" stroke-width="${w}"/><polygon points="${x2},${y2} ${bx+px},${by+py} ${bx-px},${by-py}" fill="${col}"/>`}
+function edge(N,a,b,bend,lab,col='var(--muted-foreground)',lo=0){
+ const [x1,y1]=N[a],[x2,y2]=N[b],dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,nx=-uy,ny=ux;
+ const cx=(x1+x2)/2+nx*bend,cy=(y1+y2)/2+ny*bend;
+ const s=(px,py)=>{const vx=px-x1,vy=py-y1,l=Math.hypot(vx,vy);return [x1+vx/l*R,y1+vy/l*R]};
+ const e=(px,py)=>{const vx=px-x2,vy=py-y2,l=Math.hypot(vx,vy);return [x2+vx/l*R,y2+vy/l*R]};
+ const [sx,sy]=s(cx,cy),[ex,ey]=e(cx,cy);
+ const tx=(x1+x2)/2+nx*(bend*.5+(bend>=0?11:-11)+lo),ty=(y1+y2)/2+ny*(bend*.5+(bend>=0?11:-11)+lo)+4;
+ return arrow(sx,sy,cx,cy,ex,ey,col)+`<text x="${tx}" y="${ty}" text-anchor="middle" font-size="12">${lab}</text>`}
+function loop(N,a,dir,lab){const [x,y]=N[a],t=dir=='u'?-1:1;
+ return arrow(x-9,y+t*(R-3),x,y+t*(R+38),x+9,y+t*(R-3),'var(--muted-foreground)')+`<text x="${x+18}" y="${y+t*(R+20)+4}" font-size="12">${lab}</text>`}
+function node(N,a,col,lab){const [x,y]=N[a];return `<circle cx="${x}" cy="${y}" r="${R}" fill="color-mix(in srgb,${col} 18%,var(--card))" stroke="${col}" stroke-width="1.6"/><text x="${x}" y="${y+5}" text-anchor="middle" font-size="14" font-weight="600" style="fill:var(--foreground)">${lab||a}</text>`}
+// ---- chart helper
+function chart({w=330,h=200,xmax,ymin=0,ymax=1,series=[],hl=[],xt=[],yt=[],xl='n',bars=null}){
+ const L=38,Rr=10,T=10,B=28,X=x=>L+(w-L-Rr)*x/xmax,Y=y=>T+(h-T-B)*(1-(y-ymin)/(ymax-ymin));
+ let s=`<line class="ax" x1="${L}" y1="${Y(ymin)}" x2="${w-Rr}" y2="${Y(ymin)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(ymin)}"/>`;
+ for(const t of xt)s+=`<text class="tk" x="${X(t)}" y="${h-B+14}" text-anchor="middle">${t}</text>`;
+ for(const t of yt)s+=`<text class="tk" x="${L-5}" y="${Y(t[0])+3}" text-anchor="end">${t[1]}</text>`;
+ s+=`<text x="${w-Rr}" y="${h-3}" text-anchor="end">${xl}</text>`;
+ for(const l of hl)s+=`<line x1="${L}" x2="${w-Rr}" y1="${Y(l.y)}" y2="${Y(l.y)}" stroke="${l.c||'var(--warning)'}" stroke-dasharray="5 4"/><text x="${w-Rr}" y="${Y(l.y)-5}" text-anchor="end" style="fill:${l.c||'var(--warning)'}">${l.t}</text>`;
+ if(bars)for(const [x,y,c] of bars){const bw=(w-L-Rr)/xmax*.55;
+  s+= y>0?`<rect x="${X(x)-bw/2}" y="${Y(y)}" width="${bw}" height="${Y(0)-Y(y)}" fill="${c}" rx="2"/>`:`<text x="${X(x)}" y="${Y(0)-4}" text-anchor="middle" style="fill:var(--subtle-foreground)">0</text>`}
+ for(const se of series){s+=`<polyline fill="none" stroke="${se.c}" stroke-width="1.6" points="${se.p.map(([x,y])=>X(x)+','+Y(y)).join(' ')}"/>`+se.p.map(([x,y])=>`<circle cx="${X(x)}" cy="${Y(y)}" r="3" fill="${se.c}"/>`).join('')}
+ return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${s}</svg>`}
+
+if(mode=='ck'){
+ const P=[[.5,.5],[1,0]],N=10,Pw=powers(P,N);
+ const G={1:[60,110],2:[170,110]};
+ let g=loop(G,1,'u','')+`<text x="${G[1][0]-30}" y="${G[1][1]-46}" font-size="12">1/2</text>`+edge(G,1,2,-26,'1/2')+edge(G,2,1,-26,'1')+node(G,1,'var(--chart-1)')+node(G,2,'var(--chart-2)');
+ const c1=Pw.map((M,n)=>[n,M[0][0]]),c2=Pw.map((M,n)=>[n,M[1][0]]);
+ const pi1=2/3;
+ $('fig').innerHTML=`<div><div class="ttl">Граф</div><svg width="215" height="160" viewBox="0 0 215 160">${g}</svg></div>`+
+  `<div><div class="ttl">Столбец 1 матрицы Pⁿ</div>${chart({xmax:N,series:[{p:c1,c:'var(--chart-1)'},{p:c2,c:'var(--chart-2)'}],hl:[{y:pi1,t:'π₁ = 2/3'}],xt:[0,2,4,6,8,10],yt:[[0,'0'],[.5,'0,5'],[1,'1']]})}</div>`;
+ const gap=n=>Math.abs(Pw[n][0][0]-Pw[n][1][0]);
+ $('side').innerHTML=`<b class="c1">●</b> P<sup>n</sup><sub>1,1</sub> — старт из 1,<br><b class="c2">●</b> P<sup>n</sup><sub>2,1</sub> — старт из 2.<br><br>Разность: ${[1,2,3,4].map(n=>f(gap(n),4)).join('; ')}… — каждый шаг вдвое меньше.<br><br>При n = 5: ${f(Pw[5][0][0],5)} и ${f(Pw[5][1][0],5)}; при n = 10: ${f(Pw[10][0][0],4)} и ${f(Pw[10][1][0],4)}.`;
+}
+if(mode=='cyc'){
+ $('fig').style.flexDirection='column';$('fig').style.gap='10px';
+ const h=.5,P=[[0,1,0,0,0],[h,0,h,0,0],[0,h,0,h,0],[0,0,h,0,h],[0,0,0,1,0]],N=12,Pw=powers(P,N);
+ const G={};for(let i=1;i<=5;i++)G[i]=[30+(i-1)*72,58];
+ let g='';
+ for(let i=1;i<5;i++){g+=edge(G,i,i+1,-22,fr[P[i-1][i]]);g+=edge(G,i+1,i,-22,fr[P[i][i-1]])}
+ for(let i=1;i<=5;i++)g+=node(G,i,i%2?'var(--chart-1)':'var(--chart-2)');
+ const bars=Pw.slice(1).map((M,n)=>[n+1,M[0][0],(n+1)%2?'var(--chart-2)':'var(--chart-1)']);
+ $('fig').innerHTML=`<div><div class="ttl">Граф: <span class="c1">C₀ = {1, 3, 5}</span>, <span class="c2">C₁ = {2, 4}</span></div><svg width="350" height="116" viewBox="0 0 350 116">${g}</svg></div>`+
+  `<div><div class="ttl">P<sup>n</sup><sub>1,1</sub></div>${chart({w:300,xmax:N+.6,ymax:.6,bars,xt:[1,2,4,6,8,10,12],yt:[[0,'0'],[.25,'0,25'],[.5,'0,5']],hl:[{y:.25,t:'1/4'}]})}</div>`;
+ $('side').innerHTML=`Каждый шаг меняет цвет: из <b class="c1">C₀</b> в <b class="c2">C₁</b> и обратно. Поэтому P<sup>n</sup><sub>1,1</sub>&nbsp;=&nbsp;0 при нечётных n, и НОД возможных n равен 2.<br><br>Чётные значения: ${[2,4,6,8].map(n=>f(Pw[n][0][0],4)).join('; ')}… → 1/4, нечётные — 0: предела нет.`;
+}
+</script>
+<script>/*fit-width*/(function(){var d=document.documentElement;function f(){d.style.zoom="";var w=d.clientWidth,s=d.scrollWidth;if(s>w+1)d.style.zoom=Math.max(.5,w/s)}addEventListener("load",f);addEventListener("resize",f);addEventListener("click",function(){setTimeout(f,60)});setTimeout(f,200)})()</script>

@@ -1,0 +1,120 @@
+<!-- Fig 2.1: classification of states on the right-hand chain of slide 5, step by step, ending with the canonical form.
+     Classes, cycles and the reordered matrix are computed from P below. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+svg text{font-family:var(--font-sans);font-size:12px;fill:var(--muted-foreground)}
+.nw{animation:fade .9s ease both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.mx{margin-top:10px}
+.mr{display:flex;gap:3px;margin:3px 0;align-items:center}
+.mr .l{width:22px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground);margin-right:6px}
+.mr span.c{box-sizing:border-box;width:30px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;font:12px var(--font-mono)}
+.mr.idx span.c{height:14px;font-size:10px;color:var(--subtle-foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+@media(max-width:640px){.g{grid-template-columns:1fr}}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const h=.5;
+// states 1..6, P[i][j] with 1-based keys
+const P={1:{6:1},2:{1:1},3:{2:1},4:{6:h,5:h},5:{6:h,4:h},6:{4:h,5:h}};
+const S=[1,2,3,4,5,6],p=(i,j)=>P[i][j]||0;
+// reachability by transitive closure
+const reach={};for(const i of S){const seen=new Set(),st=[i];while(st.length){const a=st.pop();for(const b in P[a])if(!seen.has(+b)){seen.add(+b);st.push(+b)}}reach[i]=seen}
+const comm=(i,j)=>reach[i].has(j)&&reach[j].has(i);
+const essential=S.filter(i=>[...reach[i]].every(j=>reach[j].has(i)));
+const nonEss=S.filter(i=>!essential.includes(i));
+const cls=essential.filter(i=>comm(i,essential[0]));
+// cycle lengths through 6 inside the class, up to 6 steps: set {n : P^n_66 > 0}
+function retLens(i,N){const out=[];let v={[i]:1};for(let n=1;n<=N;n++){const nv={};for(const a in v)for(const b in P[a])nv[b]=(nv[b]||0)+v[a]*P[a][b];v=nv;if(v[i]>0)out.push(n)}return out}
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+const lens=retLens(6,6),per=lens.reduce(gcd);
+const order=[...cls,...nonEss];
+const fs=x=>x==0?'0':x==1?'1':x==.5?'½':String(x);
+
+const G={1:[50,50],2:[50,145],3:[50,240],6:[190,50],4:[340,50],5:[265,165]};
+const R=18;
+function arrow(x1,y1,cx,cy,x2,y2,col,w){
+ const dx=x2-cx,dy=y2-cy,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,s=7,bx=x2-ux*s,by=y2-uy*s,px=-uy*s*.5,py=ux*s*.5;
+ return `<path d="M${x1} ${y1}Q${cx} ${cy} ${bx} ${by}" fill="none" stroke="${col}" stroke-width="${w}"/><polygon points="${x2},${y2} ${bx+px},${by+py} ${bx-px},${by-py}" fill="${col}"/>`}
+const BEND={'6-4':-18,'4-6':-18,'6-5':-18,'5-6':-18,'4-5':-18,'5-4':-18};
+function edge(a,b,col,w,cls=''){
+ const [x1,y1]=G[a],[x2,y2]=G[b],dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L,bend=BEND[a+'-'+b]||0;
+ const cx=(x1+x2)/2+nx*bend,cy=(y1+y2)/2+ny*bend;
+ const cut=(px,py,qx,qy)=>{const vx=qx-px,vy=qy-py,l=Math.hypot(vx,vy);return [px+vx/l*R,py+vy/l*R]};
+ const [sx,sy]=cut(x1,y1,cx,cy),[ex,ey]=cut(x2,y2,cx,cy);
+ const lab=fs(p(a,b)),tx=(x1+x2)/2+nx*(bend*.5-11),ty=(y1+y2)/2+ny*(bend*.5-11)+4;
+ return `<g class="${cls}">${arrow(sx,sy,cx,cy,ex,ey,col,w)}<text x="${tx}" y="${ty}" text-anchor="middle" style="fill:${col}">${lab}</text></g>`}
+const EDGES=[];for(const i of S)for(const j in P[i])EDGES.push([i,+j]);
+const PATH=[[3,2],[2,1],[1,6]];
+const CYC=[[6,4],[4,6],[4,5],[5,6]];
+const inL=(L,a,b)=>L.some(([x,y])=>x==a&&y==b);
+
+const ST=[
+ {t:'Граф',d:'Стрелка i → j есть, если P<sub>i,j</sub> > 0; число на ней — вероятность. Для достижимости и сообщаемости важны только сами стрелки.'},
+ {t:'Достижимость',d:`Из 3 ведёт путь 3 → 2 → 1 → 6, дальше цепь ходит по {4, 5, 6}. Из 3 достижимы ${[...reach[3]].sort().join(', ')}. Обратных стрелок к 1, 2, 3 нет.`},
+ {t:'Несущественные: '+nonEss.join(', '),d:'Каждое из них ведёт в 6, а из 6 в него не вернуться: P<sup>m</sup><sub>i,6</sub> > 0, но P<sup>n</sup><sub>6,i</sub> = 0 при всех n. В них нельзя вернуться и из самих себя, поэтому каждое удобно считать отдельным классом из одного состояния.'},
+ {t:'Класс {'+cls.join(', ')+'}',d:`4, 5 и 6 попарно достижимы — это класс. Стрелок наружу нет: класс замкнут, все его состояния существенные. Внутри него цепь неразложима.`},
+ {t:'Период класса: '+per,d:`Возвраты в 6 возможны за n = ${lens.join(', ')}…: например, 6 → 4 → 6 (2 шага) и 6 → 4 → 5 → 6 (3 шага). НОД(2, 3) = ${per}, класс ациклический.`},
+ {t:'Канонический вид',d:`Порядок состояний ${order.join(', ')}: сначала существенный класс, потом несущественные. Блок P₁ — переходы внутри класса; справа от него нули (из класса не выйти); B₁ — переходы из несущественных в класс; R — между несущественными.`}];
+
+let k=0,prevK=0,timer=null;window.stepperBusy=false;
+function svg(){
+ const nw=x=>(k>prevK&&k==x)?'nw':'';
+ let s='';
+ if(k>=3)s+=`<rect class="${nw(3)}" x="150" y="12" width="232" height="190" rx="14" fill="color-mix(in srgb,var(--chart-1) 10%,transparent)" stroke="var(--chart-1)"/>`;
+ if(k>=2)s+=`<rect class="${nw(2)}" x="18" y="16" width="64" height="258" rx="12" fill="none" stroke="var(--muted-foreground)" stroke-dasharray="5 4"/><text class="${nw(2)}" x="50" y="290" text-anchor="middle">несущественные</text>`;
+ if(k>=3)s+=`<text class="${nw(3)}" x="372" y="196" text-anchor="end" style="fill:var(--chart-1)">существенный класс</text>`;
+ for(const [a,b] of EDGES){
+  let col='var(--muted-foreground)',w=1.4,c='';
+  if(k==1&&inL(PATH,a,b)){col='var(--warning)';w=2.4;c=nw(1)}
+  if(k==4&&inL(CYC,a,b)){col='var(--brand)';w=2.4;c=nw(4)}
+  s+=edge(a,b,col,w,c)}
+ for(const i of S){const [x,y]=G[i],ne=nonEss.includes(i),inC=cls.includes(i);
+  const col=k>=3&&inC?'var(--chart-1)':(k>=2&&ne?'var(--muted-foreground)':'var(--foreground)');
+  s+=`<circle cx="${x}" cy="${y}" r="${R}" fill="var(--card)" stroke="${col}" stroke-width="1.6" ${k>=2&&ne?'stroke-dasharray="4 3"':''}/><text x="${x}" y="${y+5}" text-anchor="middle" font-size="14" font-weight="600" style="fill:var(--foreground)">${i}</text>`}
+ return `<svg width="400" height="300" viewBox="0 0 400 300">${s}</svg>`}
+function matrix(){
+ const nE=cls.length;
+ const bg=(ri,ci)=>ri<nE&&ci<nE?'color-mix(in srgb,var(--chart-1) 22%,transparent)':ri<nE?'color-mix(in srgb,var(--muted-foreground) 8%,transparent)':ci<nE?'color-mix(in srgb,var(--warning) 25%,transparent)':'color-mix(in srgb,var(--chart-2) 18%,transparent)';
+ let s=`<div class="mr idx"><span class="l"></span>${order.map(j=>`<span class="c">${j}</span>`).join('')}</div>`;
+ order.forEach((i,ri)=>{s+=`<div class="mr"><span class="l">${i}</span>${order.map((j,ci)=>`<span class="c" style="background:${bg(ri,ci)};${p(i,j)?'color:var(--foreground);font-weight:600':'color:var(--subtle-foreground)'}">${fs(p(i,j))}</span>`).join('')}</div>`});
+ const sw=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px"><span style="width:12px;height:12px;border-radius:3px;background:${c}"></span>${t}</span>`;
+ s+=`<div style="font-size:12px;color:var(--muted-foreground);margin:8px 0 0 28px">${sw(bg(0,0),'P₁')}${sw(bg(0,nE),'0')}${sw(bg(nE,0),'B₁')}${sw(bg(nE,nE),'R')}</div>`;
+ return s}
+function draw(){
+ $('fig').innerHTML=`<div class="ttl">Цепь со слайда 5 (справа)</div>${svg()}<div class="mx ${k==5&&prevK<5?'nw':''}" style="opacity:${k>=5?1:0}">${matrix()}</div>`;
+ $('steps').innerHTML=ST.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==ST.length-1;$('cnt').textContent=`шаг ${k+1} из ${ST.length}`;
+}
+function go(i){
+ clearTimeout(timer);i=Math.max(0,Math.min(ST.length-1,i));prevK=(i==k+1)?k:i;k=i;
+ window.stepperBusy=prevK<k;draw();
+ if(window.stepperBusy)timer=setTimeout(()=>{window.stepperBusy=false},950);
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<ST.length;k++){prevK=k;draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;prevK=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

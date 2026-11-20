@@ -1,0 +1,48 @@
+<!-- Fig 5.1: all paths of length n=4 from 2 to 2 in the running chain, grouped by the first return time l.
+     Each group equals f^l_{2,2} * P^{n-l}_{2,2}; the paths, f and P powers are all computed below. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+table{border-collapse:collapse;font-size:13px}
+th{line-height:1.8;font-weight:400;font-size:12px;color:var(--muted-foreground);text-align:left;padding:0 12px 6px 0;white-space:nowrap}
+td{padding:6px 12px 6px 0;border-top:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+td.l{font:12px var(--font-mono);color:var(--muted-foreground);text-align:right}
+.mono{font-family:var(--font-mono)}
+.path{display:flex;gap:3px;margin:2px 0}
+.path span{box-sizing:border-box;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px;font:12px var(--font-mono);background:color-mix(in srgb,var(--chart-1) 14%,transparent)}
+.path span.ret{background:var(--chart-1);color:var(--background);font-weight:600}
+.path span.end{outline:1px solid var(--chart-1);outline-offset:-1px}
+.path.pr{height:24px;align-items:center;color:var(--muted-foreground)}
+.none{color:var(--subtle-foreground);font-size:12px}
+.tot td{border-top:2px solid var(--border);font-weight:600}
+@media(max-width:640px){.g{grid-template-columns:1fr}.side{border-left:0;border-top:2px solid var(--border);padding:8px 0 0;margin-top:10px}}
+</style>
+<div class="w"><div class="g"><div id="fig"></div><div class="side" id="side"></div></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const h=.5,P={1:{1:h,2:h},2:{1:1}},n=4,i=2,j=2;
+const fr=x=>{for(let d=1;d<=64;d*=2){const k=Math.round(x*d);if(Math.abs(k/d-x)<1e-12)return d==1?String(k):k+'/'+d}return x.toFixed(4)};
+// all paths of length n from i to j with positive probability
+function paths(a,b,m){const out=[];(function rec(path,pr){if(path.length==m+1){if(path[m]==b)out.push([path,pr]);return}const s=path[path.length-1];for(const t in P[s])rec([...path,+t],pr*P[s][t])})([a],1);return out}
+const all=paths(i,j,n);
+const firstHit=pt=>pt.findIndex((s,t)=>t>0&&s==j);
+// f^l_{i,j}: probability over paths of length l that hit j first at step l; P^m_{j,j} by enumeration
+const fl=l=>paths(i,j,l).filter(([pt])=>firstHit(pt)==l).reduce((s,[,p])=>s+p,0);
+const Pjj=m=>m==0?1:paths(j,j,m).reduce((s,[,p])=>s+p,0);
+let rows='',tot=0;
+for(let l=1;l<=n;l++){
+ const grp=all.filter(([pt])=>firstHit(pt)==l),sum=grp.reduce((s,[,p])=>s+p,0);tot+=sum;
+ const cells=grp.length?grp.map(([pt])=>`<div class="path">${pt.map((s,t)=>`<span class="${t==l?'ret':''} ${t==n&&t!=l?'end':''}">${s}</span>`).join('')}</div>`).join(''):`<span class="none">нет путей</span>`;
+ const probs=grp.map(([,p])=>`<div class="path pr">${fr(p)}</div>`).join('');
+ rows+=`<tr><td class="l">${l}</td><td>${cells}</td><td class="mono">${probs}</td><td class="mono">${fr(fl(l))} · ${fr(Pjj(n-l))}</td><td class="mono">${fr(sum)}</td></tr>`;
+}
+rows+=`<tr class="tot"><td></td><td>всего путей: ${all.length}</td><td></td><td class="mono">P<sup>4</sup><sub>2,2</sub> =</td><td class="mono">${fr(tot)}</td></tr>`;
+$('fig').innerHTML=`<div class="ttl">Пути 2 → 2 за ${n} шага</div><table><tr><th>l</th><th>пути, первый возврат выделен</th><th>вер. пути</th><th>f<sup>l</sup><sub>2,2</sub> · P<sup>${n}−l</sup><sub>2,2</sub></th><th>вклад</th></tr>${rows}</table>`;
+$('side').innerHTML=`<b>Строка l</b> — пути, которые впервые возвращаются в 2 на шаге l. До шага l они 2 не посещают (это f<sup>l</sup>), после — любой путь из 2 в 2 за оставшиеся ${n}−l шагов (это P<sup>${n}−l</sup>).<br><br>l = 1: из 2 нельзя остаться в 2, f<sup>1</sup> = 0.<br>l = 3: f<sup>3</sup> = ${fr(fl(3))}, но за 1 шаг из 2 в 2 не попасть, P<sup>1</sup><sub>2,2</sub> = 0.<br><br>Сумма вкладов равна P<sup>4</sup><sub>2,2</sub> = ${fr(tot)}.`;
+</script>
+<script>/*fit-width*/(function(){var d=document.documentElement;function f(){d.style.zoom="";var w=d.clientWidth,s=d.scrollWidth;if(s>w+1)d.style.zoom=Math.max(.5,w/s)}addEventListener("load",f);addEventListener("resize",f);addEventListener("click",function(){setTimeout(f,60)});setTimeout(f,200)})()</script>

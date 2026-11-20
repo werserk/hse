@@ -1,0 +1,98 @@
+<!-- Fig 1.1: the range-contraction lemma on numbers. P is 3x3 with min element eps; x is a column.
+     y, a, Py, Px, the lower helper vector and every bound are computed below from P and x. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 8px}
+.cols{display:flex;gap:9px;align-items:flex-start}
+.col .h{height:18px;font:12px var(--font-mono);color:var(--muted-foreground);text-align:center;white-space:nowrap}
+.col .cs{display:flex;flex-direction:column;gap:3px}
+.row{display:flex;gap:3px}
+.cell{box-sizing:border-box;width:36px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;font:12px var(--font-mono);background:color-mix(in srgb,var(--muted-foreground) 10%,transparent)}
+.cell.eps{outline:1.5px solid var(--warning);outline-offset:-2px}
+.cell.mn{background:color-mix(in srgb,var(--chart-2) 28%,transparent)}
+.cell.mx{background:color-mix(in srgb,var(--chart-1) 28%,transparent)}
+.cell.dv{background:var(--chart-3);color:var(--background);font-weight:600}
+.cell.hi{background:var(--chart-1);color:var(--background);font-weight:600}
+.cell.lo{background:var(--chart-2);color:var(--background);font-weight:600}
+.cell.em{background:transparent;border:1px dashed var(--border);color:transparent}
+.col .a{min-width:36px;font-size:10px;color:var(--subtle-foreground);height:26px;display:flex;align-items:center}
+.idx{font:12px var(--font-mono);color:var(--muted-foreground);width:14px;text-align:right}
+.nw{animation:fade var(--d,.9s) ease both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+@media(max-width:700px){.g{grid-template-columns:1fr}}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const P=[[.5,.3,.2],[.2,.6,.2],[.3,.2,.5]],x=[2,8,5],r=x.length;
+const f=(v,d=2)=>(+v.toFixed(d)).toString().replace('.',',');
+const eps=Math.min(...P.flat()),M0=Math.max(...x),m0=Math.min(...x);
+const mul=v=>P.map(row=>row.reduce((s,p,j)=>s+p*v[j],0));
+const y=x.map(v=>v==m0?m0:M0),a=P.map(row=>row.reduce((s,p,j)=>s+(x[j]==m0?p:0),0)),Py=mul(y),Px=mul(x);
+const z=x.map(v=>v==M0?M0:m0),b=P.map(row=>row.reduce((s,p,j)=>s+(x[j]==M0?p:0),0)),Pz=mul(z);
+const M1=Math.max(...Px),m1=Math.min(...Px),up=M0-eps*(M0-m0),lo=m0+eps*(M0-m0);
+const ST=[
+ {t:'Данные',d:`Матрица P стохастическая, наименьший элемент ε = ${f(eps)} (обведены). У x наименьший элемент m₀ = ${m0}, наибольший M₀ = ${M0}, размах ${M0-m0}.`},
+ {t:'Вектор y ≥ x',d:`Координаты, равные m₀, оставляем, остальные поднимаем до M₀: y = (${y.join('; ')}). У y всего два значения, поэтому Py считается явно.`,ms:900},
+ {t:'Py = M₀ − a(M₀ − m₀)',d:`a — сумма элементов строки P в столбцах, где x = m₀ (здесь столбец 1): a = ${a.map(v=>f(v)).join('; ')}. Каждое a ≥ ε. (Py)ᵢ = ${M0} − a·${M0-m0} = ${Py.map(v=>f(v)).join('; ')}.`,ms:900},
+ {t:'Px ≤ Py: максимум',d:`Элементы P неотрицательны, поэтому x ≤ y даёт Px ≤ Py. Px = (${Px.map(v=>f(v)).join('; ')}), M₁ = ${f(M1)} ≤ M₀ − ε(M₀ − m₀) = ${f(up)}.`,ms:600},
+ {t:'То же для −x: минимум',d:`Симметрично опускаем всё, кроме максимума, до m₀: вектор (${z.join('; ')}) ≤ x, b — вес столбца максимума: ${b.map(v=>f(v)).join('; ')}. Его произведение (${Pz.map(v=>f(v)).join('; ')}) ≤ Px, поэтому m₁ = ${f(m1)} ≥ m₀ + ε(M₀ − m₀) = ${f(lo)}.`,ms:500},
+ {t:'Размах сжался',d:`M₁ − m₁ = ${f(M1-m1)} ≤ (1 − 2ε)(M₀ − m₀) = ${f(1-2*eps)}·${M0-m0} = ${f((1-2*eps)*(M0-m0))}. Оценка грубая, зато верна на каждом шаге: при повторении размах умножается за шаг не более чем на ${f(1-2*eps)}.`,ms:400}];
+let k=0,prevK=0,timer=null;window.stepperBusy=false;
+const isNew=s=>k>prevK&&k==s;
+function col(h,vals,cls,s,ann){
+ const show=k>=s,nw=isNew(s)?`nw" style="--d:${ST[s].ms}ms`:'';
+ return `<div class="col ${nw}"><div class="h">${show?h:''}</div><div class="cs">${vals.map((v,i)=>`<div class="row"><span class="cell ${show?cls(v,i):'em'}">${show?f(v):''}</span>${ann?`<span class="a" style="margin-left:4px">${show?ann(i):''}</span>`:''}</div>`).join('')}</div></div>`}
+function line(){
+ const W=340,X=v=>20+(W-40)*v/10,Ys=[24,62];let s='';
+ s+=`<line x1="${X(0)}" x2="${X(10)}" y1="96" y2="96" stroke="var(--border)"/>`;for(let t=0;t<=10;t+=2)s+=`<text x="${X(t)}" y="110" text-anchor="middle">${t}</text>`;
+ const band=(y0,lo,hi,c,lab,pts)=>`<rect x="${X(lo)}" y="${y0-7}" width="${X(hi)-X(lo)}" height="14" rx="3" fill="color-mix(in srgb,${c} 22%,transparent)"/>`+pts.map(v=>`<circle cx="${X(v)}" cy="${y0}" r="3.5" fill="${c}"/>`).join('')+`<text x="${X(10)+6}" y="${y0+4}">${lab}</text>`;
+ s+=band(Ys[0],m0,M0,'var(--foreground)','x',x);
+ if(k>=3)s+=`<g class="${isNew(3)?'nw':''}">${band(Ys[1],m1,M1,'var(--chart-3)','Px',Px)}<line x1="${X(up)}" x2="${X(up)}" y1="${Ys[1]-14}" y2="${Ys[1]+14}" stroke="var(--chart-1)" stroke-dasharray="3 3"/><text x="${X(up)}" y="${Ys[1]-17}" text-anchor="middle" style="fill:var(--chart-1)">${f(up)}</text></g>`;
+ if(k>=4)s+=`<g class="${isNew(4)?'nw':''}"><line x1="${X(lo)}" x2="${X(lo)}" y1="${Ys[1]-14}" y2="${Ys[1]+14}" stroke="var(--chart-2)" stroke-dasharray="3 3"/><text x="${X(lo)}" y="${Ys[1]-17}" text-anchor="middle" style="fill:var(--chart-2)">${f(lo)}</text></g>`;
+ if(k>=5)s+=`<g class="${isNew(5)?'nw':''}"><text x="${X(0)}" y="${Ys[0]-12}">размах ${M0-m0}</text><text x="${X(0)}" y="${Ys[1]+24}" style="fill:var(--chart-3)">размах ${f(M1-m1)} ≤ ${f((1-2*eps)*(M0-m0))}</text></g>`;
+ return `<svg width="${W+30}" height="116" viewBox="0 0 ${W+30} 116">${s}</svg>`}
+function draw(){
+ const pm=`<div class="col"><div class="h">P</div><div class="cs">${P.map((row,i)=>`<div class="row"><span class="idx">${i+1}</span>${row.map((p,j)=>`<span class="cell ${p==eps?'eps':''} ${k==2&&x[j]==m0?'mn':''} ${k==4&&x[j]==M0?'mx':''}">${f(p)}</span>`).join('')}</div>`).join('')}</div></div>`;
+ const xc=col('x',x,v=>v==m0?'mn':v==M0?'mx':'',0);
+ const yc=col('y',y,v=>v==m0?'mn':'mx',1);
+ const pyc=col('Py',Py,()=>'',2,i=>'a='+f(a[i]));
+ const pxc=col('Px',Px,v=>v==M1?'hi':v==m1?'lo':'dv',3);
+ const zc=col('y⁻',z,v=>v==M0?'mx':'mn',4);
+ const pzc=col('Py⁻',Pz,()=>'',4,i=>'b='+f(b[i]));
+ $('fig').innerHTML=`<div class="ttl">Лемма на числах</div><div class="cols">${pm}${xc}${yc}${pyc}${pxc}${zc}${pzc}</div><div style="margin-top:14px">${line()}</div>`;
+ $('steps').innerHTML=ST.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==ST.length-1;$('cnt').textContent=`шаг ${k+1} из ${ST.length}`;
+}
+function go(i){
+ clearTimeout(timer);i=Math.max(0,Math.min(ST.length-1,i));prevK=(i==k+1)?k:i;k=i;
+ window.stepperBusy=prevK<k;draw();
+ if(window.stepperBusy)timer=setTimeout(()=>{window.stepperBusy=false},(ST[k].ms||0)+50);
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<ST.length;k++){prevK=k;draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;prevK=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>
+<script>/*fit-width*/(function(){var d=document.documentElement;function f(){d.style.zoom="";var w=d.clientWidth,s=d.scrollWidth;if(s>w+1)d.style.zoom=Math.max(.5,w/s)}addEventListener("load",f);addEventListener("resize",f);addEventListener("click",function(){setTimeout(f,60)});setTimeout(f,200)})()</script>
