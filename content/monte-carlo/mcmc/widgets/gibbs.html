@@ -1,0 +1,84 @@
+<!-- Stepper, Fig 6.1: Gibbs sampling for a 2D standard normal with correlation r = sqrt(0.8) (slide 20 setup).
+     Full conditionals x1 | x2 ~ N(r x2, 1 - r^2), x2 | x1 ~ N(r x1, 1 - r^2); start (3, 3r); seed 21
+     (mulberry32 + Box–Muller, same code as plots.html). Every number is computed here. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 4px}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+svg .tk{font-size:10px;fill:var(--subtle-foreground)}
+.txt{padding:8px 6px 8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+.c1{color:var(--chart-1)}.c2{color:var(--chart-2)}
+@media(max-width:640px){.g{grid-template-columns:1fr}}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const f=(x,d=3)=>(+x.toFixed(d)).toString().replace('.',',').replace('-','−');
+function rng(seed){let a=seed>>>0;return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gauss(u){let s=null;return ()=>{if(s!==null){const v=s;s=null;return v}let a;do{a=u()}while(a<=1e-300);const b=u(),r=Math.sqrt(-2*Math.log(a));s=r*Math.sin(2*Math.PI*b);return r*Math.cos(2*Math.PI*b)}}
+// ---- the sampler: one sweep = update x1 given x2, then x2 given the new x1
+const r=Math.sqrt(.8),sc=Math.sqrt(1-r*r),N=1000,g=gauss(rng(21));
+const P=[[3,3*r]],H=[]; // P[i] = state after sweep i; H[i] = intermediate point after the x1 update of sweep i+1
+for(let i=0;i<N;i++){const [a,b]=P[i],a1=r*b+sc*g();H.push([a1,b]);P.push([a1,r*a1+sc*g()])}
+const x1=P.slice(1).map(p=>p[0]),m1=x1.reduce((s,v)=>s+v,0)/N;
+const acf1=k=>{let s=0,s0=0;for(let i=0;i<N;i++){s0+=(x1[i]-m1)**2;if(i+k<N)s+=(x1[i]-m1)*(x1[i+k]-m1)}return s/s0};
+const corr=(()=>{const x2=P.slice(1).map(p=>p[1]),m2=x2.reduce((s,v)=>s+v,0)/N;let a=0,b=0,c=0;for(let i=0;i<N;i++){a+=(x1[i]-m1)*(x2[i]-m2);b+=(x1[i]-m1)**2;c+=(x2[i]-m2)**2}return a/Math.sqrt(b*c)})();
+// ---- drawing
+const W=340,Lm=30,Rm=8,Tm=8,Bm=26,lo=-3.6,hi=3.6,X=v=>Lm+(W-Lm-Rm)*(v-lo)/(hi-lo),Y=v=>Tm+(W-Tm-Bm)*(1-(v-lo)/(hi-lo));
+const ell=c=>[...Array(121).keys()].map(k=>{const t=k/120*2*Math.PI;return X(c*Math.cos(t)).toFixed(1)+','+Y(c*(r*Math.cos(t)+sc*Math.sin(t))).toFixed(1)}).join(' ');
+const bump=(m,horiz,at)=>{ // conditional density N(m, 1 - r^2) drawn along a line
+ const pts=[];for(let v=m-3*sc;v<=m+3*sc+1e-9;v+=sc/10){const d=Math.exp(-((v-m)**2)/(2*sc*sc))*.9;pts.push(horiz?[X(v),Y(at+d)]:[X(at+d),Y(v)])}
+ return `<polyline fill="color-mix(in srgb,var(--chart-2) 18%,transparent)" stroke="var(--chart-2)" stroke-width="1.4" points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}"/>`};
+function fig(s){
+ let o=`<line class="ax" x1="${Lm}" y1="${W-Bm}" x2="${W-Rm}" y2="${W-Bm}"/><line class="ax" x1="${Lm}" y1="${Tm}" x2="${Lm}" y2="${W-Bm}"/>`;
+ for(const t of [-3,-2,-1,0,1,2,3])o+=`<text class="tk" x="${X(t)}" y="${W-Bm+13}" text-anchor="middle">${f(t,0)}</text><text class="tk" x="${Lm-5}" y="${Y(t)+3}" text-anchor="end">${f(t,0)}</text>`;
+ o+=`<text x="${W-Rm}" y="${W-3}" text-anchor="end">x¹</text><text x="${Lm+4}" y="${Tm+9}">x²</text>`;
+ o+=`<polyline fill="none" stroke="var(--warning)" stroke-width="1.4" points="${ell(1)}"/><polyline fill="none" stroke="var(--warning)" stroke-width="1" stroke-dasharray="4 3" points="${ell(2)}"/>`;
+ if(s.cloud)o+=P.slice(1).map(p=>`<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="1.6" fill="color-mix(in srgb,var(--chart-1) 45%,transparent)"/>`).join('');
+ // path through half-steps
+ const pts=[P[0]];for(let i=0;i<s.sw;i++){pts.push(H[i]);pts.push(P[i+1])}if(s.half)pts.push(H[s.sw]);
+ o+=`<polyline fill="none" stroke="var(--chart-1)" stroke-width="1.5" points="${pts.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ')}"/>`;
+ for(let i=0;i<=s.sw;i++)o+=`<circle cx="${X(P[i][0])}" cy="${Y(P[i][1])}" r="${i==0?4.5:3}" fill="${i==0?'var(--foreground)':'var(--chart-1)'}"/>`;
+ if(s.bump=='h')o+=bump(r*P[s.sw][1],true,P[s.sw][1]);
+ if(s.bump=='v')o+=bump(r*H[s.sw-1][0],false,H[s.sw-1][0]);
+ if(s.half)o+=`<circle cx="${X(H[s.sw][0])}" cy="${Y(H[s.sw][1])}" r="3" fill="var(--card)" stroke="var(--chart-1)" stroke-width="1.6"/>`;
+ return `<div class="ttl">${s.cloud?N+' проходов Гиббса':'Проходы Гиббса'}</div><svg width="${W}" height="${W}" viewBox="0 0 ${W} ${W}">${o}</svg>`}
+const S=[
+ {t:'Цель и старт',sw:0,d:`Цель — двумерное нормальное, средние 0, дисперсии 1, корреляция r = √0,8 ≈ ${f(r,3)}; эллипсы — одно и два стандартных отклонения. Условные распределения: x¹ | x² ~ 𝒩(r·x², 1 − r²), x² | x¹ ~ 𝒩(r·x¹, 1 − r²), 1 − r² = 0,2. Старт (3; ${f(3*r,2)}).`},
+ {t:'Обновить x¹',sw:0,half:true,bump:'h',d:`x² = ${f(P[0][1],3)} закреплено. Новое x¹ — из 𝒩(r·x², 0,2) = 𝒩(${f(r*P[0][1],2)}; 0,2) (колокол на горизонтали): x¹ = ${f(H[0][0],3)}. Точка сдвигается по горизонтали. Принимается всегда.`},
+ {t:'Обновить x²',sw:1,bump:'v',d:`Теперь закреплено новое x¹ = ${f(H[0][0],3)}. x² — из 𝒩(${f(r*H[0][0],2)}; 0,2): x² = ${f(P[1][1],3)}. Проход 1 закончен: X₁ = (${f(P[1][0],2)}; ${f(P[1][1],2)}).`},
+ {t:'Ещё 9 проходов',sw:10,d:`Каждый проход — «ступенька» из горизонтального и вертикального шага. Ступеньки короткие: условное стандартное отклонение √0,2 ≈ ${f(sc,2)}, а эллипс вытянут вдоль диагонали. К центру цепь идёт медленно: X₁₀ = (${f(P[10][0],2)}; ${f(P[10][1],2)}).`},
+ {t:'1000 проходов',sw:10,cloud:true,d:`Облако ${N} точек X<sub>i</sub> заполняет эллипсы: выборочная корреляция ${f(corr,3)}, среднее x¹ равно ${f(m1,3)}. Последовательность x¹<sub>i</sub> — сквозная цепь AR(1) с ρ = r² = 0,8: выборочные ρ̂₁ = ${f(acf1(1),2)}, ρ̂₂ = ${f(acf1(2),2)} (точные 0,8 и 0,64).`}];
+let k=0;window.stepperBusy=false;
+function draw(){
+ $('fig').innerHTML=fig(S[k]);
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){k=Math.max(0,Math.min(S.length-1,i));draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>
+<script>/*fit-width*/(function(){var d=document.documentElement;function f(){d.style.zoom="";var w=d.clientWidth,s=d.scrollWidth;if(s>w+1)d.style.zoom=Math.max(.5,w/s)}addEventListener("load",f);addEventListener("resize",f);addEventListener("click",function(){setTimeout(f,60)});setTimeout(f,200)})()</script>

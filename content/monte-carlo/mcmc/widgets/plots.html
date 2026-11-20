@@ -1,0 +1,136 @@
+<!-- Static figures of "MCMC: Метрополис–Гастингс и Гиббс". Mode from the iframe's data-mode:
+     balance — Fig 1.1: detailed balance holds (birth-death chain) vs fails (rotation), both stationary;
+     mh2d    — Fig 2.2: Metropolis on a correlated 2D normal, proposal N2(x, 0.04 I), 150 steps (slide 12 setup);
+     iid     — Fig 3.1: i.i.d. N(0,1) vs AR(1) rho = 0.8: traces, autocorrelations, spread of the mean;
+     batch   — Fig 4.1: batch means for AR(1), n = 2000, m = 20, b = 100, and the ACF of the batch means;
+     steps   — Fig 5.1: MH on the button posterior with three proposal widths: trace, acceptance, ESS.
+     Every number is computed here; samples use a seeded generator (mulberry32 + Box–Muller). -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.figs{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+.side{border-top:2px solid var(--border);padding-top:8px;margin-top:10px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.c1{color:var(--chart-1)}.c2{color:var(--chart-2)}.cw{color:var(--warning)}.ok{color:var(--success)}.no{color:var(--destructive)}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+svg .tk{font-size:10px;fill:var(--subtle-foreground)}
+</style>
+<div class="w"><div id="fig" class="figs"></div><div class="side" id="side"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const mode=(window.frameElement&&window.frameElement.dataset.mode)||'balance';
+const f=(x,d=3)=>(+x.toFixed(d)).toString().replace('.',',').replace('-','−');
+// ---- seeded generator: mulberry32 uniforms, Box–Muller normals (same code in mh.html, gibbs.html)
+function rng(seed){let a=seed>>>0;return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gauss(u){let s=null;return ()=>{if(s!==null){const v=s;s=null;return v}let a;do{a=u()}while(a<=1e-300);const b=u(),r=Math.sqrt(-2*Math.log(a));s=r*Math.sin(2*Math.PI*b);return r*Math.cos(2*Math.PI*b)}}
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+const vr=a=>{const m=mean(a);return a.reduce((s,x)=>s+(x-m)**2,0)/a.length};
+function acf(xs,K){const n=xs.length,m=mean(xs);const c=k=>{let s=0;for(let i=0;i+k<n;i++)s+=(xs[i]-m)*(xs[i+k]-m);return s/n};const c0=c(0);return [...Array(K+1).keys()].map(k=>c(k)/c0)}
+function batch(xs,m){const b=Math.floor(xs.length/m),bm=[...Array(m).keys()].map(k=>mean(xs.slice(k*b,(k+1)*b))),mu=mean(bm),vb=bm.reduce((s,x)=>s+(x-mu)**2,0)/m;return {bm,mu,vb,s2:b*vb,b}}
+const npdf=(x,m,v)=>Math.exp(-((x-m)**2)/(2*v))/Math.sqrt(2*Math.PI*v);
+function ar(seed,n,rho,x0){const g=gauss(rng(seed)),s=Math.sqrt(1-rho*rho);let x=x0===undefined?g():x0;const o=[];for(let i=0;i<n;i++){o.push(x);x=rho*x+s*g()}return o}
+// ---- chart: series {p:[[x,y]],c,dots,line,dash,r,w}; bars {p:[[x,y]],c}; hl {y,t,c}; seg [[x1,y1,x2,y2,c,w]]
+let cid=0;
+function chart({w=330,h=200,xmin=0,xmax,ymin=0,ymax=1,series=[],bars=[],hl=[],seg=[],xt=[],yt=[],xl='',lab=[],L=38}){
+ const Rr=10,T=10,B=28,X=x=>L+(w-L-Rr)*(x-xmin)/(xmax-xmin),Y=y=>T+(h-T-B)*(1-(y-ymin)/(ymax-ymin)),id='c'+(cid++);
+ let s=`<clipPath id="${id}"><rect x="${L}" y="${T-4}" width="${w-L-Rr+4}" height="${h-T-B+8}"/></clipPath>`;
+ s+=`<line class="ax" x1="${L}" y1="${h-B}" x2="${w-Rr}" y2="${h-B}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${h-B}"/>`;
+ for(const t of xt)s+=`<text class="tk" x="${X(t[0])}" y="${h-B+14}" text-anchor="middle">${t[1]}</text>`;
+ for(const t of yt)s+=`<text class="tk" x="${L-5}" y="${Y(t[0])+3}" text-anchor="end">${t[1]}</text>`;
+ s+=`<text x="${w-Rr}" y="${h-3}" text-anchor="end">${xl}</text>`;
+ for(const l of hl)s+=`<line x1="${L}" x2="${w-Rr}" y1="${Y(l.y)}" y2="${Y(l.y)}" stroke="${l.c||'var(--warning)'}" stroke-dasharray="5 4"/>`+(l.t?`<text x="${w-Rr}" y="${Y(l.y)-5}" text-anchor="end" style="fill:${l.c||'var(--warning)'}">${l.t}</text>`:'');
+ s+=`<g clip-path="url(#${id})">`;
+ for(const b of bars){const bw=Math.max(1.5,(w-L-Rr)/(xmax-xmin)*.35);for(const [x,y] of b.p)s+=`<rect x="${X(x)-bw/2}" y="${Math.min(Y(y),Y(0))}" width="${bw}" height="${Math.max(1,Math.abs(Y(0)-Y(y)))}" fill="${b.c}"/>`}
+ for(const [x1,y1,x2,y2,c,sw] of seg)s+=`<line x1="${X(x1)}" y1="${Y(y1)}" x2="${X(x2)}" y2="${Y(y2)}" stroke="${c}" stroke-width="${sw||1.4}"/>`;
+ for(const se of series){
+  if(se.line!==false)s+=`<polyline fill="none" stroke="${se.c}" stroke-width="${se.w||1.6}" ${se.dash?'stroke-dasharray="5 4"':''} points="${se.p.map(([x,y])=>X(x).toFixed(1)+','+Y(y).toFixed(1)).join(' ')}"/>`;
+  if(se.dots)s+=se.p.map(([x,y])=>`<circle cx="${X(x)}" cy="${Y(y)}" r="${se.r||3}" fill="${se.c}"/>`).join('')}
+ s+=`</g>`;
+ for(const t of lab)s+=`<text x="${X(t.x)}" y="${Y(t.y)+(t.dy||0)}" text-anchor="${t.a||'start'}" style="fill:${t.c||'var(--muted-foreground)'}">${t.t}</text>`;
+ return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${s}</svg>`}
+const grid=(a,b,h)=>{const o=[];for(let x=a;x<=b+1e-9;x+=h)o.push(x);return o};
+
+if(mode=='balance'){
+ const R=17;
+ function arrow(x1,y1,cx,cy,x2,y2,col){const dx=x2-cx,dy=y2-cy,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,s=7,bx=x2-ux*s,by=y2-uy*s,px=-uy*s*.5,py=ux*s*.5;
+  return `<path d="M${x1} ${y1}Q${cx} ${cy} ${bx} ${by}" fill="none" stroke="${col}" stroke-width="1.5"/><polygon points="${x2},${y2} ${bx+px},${by+py} ${bx-px},${by-py}" fill="${col}"/>`}
+ function edge(N,a,b,bend,lab,col){const [x1,y1]=N[a],[x2,y2]=N[b],dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L,cx=(x1+x2)/2+nx*bend,cy=(y1+y2)/2+ny*bend;
+  const cut=(px,py,ox,oy)=>{const vx=px-ox,vy=py-oy,l=Math.hypot(vx,vy);return [ox+vx/l*R,oy+vy/l*R]};const [sx,sy]=cut(cx,cy,x1,y1),[ex,ey]=cut(cx,cy,x2,y2);
+  const tx=(x1+x2)/2+nx*(bend*.5+(bend>=0?12:-12)),ty=(y1+y2)/2+ny*(bend*.5+(bend>=0?12:-12))+4;
+  return arrow(sx,sy,cx,cy,ex,ey,col)+`<text x="${tx}" y="${ty}" text-anchor="middle" font-size="12" style="fill:${col}">${lab}</text>`}
+ function node(N,a,p){const [x,y]=N[a];return `<circle cx="${x}" cy="${y}" r="${R}" fill="color-mix(in srgb,var(--chart-1) 18%,var(--card))" stroke="var(--chart-1)" stroke-width="1.6"/><text x="${x}" y="${y+5}" text-anchor="middle" font-size="14" font-weight="600" style="fill:var(--foreground)">${a}</text><text x="${x}" y="${y+R+15}" text-anchor="middle" font-size="11">π = ${p}</text>`}
+ // flows pi_i P_ij as fractions, computed from the matrices
+ const frac=x=>{for(let d=1;d<=48;d++){const n=Math.round(x*d);if(Math.abs(n/d-x)<1e-12)return n+'/'+d}return f(x)};
+ const A=[[.5,.5,0],[.25,.5,.25],[0,.5,.5]],pa=[.25,.5,.25];
+ const Bm=[[.5,.5,0],[0,.5,.5],[.5,0,.5]],pb=[1/3,1/3,1/3];
+ const stat=(P,p)=>P[0].map((_,j)=>p.reduce((s,pi,i)=>s+pi*P[i][j],0));
+ const sa=stat(A,pa),sb=stat(Bm,pb);
+ const NA={1:[40,70],2:[150,70],3:[260,70]};
+ let ga='';for(const [i,j,bd] of [[1,2,-22],[2,1,-22],[2,3,-22],[3,2,-22]])ga+=edge(NA,i,j,bd,frac(pa[i-1]*A[i-1][j-1]),'var(--success)');
+ for(let i=1;i<=3;i++)ga+=node(NA,i,frac(pa[i-1]));
+ const NB={1:[150,34],2:[240,150],3:[60,150]};
+ let gb='';for(const [i,j] of [[1,2],[2,3],[3,1]])gb+=edge(NB,i,j,-16,frac(pb[i-1]*Bm[i-1][j-1]),'var(--destructive)');
+ for(let i=1;i<=3;i++)gb+=node(NB,i,frac(pb[i-1]));
+ $('fig').innerHTML=`<div><div class="ttl"><span class="ok">✓</span> Детальный баланс выполнен</div><svg width="300" height="190" viewBox="0 0 300 190">${ga}</svg></div>`+
+  `<div><div class="ttl"><span class="no">✗</span> Баланса нет, но π стационарно</div><svg width="300" height="190" viewBox="0 0 300 190">${gb}</svg></div>`;
+ $('side').innerHTML=`Подписи на стрелках — потоки π<sub>i</sub>P<sub>i,j</sub>: доля шагов стационарной цепи, на которых она переходит из i в j. Петли (остаться на месте с вероятностью ½) не нарисованы.<br>`+
+  `<b>Слева</b> P = (${A.map(r=>r.map(frac).join(' ')).join(' | ').replace(/0\/1/g,'0').replace(/1\/2/g,'½').replace(/1\/4/g,'¼')}): каждый поток равен встречному, π′P = (${sa.map(frac).join(', ')}) = π′.<br>`+
+  `<b>Справа</b> цепь крутится 1 → 2 → 3 → 1: встречных потоков нет, баланс нарушен. Но в каждое состояние втекает ${frac(pb[0]*Bm[0][1])} и вытекает ${frac(pb[0]*Bm[0][1])}, и π′P = (${sb.map(frac).join(', ')}) = π′.`;
+}
+
+if(mode=='mh2d'){
+ const s1=1,s2=.25,mu=1.5,c=Math.SQRT1_2,n=150,seed=3;
+ const lp=(x,y)=>{const dx=x-mu,dy=y-mu,a=(dx+dy)*c,b=(dy-dx)*c;return -.5*(a*a/(s1*s1)+b*b/(s2*s2))};
+ const u=rng(seed),g=gauss(u);let x=[.6,.6];const seg=[];let rej=0,accd=0;
+ for(let i=0;i<n;i++){const y=[x[0]+.2*g(),x[1]+.2*g()];if(u()<Math.min(1,Math.exp(lp(...y)-lp(...x)))){seg.push([x[0],x[1],y[0],y[1],'var(--success)',1.5]);x=y}else{seg.push([x[0],x[1],y[0],y[1],'var(--destructive)',1.2]);rej++}}
+ const ell=grid(0,2*Math.PI+.01,.05).map(t=>{const a=s1*Math.cos(t),b=s2*Math.sin(t);return [mu+(a-b)*c,mu+(a+b)*c]});
+ const t3=[[0,'0'],[.5,'0,5'],[1,'1'],[1.5,'1,5'],[2,'2'],[2.5,'2,5'],[3,'3']];
+ $('fig').innerHTML=`<div><div class="ttl">150 шагов Метрополиса</div>${chart({w:330,h:320,xmax:3,ymax:3,series:[{p:ell,c:'var(--foreground)',w:1.4}],seg,xt:t3,yt:t3,xl:'x₁',lab:[{x:.6,y:.6,t:'старт',dy:16,a:'middle',c:'var(--foreground)'}]})}</div>`;
+ const lens=seg.filter(s=>s[4]=='var(--success)').map(s=>Math.hypot(s[2]-s[0],s[3]-s[1]));
+ $('side').innerHTML=`Цель — двумерное нормальное с центром (1,5; 1,5), эллипс — линия одного стандартного отклонения (внутри эллипса 1σ двумерного нормального — 39% массы): вдоль диагонали σ = ${f(s1,1)}, поперёк σ = ${f(s2,2)}. Предложение q(y | x) = 𝒩₂(x; 0,04·I), то есть шаг со стандартным отклонением 0,2 по каждой оси.<br>`+
+  `<b class="ok">Зелёные</b> — принятые предложения (${n-rej}), <b class="no">красные</b> — отклонённые (${rej} из ${n}). Средняя длина принятого шага ${f(mean(lens),2)}.`;
+}
+
+if(mode=='iid'){
+ const n=200,rho=.8,xi=ar(5,n,0),xc=ar(6,n,rho),K=20;
+ const tr=(xs,col)=>chart({w:340,h:150,xmax:n,ymin:-3.5,ymax:3.5,series:[{p:xs.map((v,i)=>[i,v]),c:col,w:1.1}],xt:[[0,'0'],[50,'50'],[100,'100'],[150,'150'],[200,'200']],yt:[[-3,'−3'],[0,'0'],[3,'3']],xl:'i',hl:[{y:mean(xs),c:col}]});
+ const ac=(xs,col,r)=>chart({w:230,h:150,xmin:-.5,xmax:K+.5,ymin:-.3,ymax:1,bars:[{p:acf(xs,K).map((v,k)=>[k,v]),c:col}],series:[{p:[...Array(K+1).keys()].map(k=>[k,r**k]),c:'var(--warning)',dash:true,w:1.2}],xt:[[0,'0'],[5,'5'],[10,'10'],[15,'15'],[20,'20']],yt:[[0,'0'],[.5,'0,5'],[1,'1']],xl:'k'});
+ // spread of the mean over R independent repetitions of length n
+ const R=1000,gi=gauss(rng(11)),mi=[],mc=[];
+ for(let r=0;r<R;r++){let s=0;for(let i=0;i<n;i++)s+=gi();mi.push(s/n)}
+ for(let r=0;r<R;r++)mc.push(mean(ar(1000+r,n,rho)));
+ let ex=1;for(let k=1;k<n;k++)ex+=2*(1-k/n)*rho**k;
+ const ri=acf(xi,1)[1],rc=acf(xc,1)[1];
+ $('fig').innerHTML=`<div><div class="ttl"><span class="c2">Независимые</span> X<sub>i</sub> ~ 𝒩(0, 1)</div>${tr(xi,'var(--chart-2)')}</div><div><div class="ttl">Автокорреляции ρ<sub>k</sub></div>${ac(xi,'var(--chart-2)',0)}</div>`+
+  `<div><div class="ttl"><span class="c1">Цепь</span> X<sub>i+1</sub> = 0,8·X<sub>i</sub> + ε<sub>i</sub></div>${tr(xc,'var(--chart-1)')}</div><div><div class="ttl">Автокорреляции ρ<sub>k</sub></div>${ac(xc,'var(--chart-1)',rho)}</div>`;
+ $('side').innerHTML=`Обе последовательности имеют одно и то же распределение каждого X<sub>i</sub>: 𝒩(0, 1). Столбики — выборочные ρ<sub>k</sub> по этим 200 значениям (ρ̂₁ = ${f(ri,2)} и ${f(rc,2)}), <span class="cw">пунктир</span> — точные: 0 и 0,8<sup>k</sup>. Горизонталь на трассе — среднее μ̂₂₀₀.<br>`+
+  `<b>Разброс среднего μ̂₂₀₀ по ${R} независимым повторам:</b> у независимых дисперсия ${f(vr(mi),4)} (формула 1/n = ${f(1/n,4)}), у цепи ${f(vr(mc),4)} (точная формула ${f(ex/n,4)}, предел σ²/n = 9/200 = ${f(9/n,4)}). Стандартная ошибка цепи в ${f(Math.sqrt(vr(mc)/vr(mi)),1)} раза больше.`;
+}
+
+if(mode=='batch'){
+ const n=2000,m=20,rho=.8,xs=ar(3,n,rho),B=batch(xs,m),b=B.b,K=12,a=acf(B.bm,K),band=1.96/Math.sqrt(m);
+ const seg=B.bm.map((v,k)=>[k*b,v,(k+1)*b,v,'var(--warning)',2.2]);
+ const sep=[...Array(m-1).keys()].map(k=>[(k+1)*b,-4,(k+1)*b,4,'var(--border)',.6]);
+ $('fig').innerHTML=`<div><div class="ttl">Цепь, n = ${n}, и средние ${m} групп по b = ${b}</div>${chart({w:440,h:190,xmax:n,ymin:-4,ymax:4,seg:[...sep,...seg],series:[{p:xs.map((v,i)=>[i,v]),c:'color-mix(in srgb,var(--chart-1) 55%,transparent)',w:.7}],xt:[[0,'0'],[500,'500'],[1000,'1000'],[1500,'1500'],[2000,'2000']],yt:[[-3,'−3'],[0,'0'],[3,'3']],xl:'i'})}</div>`+
+  `<div><div class="ttl">Автокорреляции средних групп</div>${chart({w:240,h:190,xmin:-.5,xmax:K+.5,ymin:-.6,ymax:1,bars:[{p:a.map((v,k)=>[k,v]),c:'var(--warning)'}],hl:[{y:band,c:'var(--muted-foreground)'},{y:-band,c:'var(--muted-foreground)'}],xt:[[0,'0'],[4,'4'],[8,'8'],[12,'12']],yt:[[-.5,'−0,5'],[0,'0'],[.5,'0,5'],[1,'1']],xl:'k'})}</div>`;
+ const out=a.slice(1).filter(v=>Math.abs(v)>band).length;
+ $('side').innerHTML=`<span class="cw">Оранжевые отрезки</span> — средние групп μ̂<sub>b,k</sub>. Их разброс: (1/m)Σ(μ̂<sub>b,k</sub> − μ̂<sub>n</sub>)² = ${f(B.vb,4)} — оценка σ²/b. Отсюда <b>σ̂² = ${f(B.s2,2)}</b> (точное σ² = 9) и оценка дисперсии общего среднего σ̂²/n = ${f(B.s2/n,5)} (точная ≈ ${f(9/n,4)}); μ̂<sub>n</sub> = ${f(B.mu,3)}.<br>`+
+  `Справа — выборочные автокорреляции 20 средних групп и полоса белого шума ±1,96/√20 = ±${f(band,3)}: за полосу выходят ${out} из ${K} — значимой зависимости между группами не видно.`;
+}
+
+if(mode=='steps'){
+ const Pi=t=>(t>0&&t<1)?t**4*(1-t)**8:0;
+ function mh(seed,s,x0,n){const u=rng(seed),g=gauss(u);let x=x0,acc=0;const o=[];for(let i=0;i<n;i++){const y=x+s*g();if(u()<Math.min(1,Pi(y)/Pi(x))){x=y;acc++}o.push(x)}return {o,acc:acc/n}}
+ const S=[.02,.3,3],N=100000,show=300,tv=45/2940;
+ const runs=S.map(s=>{const r=mh(7,s,.35,N),B=batch(r.o,100),g0=vr(r.o);return {s,...r,ess:g0/B.s2,r1:acf(r.o.slice(0,20000),1)[1],m:mean(r.o)}});
+ const verdict=[['✗','шаг мал'],['✓','шаг подходящий'],['✗','шаг велик']];
+ $('fig').innerHTML=runs.map((r,j)=>`<div><div class="ttl"><span class="${j==1?'ok':'no'}">${verdict[j][0]}</span> s = ${f(r.s,2)}: ${verdict[j][1]}</div>${chart({w:215,h:150,xmax:show,ymin:0,ymax:1,L:30,series:[{p:r.o.slice(0,show).map((v,i)=>[i,v]),c:'var(--chart-1)',w:1}],xt:[[0,'0'],[150,'150'],[300,'300']],yt:[[0,'0'],[.5,'0,5'],[1,'1']],xl:'i',hl:[{y:5/14}]})}`+
+  `<div style="font-size:12px;line-height:1.5;color:var(--muted-foreground)">принято ${f(r.acc*100,0)}%<br>ρ₁ = ${f(r.r1,3)}<br>ESS на 1000 шагов: <b style="color:var(--foreground)">${f(r.ess*1000,0)}</b></div></div>`).join('');
+ $('side').innerHTML=`Цепи Метрополиса для кнопки: Π(θ) = θ⁴(1 − θ)⁸, предложение y ~ 𝒩(x, s²), старт θ₀ = 0,35. На графиках первые ${show} шагов, <span class="cw">пунктир</span> — среднее цели 5/14. Доля принятых, ρ₁ и ESS для g(θ) = θ посчитаны по ${N.toLocaleString('ru')} шагам; σ² оценено методом групп (m = 100).<br>`+
+  `Средние θ по ${N.toLocaleString('ru')} шагам: ${runs.map(r=>f(r.m,4)).join('; ')} при точном 5/14 ≈ 0,3571.`;
+}
+</script>
+<script>/*fit-width*/(function(){var d=document.documentElement;function f(){d.style.zoom="";var w=d.clientWidth,s=d.scrollWidth;if(s>w+1)d.style.zoom=Math.max(.5,w/s)}addEventListener("load",f);addEventListener("resize",f);addEventListener("click",function(){setTimeout(f,60)});setTimeout(f,200)})()</script>
