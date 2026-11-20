@@ -1,0 +1,81 @@
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 10px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:24px;align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+svg text.h{font-size:12px;font-weight:600;fill:var(--foreground)}
+.ax{stroke:var(--border)}
+#steps{max-width:280px;min-height:330px}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><svg id="s"></svg><div id="steps"></div></div>
+</div>
+<script>
+// toy data in the spirit of slide 27: PCR tests per day and days of the 12 sporadic cases
+const tests=[26000,4000,2000,0,0,0,0,0,9500,3500,4800,4200,4200,3100,3000,4200,6200,17900,10000,5000];
+const cases=[12,13,14,15,16,17,18,18,19,19,20,20],n=cases.length,D=tests.length;
+const tot=tests.reduce((a,b)=>a+b,0),w=tests.map(v=>v/tot);
+const obs=cases.reduce((a,b)=>a+b,0)/n;
+// H0: each case falls on day d with probability proportional to tests on d; exact law of the sum = n-fold convolution
+let dist=[1];for(let j=0;j<n;j++){const nx=new Array(dist.length+D).fill(0);dist.forEach((p,s)=>w.forEach((q,d)=>nx[s+d+1]+=p*q));dist=nx}
+const S0=cases.reduce((a,b)=>a+b,0),pval=dist.slice(S0).reduce((a,b)=>a+b,0),nullMean=w.reduce((a,q,d)=>a+q*(d+1),0);
+// one random set under H0 (seeded generator, fixed picture)
+let seed=12345;const rnd=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296};
+const draw1=()=>{let u=rnd(),c=0;for(let d=0;d<D;d++){c+=w[d];if(u<c)return d+1}return D};
+const sim=Array.from({length:n},draw1).sort((a,b)=>a-b),simMean=sim.reduce((a,b)=>a+b,0)/n;
+const fr=(x,d)=>x.toFixed(d).replace('.',',');
+const W=470,L=40,R=34,X=d=>L+(W-L-R)*(d-0.5)/D;
+const T1=22,B1=150,Yt=v=>B1-(B1-T1)*v/30000,Yc=c=>B1-6-(c-1)*11;
+const T2=196,B2=256,T3=288,B3=396,Hs=B3+34;
+const S=[
+ {t:'Тесты и случаи',st:{},d:`Синие столбцы — число ПЦР-тестов за день, красные точки — ${n} спорадических случаев (без связи с поездками). Средняя дата случаев ${fr(obs,2)}. Случаи сгрудились в конце, но и тестов в конце больше.`},
+ {t:'Один набор при H<sub>0</sub>',st:{s:1},d:`H<sub>0</sub>: случаи появляются только потому, что их ищут; тогда каждый из ${n} случаев попадает на день с вероятностью, пропорциональной числу тестов. Один такой случайный набор — серые точки, его средняя дата ${fr(simMean,2)}.`},
+ {t:'Распределение средней даты',st:{s:1,h:1},d:`Средняя дата по всем возможным наборам при H<sub>0</sub>: в среднем ${fr(nullMean,2)}. Наблюдаемая ${fr(obs,2)} лежит далеко в хвосте: P(среднее ≥ ${fr(obs,2)}) = ${fr(pval,4)}. Рост тестов не объясняет рост случаев.`}];
+let k=0;window.stepperBusy=false;const $=id=>document.getElementById(id);
+function axis(y,lab){let s=`<line class="ax" x1="${L}" y1="${y}" x2="${W-R}" y2="${y}"/>`;if(lab)[1,5,10,15,20].forEach(v=>s+=`<text x="${X(v)}" y="${y+14}" text-anchor="middle">${v}</text>`);return s}
+function fig(){
+ const st=S[k].st;let s='';
+ s+=`<text class="h" x="${L}" y="12">Наблюдение</text>`+axis(B1,1)+`<line class="ax" x1="${L}" y1="${T1}" x2="${L}" y2="${B1}"/>`;
+ [0,10000,20000,30000].forEach(v=>s+=`<text x="${L-4}" y="${Yt(v)+4}" text-anchor="end" style="fill:var(--chart-2)">${v?v/1000+'k':0}</text>`);
+ const bw=X(2)-X(1)-4;
+ tests.forEach((v,d)=>s+=`<rect x="${X(d+1)-bw/2}" y="${Yt(v)}" width="${bw}" height="${B1-Yt(v)}" fill="color-mix(in srgb,var(--chart-2) 35%,transparent)"/>`);
+ const dots=(arr,y0,c)=>{const cnt={};let r='';arr.forEach(d=>{cnt[d]=(cnt[d]||0)+1;r+=`<circle cx="${X(d)}" cy="${y0-(cnt[d]-1)*11}" r="4.2" fill="${c}"/>`});return r};
+ s+=dots(cases,B1-6,'var(--chart-1)');
+ s+=`<line x1="${X(obs)}" y1="${T1}" x2="${X(obs)}" y2="${st.h?B3:st.s?B2:B1}" stroke="var(--chart-1)" stroke-width="1.5" stroke-dasharray="4 3"/><text class="k" x="${X(obs)-4}" y="${T1+6}" text-anchor="end" style="fill:var(--chart-1)">среднее ${fr(obs,2)}</text>`;
+ if(st.s){s+=`<text class="h" x="${L}" y="${T2-6}">Случайный набор при H<tspan baseline-shift="sub" font-size="8">0</tspan></text>`+axis(B2,0);
+  s+=dots(sim,B2-6,'var(--chart-6)');
+  s+=`<line x1="${X(simMean)}" y1="${T2}" x2="${X(simMean)}" y2="${B2}" stroke="var(--chart-6)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="${X(simMean)+4}" y="${T2+8}">среднее ${fr(simMean,2)}</text>`}
+ if(st.h){s+=`<text class="h" x="${L}" y="${T3-8}">Средняя дата при H<tspan baseline-shift="sub" font-size="8">0</tspan>: все наборы</text>`+axis(B3,1);
+  const pm=Math.max(...dist),bx=(X(2)-X(1))/n;
+  dist.forEach((p,sm)=>{if(p<1e-6)return;const m=sm/n,x=X(m)-bx/2,y=B3-(B3-T3-10)*p/pm;
+   s+=`<rect x="${x.toFixed(2)}" y="${y.toFixed(1)}" width="${Math.max(bx-0.6,0.8).toFixed(2)}" height="${(B3-y).toFixed(1)}" fill="${sm>=S0?'var(--chart-1)':'color-mix(in srgb,var(--chart-3) 55%,transparent)'}"/>`});
+  s+=`<text class="k" x="${X(obs)+4}" y="${B3-24}" style="fill:var(--chart-1)">p = ${fr(pval,4)}</text>`;
+  s+=`<text x="${W-R}" y="${B3+28}" text-anchor="end">день</text>`}
+ else s+=`<text x="${W-R}" y="${B1+28}" text-anchor="end">день</text>`;
+ return s;
+}
+function draw(){
+ const el=$('s');el.setAttribute('width',W);el.setAttribute('height',Hs);el.setAttribute('viewBox',`0 0 ${W} ${Hs}`);el.innerHTML=fig();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){k=Math.max(0,Math.min(S.length-1,i));draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+draw();
+</script>

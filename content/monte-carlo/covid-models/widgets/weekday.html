@@ -1,0 +1,44 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;font-family:var(--font-sans);align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+.ax{stroke:var(--border)}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px;max-width:250px}
+.side b{color:var(--foreground)}
+.sw{display:inline-block;width:14px;height:3px;vertical-align:3px;margin-right:6px}
+table.o{border-collapse:collapse;font:12px var(--font-mono);margin:6px 0 8px}
+table.o td{padding:1px 3px;font-size:11px;text-align:center;border-bottom:1px solid var(--border)}
+table.o tr:first-child td{color:var(--subtle-foreground);font-family:var(--font-sans)}
+</style>
+<div class="g"><svg id="s"></svg><div class="side" id="side"></div></div>
+<script>
+// expected registrations mu_i = sum_tau I_{i-tau} xi_tau (xi: infection -> registration, slides 40-41);
+// lambda_i = 7*omega[weekday] * mu_i; one Poisson draw O_i ~ Pois(lambda_i)
+function lg(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,s0=x+5.5;s0-=(x+0.5)*Math.log(s0);let s=1.000000000190015;for(const q of c)s+=q/++y;return -s0+Math.log(2.5066282746310005*s/x)}
+const gpdf=(a,r)=>x=>x<=0?0:Math.exp(a*Math.log(r)+(a-1)*Math.log(x)-r*x-lg(a));
+const h=0.05,TT=45,M=Math.round(TT/h)+1,xs=Array.from({length:M},(_,i)=>i*h);
+const a1=xs.map(gpdf(1.352,0.265)),a2=xs.map(gpdf(5.48,0.77)),fr_=xs.map((_,i)=>{let s=0;for(let j=0;j<=i;j++)s+=a1[j]*a2[i-j]*h;return s});
+const F=[0];for(let i=1;i<M;i++)F.push(F[i-1]+(fr_[i-1]+fr_[i])/2*h);
+const xi=Array.from({length:TT},(_,s)=>s==0?0:F[Math.round(s/h)]-F[Math.round((s-1)/h)]);
+const nD=56,inf=j=>j<15?30*Math.exp(0.1*j):30*Math.exp(1.5-0.06*(j-15));   // infections on day j (j may be negative)
+const mu=Array.from({length:nD},(_,i)=>xi.reduce((a,x,t)=>a+x*inf(i+1-t),0));
+const names=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],om7=[1.10,1.15,1.10,1.05,1.00,0.85,0.75];   // 7*omega, mean 1
+const lam=mu.map((m,i)=>m*om7[i%7]);                                                       // day 1 = Monday
+let seed=7;const u=()=>{seed=(seed*1664525+1013904223)%4294967296;return(seed+0.5)/4294967296};
+const pois=l=>{if(l>30){const z=Math.sqrt(-2*Math.log(u()))*Math.cos(2*Math.PI*u());return Math.max(0,Math.round(l+Math.sqrt(l)*z))}let k=0,p=1;const L=Math.exp(-l);do{k++;p*=u()}while(p>L);return k-1};
+const O=lam.map(pois);
+const fr=(x,d)=>x.toFixed(d).replace('.',',');
+const W=460,L=36,R=10,T0=10,B0=230,X=i=>L+(W-L-R)*(i-0.5)/nD,ymax=Math.ceil(Math.max(...O,...lam)/50)*50,Y=v=>B0-(B0-T0)*v/ymax;
+let s=`<line class="ax" x1="${L}" y1="${B0}" x2="${W-R}" y2="${B0}"/><line class="ax" x1="${L}" y1="${T0}" x2="${L}" y2="${B0}"/>`;
+for(let v=0;v<=ymax;v+=50)s+=`<text x="${L-4}" y="${Y(v)+4}" text-anchor="end">${v}</text>`;
+for(let wk=0;wk<8;wk++){const i=wk*7+1;s+=`<text x="${X(i)}" y="${B0+14}" text-anchor="middle">${i}</text>`;if(wk)s+=`<line x1="${X(i)-(X(2)-X(1))/2}" y1="${T0}" x2="${X(i)-(X(2)-X(1))/2}" y2="${B0}" stroke="var(--border)" stroke-dasharray="1 3"/>`}
+s+=`<text x="${W-R}" y="${B0+28}" text-anchor="end">день регистрации (1 — понедельник)</text>`;
+const bw=X(2)-X(1)-1.5;
+O.forEach((o,i)=>s+=`<rect x="${(X(i+1)-bw/2).toFixed(1)}" y="${Y(o).toFixed(1)}" width="${bw.toFixed(1)}" height="${(B0-Y(o)).toFixed(1)}" fill="color-mix(in srgb,var(--chart-6) 45%,transparent)"/>`);
+const path=a=>a.map((v,i)=>(i?'L':'M')+X(i+1).toFixed(1)+' '+Y(v).toFixed(1)).join('');
+s+=`<path d="${path(mu)}" fill="none" stroke="var(--foreground)" stroke-width="1.6" stroke-dasharray="5 3"/><path d="${path(lam)}" fill="none" stroke="var(--chart-1)" stroke-width="2"/>`;
+const el=document.getElementById('s');el.setAttribute('width',W);el.setAttribute('height',B0+32);el.setAttribute('viewBox',`0 0 ${W} ${B0+32}`);el.innerHTML=s;
+document.getElementById('side').innerHTML=`<div><i class="sw" style="background:var(--foreground)"></i>Σ I<sub>i−τ</sub>ξ<sub>τ</sub> — без дня недели</div><div><i class="sw" style="background:var(--chart-1)"></i>λ<sub>i</sub> — с множителем дня</div><div><i class="sw" style="background:color-mix(in srgb,var(--chart-6) 45%,transparent);height:9px;vertical-align:0"></i>O<sub>i</sub> ~ Pois(λ<sub>i</sub>)</div>
+<table class="o"><tr>${names.map(n=>`<td>${n}</td>`).join('')}</tr><tr>${om7.map(v=>`<td>${fr(v,2)}</td>`).join('')}</tr></table>
+<b>Множитель дня</b> 7ω: веса ω ~ Dirichlet в сумме дают 1, поэтому в среднем за неделю множитель равен ${fr(om7.reduce((a,b)=>a+b,0)/7,2)}. Выходные регистрируют меньше, будни — больше; общее число случаев за неделю почти не меняется.`;
+</script>

@@ -1,0 +1,29 @@
+<style>
+.w{font-family:var(--font-sans)}
+.p{display:grid;grid-template-columns:1fr 1fr;column-gap:24px;max-width:640px}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 2px}
+.c{font-size:13px;line-height:1.5;color:var(--muted-foreground);margin:0 0 6px}
+.c b{color:var(--foreground)}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+.ax{stroke:var(--border)}
+</style>
+<div class="w"><div class="p" id="p"></div></div>
+<script>
+// same exponential growth, two mean generation intervals G; gamma spread k = CV^2 = 1/2.6
+const r=0.15,I0=10,Tm=30,k=1/2.6,cases=[{G:4,n:'А. Короткий интервал'},{G:8,n:'Б. Длинный интервал'}];
+const W=300,H=210,L=40,R=8,T=12,B=28,X=t=>L+(W-L-R)*t/Tm,ym=1000,Y=v=>T+(H-T-B)*(1-Math.log(v/5)/Math.log(ym/5));
+const I=t=>I0*Math.exp(r*t),fr=(x,d)=>x.toFixed(d).replace('.',',');
+const mk=`<defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--chart-5)"/></marker></defs>`;
+document.getElementById('p').innerHTML=cases.map(({G,n})=>{
+ const rho=r*G,fixed=Math.exp(rho),gam=Math.pow(1+k*rho,1/k);
+ let s=mk+`<line class="ax" x1="${L}" y1="${Y(5)}" x2="${W-R}" y2="${Y(5)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(5)}"/>`;
+ [10,100,1000].forEach(v=>s+=`<text x="${L-4}" y="${Y(v)+4}" text-anchor="end">${v}</text>`);
+ [0,10,20,30].forEach(v=>s+=`<text x="${X(v)}" y="${Y(5)+14}" text-anchor="middle">${v}</text>`);
+ s+=`<text x="${W-R}" y="${H-2}" text-anchor="end">дни</text>`;
+ let d='';for(let t=0;t<=Tm;t+=0.2)d+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(I(t)).toFixed(1);
+ s+=`<path d="${d}" fill="none" stroke="var(--chart-1)" stroke-width="2.4"/>`;
+ for(let t=4;t+G<=Tm;t+=G){s+=`<path d="M${X(t)} ${Y(I(t))}H${X(t+G)}" stroke="var(--chart-5)" stroke-width="1.6" fill="none" marker-end="url(#m)"/><path d="M${X(t+G)} ${Y(I(t))}V${Y(I(t+G))+3}" stroke="var(--chart-5)" stroke-width="1.6" fill="none" marker-end="url(#m)"/>`}
+ s+=`<text class="k" x="${L+6}" y="${T+12}">×${fr(fixed,2)} за ${G} дней</text>`;
+ return `<div><div class="t">${n}: G = ${G} дней</div><div class="c">Интервал ровно ${G} дней: r<sub>0</sub> = e<sup>ρ</sup> = <b>${fr(fixed,2)}</b>.<br>Гамма с CV 0,62: r<sub>0</sub> = <b>${fr(gam,2)}</b>.</div><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${s}</svg></div>`}).join('');
+</script>

@@ -1,0 +1,76 @@
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.in{font-size:11px;fill:var(--foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+svg text.rl{font:12px var(--font-mono);fill:var(--muted-foreground)}
+.ax{stroke:var(--border)}
+.e{transition:opacity .9s}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><svg id="fig"></svg><div id="steps" style="max-width:300px"></div></div>
+</div>
+<script>
+// toy pair: days since the infector's infection
+const A={inf:0,lat:3,infEnd:10,inc:5,symEnd:12}, tr=4;            // infector; transmission on day 4
+const B={inf:tr,lat:tr+3,infEnd:tr+10,inc:tr+7,symEnd:tr+14};     // infectee: latent 3 d, incubation 7 d
+const gen=B.inf-A.inf, ser=B.inc-A.inc;
+const D=18,L=78,dx=22,X=d=>L+d*dx,W=X(D)+10;
+const rows={a1:30,a2:56,b1:118,b2:144},bh=22;
+const bar=(x1,x2,y,fill,label,st,dark,cx)=>`<g class="e" data-s="${st}"><rect x="${X(x1)}" y="${y}" width="${X(x2)-X(x1)}" height="${bh}" rx="3" fill="${fill}"/><text class="in" x="${cx===undefined?(X(x1)+X(x2))/2:X(cx)}" y="${y+15}" text-anchor="middle" ${dark?'style="fill:var(--background)"':''}>${label}</text></g>`;
+const light=c=>`color-mix(in srgb,${c} 28%,transparent)`;
+const arrow=(x1,x2,y,c,label,st)=>`<g class="e" data-s="${st}"><line x1="${X(x1)}" y1="${y}" x2="${X(x2)}" y2="${y}" stroke="${c}" stroke-width="2" marker-start="url(#a${st})" marker-end="url(#b${st})"/><text class="k" x="${(X(x1)+X(x2))/2}" y="${y-5}" text-anchor="middle" style="fill:${c}">${label}</text>
+<defs><marker id="b${st}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker><marker id="a${st}" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" fill="${c}"/></marker></defs></g>`;
+const vline=(d,y1,y2,st)=>`<line class="e" data-s="${st}" x1="${X(d)}" y1="${y1}" x2="${X(d)}" y2="${y2}" stroke="var(--muted-foreground)" stroke-dasharray="3 3"/>`;
+let s='';
+for(let d=0;d<=D;d+=2)s+=`<text x="${X(d)}" y="${rows.b2+bh+70}" text-anchor="middle">${d}</text>`;
+s+=`<line class="ax" x1="${X(0)}" y1="${rows.b2+bh+58}" x2="${X(D)}" y2="${rows.b2+bh+58}"/><text x="${X(D)}" y="${rows.b2+bh+84}" text-anchor="end">дни от заражения первого</text>`;
+s+=`<text class="rl" x="4" y="${rows.a1+30}">первый</text><text class="rl" x="4" y="${rows.b1+30}">второй</text>`;
+s+=bar(A.inf,A.lat,rows.a1,light('var(--chart-6)'),'латентный',1)+bar(A.lat,A.infEnd,rows.a1,'var(--chart-1)','заразный',1,1);
+s+=bar(A.inf,A.inc,rows.a2,light('var(--chart-6)'),'инкубация',2,0,(A.inf+A.lat)/2)+bar(A.inc,A.symEnd,rows.a2,'var(--chart-4)','симптомы',2,1);
+s+=`<g class="e" data-s="2"><rect x="${X(A.lat)}" y="${rows.a1-6}" width="${X(A.inc)-X(A.lat)}" height="${2*bh+16}" fill="none" stroke="var(--chart-5)" stroke-width="1.6" stroke-dasharray="4 2"/><text x="${X(A.lat)}" y="${rows.a1-10}" style="fill:var(--chart-5)">заразен без симптомов</text></g>`;
+s+=bar(B.inf,B.lat,rows.b1,light('var(--chart-6)'),'латентный',3)+bar(B.lat,B.infEnd,rows.b1,'var(--chart-1)','заразный',3,1);
+s+=bar(B.inf,B.inc,rows.b2,light('var(--chart-6)'),'инкубационный',3)+bar(B.inc,B.symEnd,rows.b2,'var(--chart-4)','симптомы',3,1);
+s+=`<g class="e" data-s="3"><line x1="${X(tr)}" y1="${rows.a1+bh}" x2="${X(tr)}" y2="${rows.b1-3}" stroke="var(--chart-1)" stroke-width="2" marker-end="url(#tr)"/><defs><marker id="tr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--chart-1)"/></marker></defs><text x="${X(tr)+5}" y="${rows.b1-12}" style="fill:var(--chart-1)">передача</text></g>`;
+s+=vline(A.inf,rows.a1,rows.b2+bh+30,4)+vline(B.inf,rows.b1,rows.b2+bh+30,4)+arrow(A.inf,B.inf,rows.b2+bh+22,'var(--chart-5)',`${gen} дня`,4);
+s+=vline(A.inc,rows.a2+bh,rows.b2+bh+50,5)+vline(B.inc,rows.b2+bh,rows.b2+bh+50,5)+arrow(A.inc,B.inc,rows.b2+bh+44,'var(--chart-2)',`${ser} дней`,5);
+const svg=document.getElementById('fig'),H=rows.b2+bh+90;svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.innerHTML=s;
+const S=[
+ {t:'Латентный и заразный периоды',d:`Первый заражён в день 0. ${A.lat} дня вирус размножается, но человек ещё не заразен — <b style="display:inline">латентный период</b>. Дальше ${A.infEnd-A.lat} дней он заразен.`},
+ {t:'Инкубационный период',d:`Симптомы появляются на ${A.inc}-й день — это конец <b style="display:inline">инкубационного периода</b>. Он длиннее латентного, поэтому дни ${A.lat}–${A.inc} человек заразен без симптомов.`},
+ {t:'Передача',d:`На ${tr}-й день, ещё без симптомов, первый заражает второго. У второго те же периоды, со своими длительностями.`},
+ {t:'Генерационный интервал',d:`От заражения первого до заражения второго: ${gen} дня. Это <b style="display:inline">интервал воспроизводства</b>. Моменты заражения обычно не наблюдаются.`},
+ {t:'Серийный интервал',d:`От симптомов первого до симптомов второго: ${ser} дней = ${gen} + ${B.inc-B.inf} − ${A.inc-A.inf} (генерационный + инкубация второго − инкубация первого). Его видно по датам симптомов.`}];
+let k=0,timer=null;window.stepperBusy=false;const $=id=>document.getElementById(id);
+function draw(){
+ svg.querySelectorAll('.e').forEach(e=>e.style.opacity=(+e.dataset.s<=k+1)?1:0);
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearTimeout(timer);i=Math.max(0,Math.min(S.length-1,i));const fwd=i==k+1;k=i;
+ svg.querySelectorAll('.e').forEach(e=>e.style.transition=fwd?'opacity .9s':'none');
+ draw();
+ if(fwd){window.stepperBusy=true;timer=setTimeout(()=>{window.stepperBusy=false},950)}else window.stepperBusy=false;
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';svg.querySelectorAll('.e').forEach(e=>e.style.transition='none');draw();
+</script>

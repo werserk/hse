@@ -1,0 +1,34 @@
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;font-family:var(--font-sans);align-items:center}
+svg text{font-family:var(--font-sans);font-size:12px;fill:var(--muted-foreground)}
+svg text.big{font-size:20px;font-weight:600;fill:var(--background)}
+svg text.f{font-family:var(--font-mono);font-size:12px;fill:var(--foreground)}
+.ar{stroke:var(--muted-foreground);stroke-width:1.6;fill:none}
+.side{font-size:13px;line-height:1.55;color:var(--muted-foreground);border-left:2px solid var(--border);padding-left:14px}
+.side b{color:var(--foreground)}
+.side table{border-collapse:collapse;margin-top:6px}
+.side td{padding:1px 10px 1px 0;vertical-align:top}
+.side td:first-child{font-family:var(--font-mono);color:var(--foreground)}
+</style>
+<div class="g"><svg id="s" width="440" height="190" viewBox="-20 0 440 190"></svg>
+<div class="side"><b>Параметры и их значения в районе</b>
+<table id="t"></table></div></div>
+<script>
+const P={N:2000,n:10,beta:0.05,gamma:0.2,f:1};
+const fmt=x=>String(x).replace('.',',');
+document.getElementById('t').innerHTML=[
+ ['N','размер населения',fmt(P.N)],['n','контактов в день у одного человека',fmt(P.n)],
+ ['β','вероятность передачи за контакт',fmt(P.beta)],['γ','интенсивность выбывания, 1/день',fmt(P.gamma)+` (в среднем ${fmt(1/P.gamma)} дней заразен)`],
+ ['f','доля выздоравливающих',fmt(P.f)]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}: <b>${r[2]}</b></td></tr>`).join('');
+const box=(x,y,l,c)=>`<circle cx="${x}" cy="${y}" r="22" fill="${c}"/><text class="big" x="${x}" y="${y+7}" text-anchor="middle">${l}</text>`;
+const arr=(x1,y1,x2,y2)=>`<line class="ar" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-end="url(#m)"/>`;
+let s=`<defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted-foreground)"/></marker></defs>`;
+s+=box(40,60,'S','var(--chart-2)')+box(200,60,'I','var(--chart-1)')+box(360,60,'R','var(--chart-3)');
+s+=`<circle cx="200" cy="160" r="18" fill="none" stroke="var(--muted-foreground)" stroke-dasharray="3 3"/><text x="200" y="164" text-anchor="middle">D</text>`;
+s+=arr(64,60,176,60)+arr(224,60,336,60)+arr(200,84,200,140);
+s+=`<text class="f" x="120" y="48" text-anchor="middle">(n/N)·β·S·I</text><text x="120" y="80" text-anchor="middle">заражение</text>`;
+s+=`<text class="f" x="280" y="48" text-anchor="middle">f·γ·I</text><text x="280" y="80" text-anchor="middle">выздоровление</text>`;
+s+=`<text class="f" x="210" y="112">(1−f)·γ·I</text><text x="210" y="128">смерть</text>`;
+s+=`<text x="40" y="104" text-anchor="middle">восприимчивые</text><text x="200" y="22" text-anchor="middle">заразные</text><text x="360" y="104" text-anchor="middle">выбывшие</text>`;
+document.getElementById('s').innerHTML=s;
+</script>

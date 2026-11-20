@@ -1,0 +1,83 @@
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+table.f{border-collapse:separate;border-spacing:3px 2px;font:12px var(--font-mono)}
+table.f th{font:600 11px var(--font-mono);color:var(--muted-foreground);text-align:center;padding:0 2px 4px}
+table.f td{box-sizing:border-box;height:22px;text-align:center;border-radius:4px}
+td.ix{color:var(--subtle-foreground);font-size:10px;width:52px;text-align:right;padding-right:4px}
+td.i{width:40px;background:color-mix(in srgb,var(--chart-1) 25%,transparent)}
+td.gw{width:54px;background:color-mix(in srgb,var(--chart-5) 22%,transparent)}
+td.gw:empty,td.pr:empty{background:transparent;border:1px dashed var(--border)}
+td.pr{width:54px;background:var(--chart-1);color:var(--background);font-weight:600}
+table.f td.bar{width:120px;text-align:left}
+td.bar i{display:inline-block;height:10px;background:color-mix(in srgb,var(--chart-1) 45%,transparent);border-radius:2px}
+tr.cur td.pr,tr.cur td.i,tr.cur td.gw{outline:2px solid var(--foreground);outline-offset:-2px}
+.sum{margin:8px 0 0 3px;font:13px var(--font-mono);color:var(--foreground);min-height:54px;line-height:1.6}
+.sum b{color:var(--chart-1)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div><div id="fig"></div><div class="sum" id="sum"></div></div><div id="steps" style="max-width:300px"></div></div>
+</div>
+<script>
+// data: infections on days t-14 .. t-1 (oldest first) and on day t
+const Iold=[3,3,4,5,5,6,7,9,10,12,13,16,18,21],It=24,M=Iold.length;
+const past=Iold.slice().reverse();                       // past[s-1] = I_{t-s}
+// generation interval Gamma(shape 2.6, rate 0.4); g_s = F(s) - F(s-1)
+const sh=2.6,rt=0.4;
+function lg(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)}
+const pdf=x=>x<=0?0:Math.exp(sh*Math.log(rt)+(sh-1)*Math.log(x)-rt*x-lg(sh));
+const cdf=x=>{let s=0,h=0.001;for(let u=h/2;u<x;u+=h)s+=pdf(u)*h;return s};
+const Fs=Array.from({length:M+1},(_,s)=>cdf(s)),g=Array.from({length:M},(_,i)=>Fs[i+1]-Fs[i]);
+const prod=g.map((w,i)=>w*past[i]),Lam=prod.reduce((a,b)=>a+b,0),rhat=It/Lam,gsum=Fs[M];
+const f2=x=>x.toFixed(2).replace('.',','),f3=x=>x.toFixed(3).replace('.',',');
+const pmax=Math.max(...prod);
+const S=[
+ {t:'Прошлые заражения',st:{g:0,p:0},d:`Столбец I — число новых заражений в каждый из 14 прошлых дней (до этого случаев не было). Сегодня, в день t, заразились ${It}.`},
+ {t:'Веса g<sub>s</sub>',st:{g:1,p:0},d:`g<sub>s</sub> — вероятность, что интервал воспроизводства попал в сутки (s−1, s]. Здесь интервал ~ Gamma(форма 2,6; интенсивность 0,4), среднее 6,5 дня. Сумма 14 весов ${f3(gsum)}: остальные ${f3(1-gsum)} приходятся на интервалы длиннее 14 дней.`},
+ {t:'Первые слагаемые',st:{g:1,p:2},ms:900,d:`Заразившиеся вчера (${past[0]} чел.) сегодня передают с весом g<sub>1</sub> = ${f3(g[0])}: вклад ${f2(prod[0])}. Позавчерашние: ${past[1]}·${f3(g[1])} = ${f2(prod[1])}.`},
+ {t:'Остальные слагаемые',st:{g:1,p:M},ms:250,d:`Так же для всех s. Больше всего дают дни 3–5 назад: там и людей уже много, и вес g<sub>s</sub> около пика.`},
+ {t:'Инфекционный потенциал',st:{g:1,p:M,L:1},d:`Λ<sub>t</sub> = Σ g<sub>s</sub>I<sub>t−s</sub> = ${f2(Lam)}: сколько заражений сегодня дали бы прошлые случаи, если бы каждый за всё время заражал ровно одного.`},
+ {t:'Оценка r<sub>t</sub>',st:{g:1,p:M,L:1,r:1},d:`Ожидание E[I<sub>t</sub>] = r<sub>t</sub>Λ<sub>t</sub>. Наблюдали ${It}, поэтому по одному дню r̂<sub>t</sub> = ${It}/${f2(Lam)} = ${f2(rhat)}.`}];
+let k=0,shown=0,cur=-1,timer=null;window.stepperBusy=false;const $=id=>document.getElementById(id);
+function fig(){
+ const st=S[k].st;
+ let h=`<table class="f"><tr><th></th><th>I</th><th>g<sub>s</sub></th><th>g<sub>s</sub>·I</th><th></th></tr>`;
+ for(let i=0;i<M;i++){const on=i<shown;
+  h+=`<tr class="${i==cur?'cur':''}"><td class="ix">t−${i+1}</td><td class="i">${past[i]}</td><td class="gw">${st.g?f3(g[i]):''}</td><td class="pr">${on?f2(prod[i]):''}</td><td class="bar">${on?`<i style="width:${(110*prod[i]/pmax).toFixed(0)}px"></i>`:''}</td></tr>`}
+ h+=`<tr><td class="ix" style="color:var(--foreground);font-weight:600">t</td><td class="i" style="background:var(--chart-1);color:var(--background);font-weight:600">${It}</td><td></td><td></td><td></td></tr></table>`;
+ return h;
+}
+function draw(){
+ $('fig').innerHTML=fig();const st=S[k].st;
+ $('sum').innerHTML=(st.L?`Λ<sub>t</sub> = Σ g<sub>s</sub>·I<sub>t−s</sub> = <b>${f2(Lam)}</b>`:'')+(st.r?`<br>r̂<sub>t</sub> = I<sub>t</sub> / Λ<sub>t</sub> = ${It} / ${f2(Lam)} = <b>${f2(rhat)}</b>`:'');
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;cur=-1;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ if(fwd&&s.ms&&s.st.p>shown){window.stepperBusy=true;
+  const t=timer=setInterval(()=>{cur=shown;shown++;draw();if(shown>=s.st.p){clearInterval(t);setTimeout(()=>{if(timer===t){cur=-1;draw();window.stepperBusy=false}},s.ms)}},s.ms);
+  draw();return}
+ shown=s.st.p;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

@@ -1,0 +1,32 @@
+<style>
+.w{font-family:var(--font-sans)}
+.p{display:grid;grid-template-columns:1fr 1fr;column-gap:24px;max-width:760px}
+.t{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 2px}
+.c{font-size:13px;line-height:1.5;color:var(--muted-foreground);margin:0 0 6px;min-height:60px}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+.ax{stroke:var(--border)}
+</style>
+<div class="w"><div class="p" id="p"></div></div>
+<script>
+// slide 16 numbers: latent 11.5 d, infectious 5 d, contact rate c = 0.4 per day while infectious
+const lat=11.5,dur=5,c=0.4,a=1/lat,b=1/dur;
+const Pinf=t=>a*(Math.exp(-a*t)-Math.exp(-b*t))/(b-a);   // P(L < t < L + D) for exponential L, D
+const K=t=>c*Pinf(t), k1=t=>(t>=lat&&t<lat+dur)?c:0;
+let pk=[0,0],area=0,m1=0;for(let t=0;t<=400;t+=0.01){const v=K(t);if(v>pk[1])pk=[t,v];area+=v*0.01;m1+=t*v*0.01}
+const W=360,H=200,L=34,R=8,T=12,B=28,Tx=60,X=t=>L+(W-L-R)*t/Tx,Y=v=>T+(H-T-B)*(1-v/0.45);
+const fr=(x,d)=>x.toFixed(d).replace('.',',');
+function panel(fn,step,note){
+ let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(0)}"/>`;
+ [0,10,20,30,40,50,60].forEach(v=>s+=`<text x="${X(v)}" y="${Y(0)+14}" text-anchor="middle">${v}</text>`);
+ [0.1,0.2,0.3,0.4].forEach(v=>s+=`<text x="${L-4}" y="${Y(v)+4}" text-anchor="end">${fr(v,1)}</text>`);
+ s+=`<text x="${W-R}" y="${H-2}" text-anchor="end">τ, дни от заражения</text>`;
+ let d=`M${X(0)} ${Y(0)}`;for(let t=0;t<=Tx;t+=step)d+=`L${X(t).toFixed(1)} ${Y(fn(t)).toFixed(1)}`;d+=`L${X(Tx)} ${Y(0)}Z`;
+ return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${s}<path d="${d}" fill="color-mix(in srgb,var(--chart-1) 22%,transparent)" stroke="var(--chart-1)" stroke-width="2"/>${note}</svg>`;
+}
+const n1=`<text class="k" x="${X(lat+dur)+6}" y="${Y(0.4)+12}">площадь ${fr(c*dur,0)}</text><text x="${X(lat/2)}" y="${Y(0.03)}" text-anchor="middle">латентный</text>`;
+const n2=`<text class="k" x="${X(pk[0])+8}" y="${Y(pk[1])-8}">пик ${fr(pk[1],3)} на ${fr(pk[0],1)}-й день</text><text class="k" x="${X(18)}" y="${Y(0.2)}">площадь ${fr(area,2)}</text>`;
+document.getElementById('p').innerHTML=
+ `<div><div class="t">Один человек: k(τ, a)</div><div class="c">Латентный период ровно ${fr(lat,1)} дня, затем ${dur} дней заражает с интенсивностью ${fr(c,1)} в день.</div>${panel(k1,0.01,n1)}</div>`+
+ `<div><div class="t">Популяция: K(τ) = ∫ k(τ, a) f(a) da</div><div class="c">Длительности случайны: показательные со средними ${fr(lat,1)} и ${dur} дней. Среднее время от заражения до заражения ${fr(m1/area,1)} дня.</div>${panel(K,0.05,n2)}</div>`;
+</script>

@@ -1,0 +1,91 @@
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 10px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:24px;align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg text.k{fill:var(--foreground);font-weight:600}
+svg text.h{font-size:12px;font-weight:600;fill:var(--foreground)}
+.ax{stroke:var(--border)}
+.mk{stroke:var(--warning);stroke-dasharray:4 3;stroke-width:1.2}
+#steps{max-width:280px;min-height:360px}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><svg id="s"></svg><div id="steps"></div></div>
+</div>
+<script>
+// forward run of the Flaxman model with toy R_t; distributions as on slides 32-33
+function lg(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,s0=x+5.5;s0-=(x+0.5)*Math.log(s0);let s=1.000000000190015;for(const q of c)s+=q/++y;return -s0+Math.log(2.5066282746310005*s/x)}
+const gpdf=(a,r)=>x=>x<=0?0:Math.exp(a*Math.log(r)+(a-1)*Math.log(x)-r*x-lg(a));
+const mcv=(m,cv)=>{const a=1/(cv*cv);return[a,a/m]};
+const T=90,h=0.05,M=Math.round(T/h)+1,xs=Array.from({length:M},(_,i)=>i*h);
+const daily=f=>{const F=[0];let c=0;for(let i=1;i<M;i++){c+=(f[i-1]+f[i])/2*h;F.push(c)}return Array.from({length:T},(_,s)=>s==0?0:F[Math.round(s/h)]-F[Math.round((s-1)/h)])};
+const gg=gpdf(...mcv(6.5,0.62)),io=gpdf(...mcv(5.1,0.86)),od=gpdf(...mcv(18.8,0.45));
+const fio=xs.map(io),fod=xs.map(od),fid=xs.map((_,i)=>{let s=0;for(let j=0;j<=i;j++)s+=fio[j]*fod[i-j]*h;return s});
+const g=daily(xs.map(gg)),P=daily(fid);                        // g_s and P(s) = F(s) - F(s-1)
+const ifr=0.01,t1=20,t2=34,Rv=[3.4,2.0,0.65],R=t=>t<t1?Rv[0]:t<t2?Rv[1]:Rv[2],seedDays=6,seedI=20;
+const I=new Array(T).fill(0);for(let t=0;t<T;t++)I[t]=t<seedDays?seedI:R(t)*I.slice(0,t).reduce((a,v,j)=>a+v*g[t-j],0);
+const d=I.map((_,t)=>{let s=0;for(let j=0;j<t;j++)s+=I[j]*ifr*P[t-j];return s});
+// observed deaths: D ~ NB(mean d, var d + d^2/psi) drawn as Poisson with Gamma(psi, d/psi) intensity
+const psi=5;let seed=2020;const u=()=>{seed=(seed*1664525+1013904223)%4294967296;return(seed+0.5)/4294967296};
+const nrm=()=>Math.sqrt(-2*Math.log(u()))*Math.cos(2*Math.PI*u());
+const gam=a=>{const dd=a-1/3,c=1/Math.sqrt(9*dd);for(;;){let x,v;do{x=nrm();v=1+c*x}while(v<=0);v=v*v*v;if(Math.log(u())<0.5*x*x+dd-dd*v+dd*Math.log(v))return dd*v}};
+const pois=l=>{let k=0,p=1;const L=Math.exp(-l);do{k++;p*=u()}while(p>L);return k-1};
+const D=d.map(m=>m<=0?0:pois(gam(psi)*m/psi));
+const am=a=>a.reduce((b,v,i)=>v>a[b]?i:b,0),Ip=am(I),dp=am(d),cumI=I.reduce((a,b)=>a+b,0),cumd=d.reduce((a,b)=>a+b,0);
+const fr=(x,k)=>x.toFixed(k).replace('.',',');
+const days=n=>n+' '+(n%10==1&&n%100!=11?'день':n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?'дня':'дней');
+const W=470,L=40,Rm=10,X=t=>L+(W-L-Rm)*t/(T-1);
+const pR={t:22,b:100,top:4},pI={t:132,b:236,top:Math.ceil(I[Ip]/500)*500},pD={t:268,b:372,top:Math.ceil(Math.max(d[dp],...D)/5)*5},Hs=pD.b+32;
+const Y=(p,v)=>p.b-(p.b-p.t)*v/p.top;
+const S=[
+ {t:'R<sub>t</sub> — ступенчатая функция',st:1,d:`До первых мер R<sub>t</sub> = ${fr(Rv[0],1)}, после мер в день ${t1} — ${fr(Rv[1],1)}, после мер в день ${t2} — ${fr(Rv[2],2)}. В модели высота каждой ступени — общий для всех стран эффект меры.`},
+ {t:'Заражения I<sub>t</sub>',st:2,d:`I<sub>t</sub> = R<sub>t</sub>·Σ I<sub>t−s</sub>g<sub>s</sub>, первые ${seedDays} дней — по ${seedI} завозных заражений. Пик — ${fr(I[Ip],0)} заражений на день ${Ip}, последний перед второй ступенью. Со дня ${t2} R<sub>t</sub> < 1: после скачка вниз и короткого горба заражения убывают.`},
+ {t:'Ожидаемые смерти d<sub>t</sub>',st:3,d:`d<sub>t</sub> = Σ I<sub>t−s</sub>·ifr·P(s), ifr = ${fr(ifr*100,0)}%. Пик — ${fr(d[dp],1)} смерти в день, на день ${dp}: на ${days(dp-Ip)} позже пика заражений. Это близко к самой частой задержке P(s) (${days(am(P))}); средняя задержка — ${fr(5.1+18.8,1)} дня.`},
+ {t:'Наблюдаемые смерти D<sub>t</sub>',st:4,d:`D<sub>t</sub> ~ NB(среднее d<sub>t</sub>, дисперсия d<sub>t</sub> + d<sub>t</sub><sup>2</sup>/ψ), ψ = ${psi}. Это всё, что видно в данных. Модель решает обратную задачу: подбирает ступени R<sub>t</sub>, при которых такие столбцы наиболее вероятны.`}];
+let k=0;window.stepperBusy=false;const $=id=>document.getElementById(id);
+const path=(p,a)=>a.map((v,t)=>(t?'L':'M')+X(t).toFixed(1)+' '+Y(p,v).toFixed(1)).join('');
+function frame(p,ticks,title){let s=`<text class="h" x="${L}" y="${p.t-8}">${title}</text><line class="ax" x1="${L}" y1="${p.b}" x2="${W-Rm}" y2="${p.b}"/><line class="ax" x1="${L}" y1="${p.t}" x2="${L}" y2="${p.b}"/>`;
+ ticks.forEach(v=>s+=`<text x="${L-4}" y="${Y(p,v)+4}" text-anchor="end">${v}</text>`);return s}
+function fig(){
+ const st=S[k].st;let s='';
+ [t1,t2].forEach(t=>s+=`<line class="mk" x1="${X(t)}" y1="${pR.t}" x2="${X(t)}" y2="${st>=3?pD.b:st>=2?pI.b:pR.b}"/>`);
+ s+=frame(pR,[0,1,2,3,4],'R<tspan baseline-shift="sub" font-size="8">t</tspan>');
+ s+=`<line class="ax" stroke-dasharray="2 3" x1="${L}" y1="${Y(pR,1)}" x2="${W-Rm}" y2="${Y(pR,1)}"/>`;
+ s+=`<path d="${path(pR,I.map((_,t)=>R(t)))}" fill="none" stroke="var(--chart-5)" stroke-width="2.2"/>`;
+ [0,t1,t2].forEach((t,i)=>s+=`<text class="k" x="${X(t)+4}" y="${Y(pR,Rv[i])-5}" style="fill:var(--chart-5)">${fr(Rv[i],i==2?2:1)}</text>`);
+ if(st>=2){s+=frame(pI,[0,pI.top/2,pI.top],'Заражения I<tspan baseline-shift="sub" font-size="8">t</tspan> в день');
+  s+=`<path d="${path(pI,I)}L${X(T-1)} ${pI.b}L${X(0)} ${pI.b}Z" fill="color-mix(in srgb,var(--chart-1) 20%,transparent)" stroke="var(--chart-1)" stroke-width="2"/>`;
+  s+=`<text class="k" x="${X(Ip)+6}" y="${Y(pI,I[Ip])+10}">пик ${fr(I[Ip],0)}</text>`}
+ if(st>=3){s+=frame(pD,[0,pD.top/2,pD.top],'Смерти в день');
+  if(st>=4){const bw=X(1)-X(0)-0.8;D.forEach((v,t)=>{if(v>0)s+=`<rect x="${(X(t)-bw/2).toFixed(1)}" y="${Y(pD,v).toFixed(1)}" width="${bw.toFixed(1)}" height="${(pD.b-Y(pD,v)).toFixed(1)}" fill="color-mix(in srgb,var(--chart-6) 55%,transparent)"/>`})}
+  s+=`<path d="${path(pD,d)}" fill="none" stroke="var(--foreground)" stroke-width="2"/>`;
+  s+=`<line x1="${X(Ip)}" y1="${pD.t}" x2="${X(Ip)}" y2="${pD.b}" stroke="var(--chart-1)" stroke-dasharray="2 3"/><line x1="${X(dp)}" y1="${pD.t}" x2="${X(dp)}" y2="${pD.b}" stroke="var(--foreground)" stroke-dasharray="2 3"/>`;
+  s+=`<line x1="${X(Ip)}" y1="${pD.t+6}" x2="${X(dp)}" y2="${pD.t+6}" stroke="var(--foreground)" marker-end="url(#a)"/><text class="k" x="${(X(Ip)+X(dp))/2}" y="${pD.t+1}" text-anchor="middle">${days(dp-Ip)}</text>`;
+  [0,20,40,60,80].forEach(v=>s+=`<text x="${X(v)}" y="${pD.b+14}" text-anchor="middle">${v}</text>`);s+=`<text x="${W-Rm}" y="${pD.b+28}" text-anchor="end">день</text>`}
+ else{const p=st>=2?pI:pR;[0,20,40,60,80].forEach(v=>s+=`<text x="${X(v)}" y="${p.b+14}" text-anchor="middle">${v}</text>`);s+=`<text x="${W-Rm}" y="${p.b+28}" text-anchor="end">день</text>`}
+ return`<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--foreground)"/></marker></defs>`+s;
+}
+function draw(){
+ const el=$('s');el.setAttribute('width',W);el.setAttribute('height',Hs);el.setAttribute('viewBox',`0 0 ${W} ${Hs}`);el.innerHTML=fig();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){k=Math.max(0,Math.min(S.length-1,i));draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+draw();
+</script>
