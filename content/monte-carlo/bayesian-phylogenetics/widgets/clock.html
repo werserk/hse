@@ -1,0 +1,126 @@
+<!-- Static figures of "Байесовская филогенетика". Mode from the iframe's data-mode:
+     ident   — Fig 1.1: two time trees x two clock rates give one substitution tree (non-identifiability);
+     relaxed — Fig 3.1: one time tree under a strict and a relaxed clock, with the resulting substitution trees;
+     space   — Fig 4.1: time-tree space of three taxa (three half-planes on the star-tree line) and the height simplex.
+     Every branch length and root-to-tip distance is computed here from the heights and rates. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.rows{display:flex;flex-direction:column;gap:14px}
+.row{display:grid;grid-template-columns:auto 74px auto;align-items:center}
+.rh{font-size:13px;font-weight:600;margin:0 0 2px}
+.op{font:12px var(--font-mono);color:var(--muted-foreground);text-align:center;line-height:1.5}
+.op .ar{font-size:18px;color:var(--subtle-foreground)}
+.cap{font-size:11px;color:var(--subtle-foreground);text-align:center;margin-top:-2px}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.side p{margin:0 0 8px}
+.ok{color:var(--success)}.no{color:var(--danger)}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+svg .tk{font-size:10px;fill:var(--subtle-foreground)}
+svg .lf{font-size:12px;fill:var(--foreground)}
+.sw{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+@media(max-width:640px){.g{grid-template-columns:1fr}.side{border-left:0;border-top:2px solid var(--border);padding:8px 0 0;margin-top:10px}}
+</style>
+<div class="w"><div class="g"><div id="fig"></div><div class="side" id="side"></div></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const mode=(window.frameElement&&window.frameElement.dataset.mode)||'ident';
+const f=(x,d=3)=>(+x.toFixed(d)).toString().replace('-','−').replace('.',',');
+// Topology (((A,B),C),D). Node heights of the time tree in time units (leaves at 0).
+const LEAVES=['A','B','C','D'];
+const PAR={A:'AB',B:'AB',AB:'ABC',C:'ABC',ABC:'R',D:'R'};
+const HT={A:0,B:0,C:0,D:0,AB:10,ABC:30,R:45};
+const NODES=Object.keys(PAR);                       // all nodes except the root
+const dur=n=>HT[PAR[n]]-HT[n];                      // branch duration in time units
+const XS={A:22,B:62,C:104,D:146};XS.AB=(XS.A+XS.B)/2;XS.ABC=(XS.AB+XS.C)/2;XS.R=(XS.ABC+XS.D)/2;
+// distance from the root along the tree for given branch lengths
+function depth(len){const d={R:0};const ord=['ABC','D','AB','C','A','B'];for(const n of ord)d[n]=d[PAR[n]]+len[n];return d}
+// Draw a tree with the root on top: y = T + depth*scale. ticks: [[depth,label]]; col: branch -> colour; lab: branch -> label
+function tree({len,scale,ticks=[],col={},lab={},tips=null,ttl=''}){
+ const d=depth(len),T=14,L=30,w=218,maxd=Math.max(...LEAVES.map(n=>d[n]));
+ const Y=v=>T+v*scale,h=Y(maxd)+(tips?34:22);
+ let o='';
+ if(ticks.length){o+=`<line class="ax" x1="${L-6}" y1="${Y(0)}" x2="${L-6}" y2="${Y(maxd)}"/>`;
+  for(const [v,t] of ticks)o+=`<line class="ax" x1="${L-9}" y1="${Y(v)}" x2="${L-6}" y2="${Y(v)}"/><text class="tk" x="${L-11}" y="${Y(v)+3}" text-anchor="end">${t}</text>`}
+ for(const n of NODES){const p=PAR[n],c=col[n]||'var(--muted-foreground)';
+  o+=`<path d="M${L+XS[n]} ${Y(d[n])}V${Y(d[p])}H${L+XS[p]}" fill="none" stroke="${c}" stroke-width="${col[n]?2.4:1.6}"/>`;
+  if(lab[n]!==undefined)o+=`<text x="${L+XS[n]+4}" y="${(Y(d[n])+Y(d[p]))/2+4}" style="font-size:10px;fill:${col[n]||'var(--muted-foreground)'}">${lab[n]}</text>`}
+ for(const n of LEAVES){o+=`<text class="lf" x="${L+XS[n]}" y="${Y(d[n])+15}" text-anchor="middle">${n}</text>`;
+  if(tips)o+=`<text class="tk" x="${L+XS[n]}" y="${Y(d[n])+28}" text-anchor="middle">${tips[n]}</text>`}
+ return `<svg width="${w}" height="${h}">${o}</svg>`}
+const timeLen=k=>Object.fromEntries(NODES.map(n=>[n,dur(n)*k]));       // durations scaled by k
+const htTicks=(k,dig)=>['R','ABC','AB','A'].map(n=>[HT.R-HT[n],f(HT[n]*k,dig)]);
+function row(head,left,op,right){return `<div><div class="rh">${head}</div><div class="row"><div>${left}</div><div class="op">${op}<div class="ar">→</div></div><div>${right}</div></div></div>`}
+// ---------- Fig 1.1
+if(mode==='ident'){
+ const S=3.0, cases=[{k:1,mu:0.01},{k:0.1,mu:0.1}];
+ let rows='';const subs=[];
+ for(const c of cases){
+  const sub=Object.fromEntries(NODES.map(n=>[n,dur(n)*c.k*c.mu]));subs.push(sub);
+  const left=tree({len:timeLen(1),scale:S,ticks:htTicks(c.k,1)})+`<div class="cap">дерево времён g</div>`;
+  const right=tree({len:timeLen(1),scale:S,ticks:['R','ABC','AB','A'].map(n=>[HT.R-HT[n],f(HT[n]*c.k*c.mu,2)])})+`<div class="cap">дерево замен T</div>`;
+  rows+=row(`Корень ${f(HT.R*c.k,1)} ед. времени, μ = ${f(c.mu,2)}`,left,`× μ = ${f(c.mu,2)}`,right)}
+ const same=NODES.every(n=>Math.abs(subs[0][n]-subs[1][n])<1e-12);
+ $('fig').innerHTML=`<div class="rows">${rows}</div>`;
+ $('side').innerHTML=`<p><b>Одна топология</b> (((A,B),C),D), все листья взяты сегодня.</p>
+ <p>Длина ветви в заменах = μ × длительность. Сверху: ветвь A — ${f(dur('A'),1)} × ${f(0.01,2)} = ${f(subs[0].A,2)}. Снизу: ${f(dur('A')*0.1,1)} × ${f(0.1,2)} = ${f(subs[1].A,2)}.</p>
+ <p>Деревья замен ${same?'<b>совпадают</b> ветвь в ветвь':'различаются'}: высоты ${['R','ABC','AB'].map(n=>f(HT[n]*0.01,2)).join(', ')}.</p>
+ <p class="ok">✓ Правдоподобие Pr(D | T) одинаково.</p>
+ <p class="no">✗ По данным нельзя выбрать между верхней и нижней парой.</p>`}
+// ---------- Fig 3.1
+if(mode==='relaxed'){
+ const S=2.6;
+ const strict=Object.fromEntries(NODES.map(n=>[n,0.01]));
+ const relax={A:0.02,B:0.01,C:0.005,D:0.01,AB:0.01,ABC:0.02};
+ const COL={0.005:'var(--chart-2)',0.01:'var(--muted-foreground)',0.02:'var(--chart-1)'};
+ let rows='';const rtt=[];
+ for(const [head,rate] of [['Строгие часы: одна μ',strict],['Расслабленные часы: μᵢ на ветви',relax]]){
+  const col=Object.fromEntries(NODES.map(n=>[n,COL[rate[n]]]));
+  const lab=Object.fromEntries(NODES.map(n=>[n,f(rate[n],3)]));
+  const sub=Object.fromEntries(NODES.map(n=>[n,rate[n]*dur(n)]));
+  const d=depth(sub);rtt.push(d);
+  const left=tree({len:timeLen(1),scale:S,ticks:htTicks(1,0),col,lab})+`<div class="cap">дерево времён g, подписи — μᵢ</div>`;
+  const right=tree({len:Object.fromEntries(NODES.map(n=>[n,sub[n]*100])),scale:S,col,lab:Object.fromEntries(NODES.map(n=>[n,f(sub[n],3)])),tips:Object.fromEntries(LEAVES.map(n=>[n,f(d[n],2)]))})+`<div class="cap">дерево замен T, внизу — путь от корня</div>`;
+  rows+=row(head,left,'μᵢ × tᵢ',right)}
+ $('fig').innerHTML=`<div class="rows">${rows}</div>`;
+ $('side').innerHTML=`<p><b>Скорость ветви</b>, замен на сайт за единицу времени:<br><span class="sw" style="background:var(--chart-2)"></span>0,005 &nbsp; <span class="sw" style="background:var(--muted-foreground)"></span>0,01 &nbsp; <span class="sw" style="background:var(--chart-1)"></span>0,02</p>
+ <p>Длина ветви в заменах = μᵢ × длительность tᵢ. Ветвь A при расслабленных часах: ${f(relax.A,3)} × ${f(dur('A'),0)} = ${f(relax.A*dur('A'),2)}.</p>
+ <p><b>Путь от корня до листа</b>: при строгих часах у всех ${f(rtt[0].A,2)} — дерево ультраметрическое. При расслабленных ${LEAVES.map(n=>`${n} ${f(rtt[1][n],2)}`).join(', ')}.</p>
+ <p>Одинаковые пути у C и D — совпадение скоростей, а не часы.</p>`}
+// ---------- Fig 4.1
+if(mode==='space'){
+ // left: three pages glued along the spine (x = 0, star trees); a page's coordinates are (x along page, y along spine)
+ const W=330,H=290,sx=160,yb=236,yt=66;
+ const pages=[{d:[-128,10],t:'((1,2),3)',c:'var(--chart-1)'},{d:[128,10],t:'((1,3),2)',c:'var(--chart-2)'},{d:[70,-40],t:'((2,3),1)',c:'var(--warning)'}];
+ let o='';
+ for(const p of [pages[2],pages[0],pages[1]]){const [dx,dy]=p.d;
+  o+=`<path d="M${sx} ${yb}L${sx} ${yt}L${sx+dx} ${yt+dy}L${sx+dx} ${yb+dy}Z" fill="color-mix(in srgb,${p.c} 13%,transparent)" stroke="${p.c}" stroke-width="1"/>`;
+  const back=dy<0,lx=back?sx+dx+6:sx+dx*0.62,ly=back?yt+dy+4:yb+dy*0.62-60;
+  o+=`<text x="${lx}" y="${ly}" text-anchor="${back?'start':'middle'}" style="font:12px var(--font-mono);fill:${p.c}">${p.t}</text>`;
+  o+=`<text class="tk" x="${sx+dx*0.5}" y="${yb+dy*0.5+15}" text-anchor="middle">x →</text>`}
+ o+=`<line x1="${sx}" y1="${yb}" x2="${sx}" y2="${yt-6}" stroke="var(--foreground)" stroke-width="2.2"/>`;
+ o+=`<text x="${sx+5}" y="${yt-10}" style="font-size:11px;fill:var(--foreground)">y ↑</text>`;
+ o+=`<text x="${sx}" y="${yb+46}" text-anchor="middle" style="font-size:11px;fill:var(--foreground)">звёздные деревья: x = 0</text>`;
+ // one point on page 1 and one star tree on the spine
+ const px=sx+pages[0].d[0]*0.45,py=yb+pages[0].d[1]*0.45-70;
+ o+=`<circle cx="${px}" cy="${py}" r="4" fill="var(--chart-1)"/><circle cx="${sx}" cy="${yb-110}" r="4" fill="var(--foreground)"/>`;
+ // right: height simplex 0 <= t1 <= t2 <= H
+ const HH=45,t1=10,t2=30,R0=46,B0=236,sc=3.4,X=v=>R0+v*sc,Y=v=>B0-v*sc;
+ let q=`<line class="ax" x1="${X(0)}" y1="${Y(0)}" x2="${X(HH)+8}" y2="${Y(0)}"/><line class="ax" x1="${X(0)}" y1="${Y(0)}" x2="${X(0)}" y2="${Y(HH)-8}"/>`;
+ q+=`<path d="M${X(0)} ${Y(0)}L${X(0)} ${Y(HH)}L${X(HH)} ${Y(HH)}Z" fill="color-mix(in srgb,var(--chart-1) 13%,transparent)" stroke="var(--chart-1)"/>`;
+ q+=`<line x1="${X(0)}" y1="${Y(0)}" x2="${X(HH)}" y2="${Y(HH)}" stroke="var(--foreground)" stroke-width="2.2"/>`;
+ for(const v of [0,t1,t2,HH]){q+=`<text class="tk" x="${X(v)}" y="${Y(0)+13}" text-anchor="middle">${v==HH?'H':v}</text><text class="tk" x="${X(0)-5}" y="${Y(v)+3}" text-anchor="end">${v==HH?'H':v}</text>`}
+ q+=`<text x="${X(HH)+8}" y="${Y(0)-5}" text-anchor="end">t₁</text><text x="${X(0)+5}" y="${Y(HH)-10}">t₂</text>`;
+ q+=`<text x="${X(30)+4}" y="${Y(22)}" style="font-size:11px;fill:var(--foreground)">t₁ = t₂:</text><text x="${X(30)+4}" y="${Y(22)+13}" style="font-size:11px;fill:var(--foreground)">x = 0</text>`;
+ q+=`<line x1="${X(t1)}" y1="${Y(t2)}" x2="${X(t1)}" y2="${Y(0)}" stroke="var(--border)" stroke-dasharray="3 3"/><line x1="${X(t1)}" y1="${Y(t2)}" x2="${X(0)}" y2="${Y(t2)}" stroke="var(--border)" stroke-dasharray="3 3"/>`;
+ q+=`<circle cx="${X(t1)}" cy="${Y(t2)}" r="4" fill="var(--chart-1)"/>`;
+ $('fig').innerHTML=`<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start"><div><div class="rh">Три топологии</div><svg width="${W}" height="${H}">${o}</svg></div><div><div class="rh">Одна топология в высотах</div><svg width="${X(HH)+20}" height="${H}">${q}</svg></div></div>`;
+ $('side').innerHTML=`<p><b>Координаты</b> топологии ((1,2),3): y — от листьев до слияния 1 и 2, x — от него до корня. Каждая страница — квадрант x ≥ 0, y ≥ 0. Точка на ней — дерево с x &gt; 0.</p>
+ <p><b>Корешок</b> x = 0 — звёздные деревья, общие у всех трёх страниц (чёрная точка). Смена топологии проходит через него.</p>
+ <p><b>Справа</b> та же страница в высотах: t₁ = y, t₂ = x + y. Ограничения 0 ≤ t₁ ≤ t₂ ≤ H дают треугольник. Точка — дерево с t₁ = ${t1}, t₂ = ${t2}: y = ${t1}, x = ${t2-t1}.</p>
+ <p>Диагональ t₁ = t₂ — тот же корешок x = 0.</p>`}
+</script>

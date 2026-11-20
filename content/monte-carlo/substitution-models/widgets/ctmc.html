@@ -1,0 +1,96 @@
+<!-- Static figures of "Модели замен". Mode from the iframe's data-mode:
+     path  — Fig 1.1: one site's letter as a step function of time (fixed jump data);
+     flows — Fig 3.1: numeric GTR rate matrix Q and flow matrix diag(pi)Q;
+     jc    — Fig 4.1: Jukes–Cantor P_ii(t), P_ij(t) against mu*t;
+     sat   — Fig 5.1: saturation curve h(d) with h = d and asymptote 3/4.
+     Every number is computed here from the model parameters. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.side p{margin:0 0 8px}
+.c1{color:var(--chart-1)}.c2{color:var(--chart-2)}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+svg .tk{font-size:10px;fill:var(--subtle-foreground)}
+.mats{display:flex;flex-direction:column;gap:10px}
+table.m{border-collapse:separate;border-spacing:3px;font:12px var(--font-mono)}
+table.m td,table.m th{box-sizing:border-box;width:50px;height:26px;text-align:center;border-radius:4px}
+table.m th{font:12px var(--font-mono);color:var(--muted-foreground);font-weight:400}
+table.m td.v{background:color-mix(in srgb,var(--chart-2) 16%,transparent)}
+table.m td.dg{background:color-mix(in srgb,var(--chart-1) 16%,transparent)}
+table.m td.sum{color:var(--subtle-foreground);font-size:11px}
+table.m td.pair{outline:1.5px solid var(--warning);outline-offset:-1.5px}
+@media(max-width:640px){.g{grid-template-columns:1fr}.side{border-left:0;border-top:2px solid var(--border);padding:8px 0 0;margin-top:10px}}
+</style>
+<div class="w"><div class="g"><div id="fig"></div><div class="side" id="side"></div></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const mode=(window.frameElement&&window.frameElement.dataset.mode)||'path';
+const f=(x,d=3)=>(+x.toFixed(d)).toString().replace('-','−').replace('.',',');
+const S='AGCT';
+function chart({w=360,h=220,xmax,ymax=1,xt=[],yt=[],xl='',series=[],extra=''}){
+ const L=38,R=12,T=10,B=30,X=x=>L+(w-L-R)*x/xmax,Y=y=>T+(h-T-B)*(1-y/ymax);
+ let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${w-R}" y2="${Y(0)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(0)}"/>`;
+ for(const t of xt)s+=`<text class="tk" x="${X(t)}" y="${Y(0)+14}" text-anchor="middle">${f(t,2)}</text>`;
+ for(const t of yt)s+=`<text class="tk" x="${L-5}" y="${Y(t[0])+3}" text-anchor="end">${t[1]}</text>`;
+ s+=`<text x="${w-R}" y="${h-2}" text-anchor="end">${xl}</text>`;
+ for(const sr of series){const pts=[];for(let i=0;i<=200;i++){const x=xmax*i/200,y=sr.fn(x);if(y<=ymax*1.02)pts.push(`${X(x).toFixed(1)},${Y(y).toFixed(1)}`)}
+  s+=`<polyline points="${pts.join(' ')}" fill="none" stroke="${sr.col}" stroke-width="${sr.w||2}" ${sr.dash?`stroke-dasharray="${sr.dash}"`:''}/>`}
+ return {s:s+extra(X,Y),X,Y,w,h}}
+// ---------- Fig 1.1: path of one site
+if(mode==='path'){
+ const J=[[0,'A'],[0.55,'G'],[1.30,'A'],[2.05,'T'],[2.60,'C']],tend=3; // data: jump times and new letters
+ const w=380,h=170,L=30,R=12,T=8,B=30,X=t=>L+(w-L-R)*t/tend,Y=c=>T+(h-T-B)*(S.indexOf(c)+0.5)/4;
+ let s='';
+ S.split('').forEach(c=>{s+=`<line x1="${L}" y1="${Y(c)}" x2="${w-R}" y2="${Y(c)}" stroke="var(--border)" stroke-dasharray="2 3"/><text x="${L-8}" y="${Y(c)+4}" text-anchor="end" style="font:12px var(--font-mono);fill:var(--muted-foreground)">${c}</text>`});
+ s+=`<line class="ax" x1="${L}" y1="${h-B}" x2="${w-R}" y2="${h-B}"/>`;
+ for(let t=0;t<=tend;t++)s+=`<text class="tk" x="${X(t)}" y="${h-B+14}" text-anchor="middle">${t}</text>`;
+ s+=`<text x="${w-R}" y="${h-2}" text-anchor="end">время t</text>`;
+ let d='';J.forEach(([t,c],i)=>{const t2=i+1<J.length?J[i+1][0]:tend;d+=(i?`L${X(t)} ${Y(c)}`:`M${X(t)} ${Y(c)}`)+`L${X(t2)} ${Y(c)}`});
+ s+=`<path d="${d}" fill="none" stroke="var(--chart-1)" stroke-width="2.2"/>`;
+ J.slice(1).forEach(([t])=>{s+=`<circle cx="${X(t)}" cy="${h-B}" r="3" fill="var(--chart-1)"/>`});
+ const nj=J.length-1,first=J[0][1],last=J[J.length-1][1];
+ $('fig').innerHTML=`<div class="ttl">Буква сайта во времени</div><svg width="${w}" height="${h}">${s}</svg>`;
+ $('side').innerHTML=`<p>Каждая ступенька — <b>замена</b>, точки на оси — её моменты.</p><p>Между заменами буква держится время <b>Exp(μ<sub>i</sub>)</b>, потом уходит в j с вероятностью μ<sub>i,j</sub>/μ<sub>i</sub>.</p><p>Замен здесь <b>${nj}</b>, а концы ${first} и ${last} различаются <b>${first===last?0:1}</b> раз: по концам видно меньше, чем произошло.</p>`;
+}
+// ---------- GTR example (Fig 3.1)
+if(mode==='flows'){
+ const pi=[.3,.2,.2,.3];
+ const r0={AG:4,AC:1,AT:1,GC:1,GT:1,CT:4};          // relative affinities alpha..eta
+ const R=[...Array(4)].map(()=>Array(4).fill(0));
+ for(const k in r0){const i=S.indexOf(k[0]),j=S.indexOf(k[1]);R[i][j]=R[j][i]=r0[k]}
+ let Q=R.map((row,i)=>row.map((v,j)=>i==j?0:v*pi[j]));Q.forEach((row,i)=>row[i]=-row.reduce((a,b)=>a+b,0));
+ const mb=-pi.reduce((s,p,j)=>s+p*Q[j][j],0);Q=Q.map(r=>r.map(v=>v/mb));   // normalise mean rate to 1
+ const F=Q.map((r,i)=>r.map(v=>pi[i]*v));
+ const tab=(M,ttl,colsum)=>{let s=`<div><div class="ttl">${ttl}</div><table class="m"><tr><th></th>${S.split('').map(c=>`<th>${c}</th>`).join('')}<th>${colsum?'':'Σ'}</th></tr>`;
+  M.forEach((r,i)=>{s+=`<tr><th>${S[i]}</th>${r.map((v,j)=>`<td class="${i==j?'dg':'v'}${colsum&&i<j&&(S[i]+S[j]=='AG'||S[i]+S[j]=='CT')?' pair':''}${colsum&&i>j&&(S[j]+S[i]=='AG'||S[j]+S[i]=='CT')?' pair':''}">${f(v)}</td>`).join('')}<td class="sum">${colsum?'':f(r.reduce((a,b)=>a+b,0))}</td></tr>`});
+  if(colsum)s+=`<tr><th>Σ</th>${M[0].map((_,j)=>`<td class="sum">${f(M.reduce((a,r)=>a+r[j],0))}</td>`).join('')}<td></td></tr>`;
+  return s+'</table></div>'};
+ $('fig').innerHTML=`<div class="mats">${tab(Q,'Матрица скоростей Q',false)}${tab(F,'Потоки π<sub>i</sub>Q<sub>i,j</sub>',true)}</div>`;
+ const sym=F.every((r,i)=>r.every((v,j)=>Math.abs(v-F[j][i])<1e-12));
+ $('side').innerHTML=`<p><b>π</b> = (${pi.map(p=>f(p,1)).join('; ')}) для A, G, C, T.</p><p>Сродства A↔G и C↔T вчетверо больше остальных; после нормировки на средней скорости ${f(mb,2)} получаем <b>α = η = ${f(4/mb)}</b>, остальные ${f(1/mb)}.</p><p>Средняя скорость −Σπ<sub>j</sub>Q<sub>j,j</sub> = <b>${f(-pi.reduce((s,p,j)=>s+p*Q[j][j],0))}</b>.</p><p>Потоки ${sym?'<b>симметричны</b>':'несимметричны'}: π<sub>i</sub>Q<sub>i,j</sub> = π<sub>j</sub>Q<sub>j,i</sub>; самые большие пары обведены. Нулевые суммы столбцов — это πQ = 0.</p>`;
+}
+// ---------- Fig 4.1: JC transition probabilities
+if(mode==='jc'){
+ const Pii=x=>.25+.75*Math.exp(-x),Pij=x=>.25-.25*Math.exp(-x),mk=[1,2];
+ const c=chart({xmax:5,ymax:1,xt:[0,1,2,3,4,5],yt:[[0,'0'],[.25,'¼'],[.5,'½'],[1,'1']],xl:'μt',
+  series:[{fn:()=>.25,col:'var(--subtle-foreground)',w:1,dash:'4 4'},{fn:Pii,col:'var(--chart-1)'},{fn:Pij,col:'var(--chart-2)'}],
+  extra:(X,Y)=>mk.map(x=>`<circle cx="${X(x)}" cy="${Y(Pii(x))}" r="3.5" fill="var(--chart-1)"/><circle cx="${X(x)}" cy="${Y(Pij(x))}" r="3.5" fill="var(--chart-2)"/><text x="${X(x)+6}" y="${Y(Pii(x))-6}" style="fill:var(--chart-1)">${f(Pii(x))}</text><text x="${X(x)+6}" y="${Y(Pij(x))+14}" style="fill:var(--chart-2)">${f(Pij(x))}</text>`).join('')});
+ $('fig').innerHTML=`<div class="ttl">Вероятности перехода JC</div><svg width="${c.w}" height="${c.h}">${c.s}</svg>`;
+ $('side').innerHTML=`<p><b class="c1">P<sub>i,i</sub>(t) = ¼ + ¾e<sup>−μt</sup></b> — остаться той же буквой: от 1 вниз к ¼.</p><p><b class="c2">P<sub>i,j</sub>(t) = ¼ − ¼e<sup>−μt</sup></b> — стать конкретной другой: от 0 вверх к ¼.</p><p>Пунктир — стационарное ¼. В каждой точке P<sub>i,i</sub> + 3P<sub>i,j</sub> = 1; при μt = 5 разница с ¼ уже ${f(Pii(5)-.25)}.</p>`;
+}
+// ---------- Fig 5.1: saturation
+if(mode==='sat'){
+ const H=d=>.75*(1-Math.exp(-4*d/3)),D=h=>-.75*Math.log(1-4*h/3),hs=[1/6,.5,.7];
+ const c=chart({xmax:4,ymax:1,xt:[0,1,2,3,4],yt:[[0,'0'],[.25,'0,25'],[.5,'0,5'],[.75,'0,75'],[1,'1']],xl:'d, замен на сайт',
+  series:[{fn:x=>x,col:'var(--subtle-foreground)',w:1.2,dash:'4 4'},{fn:()=>.75,col:'var(--warning)',w:1,dash:'2 3'},{fn:H,col:'var(--chart-1)'}],
+  extra:(X,Y)=>hs.map(h=>`<line x1="${X(0)}" y1="${Y(h)}" x2="${X(D(h))}" y2="${Y(h)}" stroke="var(--chart-2)" stroke-dasharray="2 3"/><line x1="${X(D(h))}" y1="${Y(h)}" x2="${X(D(h))}" y2="${Y(0)}" stroke="var(--chart-2)" stroke-dasharray="2 3"/><circle cx="${X(D(h))}" cy="${Y(h)}" r="3.5" fill="var(--chart-2)"/>`).join('')+`<text x="${X(3.95)}" y="${Y(.75)-5}" text-anchor="end" style="fill:var(--warning)">¾</text><text x="${X(1.05)}" y="${Y(1)+12}" style="fill:var(--subtle-foreground)">h = d</text>`});
+ $('fig').innerHTML=`<div class="ttl">Насыщение: h против d</div><svg width="${c.w}" height="${c.h}">${c.s}</svg>`;
+ $('side').innerHTML=`<p><b class="c1">h = ¾(1 − e<sup>−4d/3</sup>)</b>; обратно d = −¾ ln(1 − 4h/3).</p><table style="border-collapse:collapse;font-size:13px">${['<tr><td style="padding:0 12px 0 0">h</td><td style="padding:0 12px 0 0">d</td><td>d − h</td></tr>'].concat(hs.map(h=>`<tr><td style="padding:0 12px 0 0;color:var(--foreground)">${f(h)}</td><td style="padding:0 12px 0 0;color:var(--chart-2)">${f(D(h))}</td><td>${f(D(h)-h)}</td></tr>`)).join('')}</table><p style="margin-top:8px">Первая строка — пара последовательностей примера, h = 2/12. Чем ближе h к <b>¾</b>, тем сильнее растёт d: кривая выходит на полку.</p>`;
+}
+</script>

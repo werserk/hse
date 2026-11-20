@@ -1,0 +1,107 @@
+<!-- Fig 6.1 of "Модели замен": Felsenstein pruning on the tree of slide 9, one site, JC model.
+     Branch lengths b are in expected substitutions per site, so mu*t = 4b/3 in P(b).
+     Every value is computed here; the final likelihood is also checked by brute force over 4^4 internal states. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.ttl{font-size:14px;font-weight:600;margin:0 0 4px}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+table.t{border-collapse:separate;border-spacing:3px;font:11px var(--font-mono);margin-top:6px}
+table.t th{font-weight:400;color:var(--muted-foreground);font-size:12px;height:18px}
+table.t th.l{text-align:right;padding-right:4px;width:34px}
+table.t td{box-sizing:border-box;width:64px;height:24px;text-align:center;border-radius:4px}
+table.t td.e{border:1px dashed var(--border)}
+table.t td.leaf{background:color-mix(in srgb,var(--chart-2) 18%,transparent)}
+table.t td.leaf.z{color:var(--subtle-foreground)}
+table.t td.int{background:var(--chart-1);color:var(--background);font-weight:600}
+table.t td.cur{outline:2px solid var(--foreground);outline-offset:-2px}
+table.t tr.kid th.l{color:var(--warning);font-weight:700}
+table.t tr.me th.l{color:var(--chart-1);font-weight:700}
+.res{font-size:13px;margin-top:8px;min-height:20px;color:var(--foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+@media(max-width:640px){.g{grid-template-columns:1fr}}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div><div class="ttl">Дерево и таблица l<sub>j</sub>(i)</div><div id="tree"></div><div id="tab"></div><div class="res" id="res"></div></div><div id="steps"></div></div>
+</div>
+<script>
+const A='ACGT';
+const b={1:.10,2:.10,3:.05,4:.05,5:.20,6:.10,7:.15,8:.05};      // branch above node j
+const ch={6:[3,4],7:[1,2],8:[6,5],9:[7,8]},par={};for(const j in ch)for(const k of ch[j])par[k]=+j;
+const st={1:'C',2:'C',3:'T',4:'C',5:'T'};                          // one site, leaf letters
+const P=(bb,i,s)=>{const e=Math.exp(-4*bb/3);return i==s?.25+.75*e:.25-.25*e};
+const l={};for(const j in st)l[j]=[0,1,2,3].map(i=>A[i]==st[j]?1:0);
+const msg={};
+for(const j of [6,7,8,9]){l[j]=[1,1,1,1];for(const k of ch[j]){msg[k]=[0,1,2,3].map(i=>[0,1,2,3].reduce((s,x)=>s+P(b[k],i,x)*l[k][x],0));l[j]=l[j].map((v,i)=>v*msg[k][i])}}
+const L=l[9].reduce((s,v)=>s+.25*v,0);
+let brute=0;for(let c=0;c<256;c++){const x={6:c&3,7:(c>>2)&3,8:(c>>4)&3,9:(c>>6)&3};for(const j in st)x[j]=A.indexOf(st[j]);let p=.25;for(const k in par)p*=P(b[k],x[par[k]],x[k]);brute+=p}
+const sup=n=>String(n).split('').map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'['0123456789'.indexOf(c)]||(c=='-'?'⁻':c)).join('');
+const g=v=>{if(v===0)return'0';if(v===1)return'1';if(v>=.01)return v.toPrecision(2).replace('.',',');const e=Math.floor(Math.log10(v)),m=v/10**e;return m.toFixed(1).replace('.',',')+'·10'+sup(e)};
+const ps=bb=>`${g(P(bb,0,0))} / ${g(P(bb,0,1))}`;
+// order of filled cells: leaves 1..5, then nodes 6..9, 4 cells each
+const ORDER=[1,2,3,4,5,6,7,8,9];
+const S=[
+ {t:'Листья',fill:20,node:0,d:`Для листа l<sub>j</sub>(i) = 1 у наблюдаемой буквы и 0 у остальных: C, C, T, C, T. Ветви — в ожидаемых заменах на сайт, поэтому в JC μt = 4b/3 и P<sub>i,i</sub>(b) = ¼ + ¾e<sup>−4b/3</sup>.`},
+ {t:'Узел 6: дети 3 и 4',fill:24,ms:900,node:6,d:`Ребёнок 3 (буква T, b = 0,05) даёт множитель Σ<sub>s</sub>P<sub>i,s</sub>(b)l<sub>3</sub>(s) = P<sub>i,T</sub>(0,05): ${g(msg[3][3])} при i = T и ${g(msg[3][0])} иначе. Ребёнок 4 (C) — то же для C. Перемножаем: l<sub>6</sub>(C) = l<sub>6</sub>(T) = ${g(l[6][1])}, а для A и G обе ветви должны смениться: ${g(l[6][0])}.`},
+ {t:'Узел 7: дети 1 и 2',fill:28,ms:700,node:7,d:`Оба ребёнка — C на ветвях 0,10: P<sub>C,C</sub> = ${g(msg[1][1])}, P<sub>i,C</sub> = ${g(msg[1][0])}. Поэтому l<sub>7</sub>(C) = ${g(msg[1][1])}² = ${g(l[7][1])}, остальные ${g(l[7][0])}.`},
+ {t:'Узел 8: дети 6 и 5',fill:32,ms:450,node:8,d:`Теперь ребёнок 6 — внутренний, и сумма по s честная: Σ<sub>s</sub>P<sub>T,s</sub>(0,10)l<sub>6</sub>(s) = ${g(msg[6][3])}. Ребёнок 5 (T, b = 0,20) даёт ${g(msg[5][3])} при i = T. Самая вероятная буква узла 8 — T: ${g(l[8][3])}.`},
+ {t:'Корень 9: дети 7 и 8',fill:36,ms:350,node:9,d:`Тот же шаг: множитель от 7 на ветви 0,15 и от 8 на ветви 0,05. Конкурируют C (её тянет узел 7) и T (её тянет узел 8): l<sub>9</sub>(C) = ${g(l[9][1])}, l<sub>9</sub>(T) = ${g(l[9][3])}.`},
+ {t:'Усреднить по корню',fill:36,node:-1,d:`l(S<sub>1:5</sub>) = Σ<sub>i</sub>π<sub>i</sub>l<sub>9</sub>(i) = ¼·(${l[9].map(g).join(' + ')}) = ${g(L)}. Перебор всех 4⁴ = 256 букв узлов 6–9 даёт ${g(brute)}: то же число.`}];
+let k=0,fill=0,cur=-1,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+// tree geometry: y from root by branch length
+const yb={9:0};for(const j of [7,8,6,1,2,3,4,5])yb[j]=yb[par[j]]+b[j];
+const xs={1:30,2:80,3:140,4:190,5:245};xs[6]=(xs[3]+xs[4])/2;xs[7]=(xs[1]+xs[2])/2;xs[8]=(xs[6]+xs[5])/2;xs[9]=(xs[7]+xs[8])/2;
+const W=290,H=206,Y=v=>22+v*560;
+function tree(){
+ const s=S[k],me=s.node,kids=me>0?ch[me]:[];
+ let o='';
+ for(const j in par){const p=par[j],on=kids.includes(+j),col=on?'var(--warning)':'var(--muted-foreground)';
+  o+=`<path d="M${xs[j]} ${Y(yb[j])}V${Y(yb[p])}H${xs[p]}" fill="none" stroke="${col}" stroke-width="${on?2.4:1.4}"/>`;
+  o+=`<text x="${xs[j]+4}" y="${(Y(yb[j])+Y(yb[p]))/2+4}" style="font-size:10px">${String(b[j]).replace('.',',')}</text>`}
+ for(const j in yb){const leaf=j<=5,isMe=+j==me,isKid=kids.includes(+j);
+  o+=`<circle cx="${xs[j]}" cy="${Y(yb[j])}" r="${leaf?4:5}" fill="${isMe?'var(--chart-1)':isKid?'var(--warning)':leaf?'var(--chart-2)':'var(--card)'}" stroke="${leaf?'var(--chart-2)':'var(--muted-foreground)'}"/>`;
+  o+=leaf?`<text x="${xs[j]}" y="${Y(yb[j])+17}" text-anchor="middle" style="font-size:12px;fill:var(--foreground)">${j}</text><text x="${xs[j]}" y="${Y(yb[j])+31}" text-anchor="middle" style="font:12px var(--font-mono);fill:var(--chart-2)">${st[j]}</text>`
+   :`<text x="${xs[j]-(j==9?0:9)}" y="${Y(yb[j])-(j==9?9:6)}" text-anchor="${j==9?'middle':'end'}" style="font-size:12px;fill:${isMe?'var(--chart-1)':'var(--foreground)'}">${j}</text>`}
+ return `<svg width="${W}" height="${H}">${o}</svg>`}
+function table(){
+ const me=S[k].node,kids=me>0?ch[me]:[];
+ let o=`<table class="t"><tr><th class="l">j</th>${A.split('').map(c=>`<th>${c}</th>`).join('')}</tr>`;
+ ORDER.forEach((j,r)=>{o+=`<tr class="${j==me?'me':kids.includes(j)?'kid':''}"><th class="l">${j}</th>`;
+  for(let i=0;i<4;i++){const c=r*4+i,shown=c<fill,leaf=j<=5;
+   o+=`<td class="${!shown?'e':leaf?'leaf'+(l[j][i]?'':' z'):'int'}${c==cur?' cur':''}">${shown?g(l[j][i]):''}</td>`}
+  o+='</tr>'});
+ return o+'</table>'}
+function draw(){
+ $('tree').innerHTML=tree();$('tab').innerHTML=table();
+ $('res').innerHTML=k==S.length-1?`l(S<sub>1:5</sub> | T, B) = <b>${g(L)}</b>`:'';
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;cur=-1;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ if(fwd&&s.ms&&s.fill>fill){window.stepperBusy=true;
+  const t=timer=setInterval(()=>{cur=fill;fill++;draw();if(fill>=s.fill){clearInterval(t);setTimeout(()=>{if(timer===t){cur=-1;draw();window.stepperBusy=false}},s.ms)}},s.ms);
+  draw();return}
+ fill=s.fill;draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){fill=S[k].fill;draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;fill=S[0].fill;$('steps').style.minHeight=hmax+'px';draw();
+</script>

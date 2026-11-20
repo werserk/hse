@@ -1,0 +1,131 @@
+<!-- Fig 6.1 of "Байесовская филогенетика": the epoch coalescent likelihood (BICEPS, slides 11-16) on a toy genealogy.
+     n = 5 taxa sampled at r = 3 times, m = 2 epochs with A = (2, 2) coalescences.
+     The events, k_i (lineages crossing each interval), I_c(i), a_j, R_j, Q_j and the InvGamma posteriors are all computed
+     here from the tree; interval i is (t_{i-1}, t_i] and ends with event i. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.ttl{font-size:14px;font-weight:600;margin:0 0 4px}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+svg .tk{font-size:10px;fill:var(--subtle-foreground)}
+table.t{border-collapse:separate;border-spacing:2px;font:11px var(--font-mono);margin-top:6px}
+table.t th{font:11px var(--font-sans);font-weight:400;color:var(--muted-foreground);height:18px;padding:0 3px}
+table.t td{box-sizing:border-box;height:24px;min-width:30px;text-align:center;border-radius:4px;padding:0 5px}
+table.t td.e{border:1px dashed var(--border)}
+table.t tr.e1 td.v{background:color-mix(in srgb,var(--chart-2) 16%,transparent)}
+table.t tr.e2 td.v{background:color-mix(in srgb,var(--chart-1) 16%,transparent)}
+table.t tr.cur td:not(.ep){outline:2px solid var(--warning);outline-offset:-2px}
+table.t td.fx{text-align:left;min-width:132px}
+table.t td.ep{font:11px var(--font-sans);color:var(--muted-foreground);text-align:left;padding:0 2px}
+.res{font-size:12.5px;line-height:1.6;margin-top:8px;min-height:20px}
+.res .r{display:grid;grid-template-columns:66px 1fr;gap:6px}
+.res .k{color:var(--muted-foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+@media(max-width:640px){.g{grid-template-columns:1fr}}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div><div class="ttl">Генеалогия и интервалы</div><div id="tree"></div><div id="tab"></div><div class="res" id="res"></div></div><div id="steps"></div></div>
+</div>
+<script>
+const f=(x,d=3)=>(+x.toFixed(d)).toString().replace('-','−').replace('.',',');
+const sub=n=>String(n).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]).join('');
+// ---- genealogy: node -> [time, parent]; leaves are a..e
+const N={a:[0,'ab'],b:[0,'ab'],c:[.5,'cd'],d:[.5,'cd'],e:[1.2,'cde'],ab:[.3,'R'],cd:[.9,'cde'],cde:[1.6,'R'],R:[2.6,null]};
+const LEAF=['a','b','c','d','e'],INT=['ab','cd','cde','R'];
+const A=[2,2],ALPHA=3,BETA=2;                          // coalescences per epoch; InvGamma prior
+// ---- events: distinct sampling times and coalescence times, in order (t_0 = most recent sample)
+const sampT=[...new Set(LEAF.map(x=>N[x][0]))];
+const ev=[...sampT.map(t=>({t,c:0})),...INT.map(x=>({t:N[x][0],c:1}))].sort((p,q)=>p.t-q.t);
+const n=LEAF.length,r=sampT.length,m=A.length;
+// ---- intervals i = 1..n+r-2: lineages k_i crossing (t_{i-1}, t_i], indicator I_c(i), epoch h(i)
+const IV=[];let coal=0;
+for(let i=1;i<ev.length;i++){const lo=ev[i-1].t,hi=ev[i].t;
+ const k=Object.keys(N).filter(x=>N[x][1]&&N[x][0]<=lo&&N[N[x][1]][0]>=hi).length;
+ let j=0,cum=0;while(coal>=cum+A[j])cum+=A[j++];          // epoch of this interval: the coalescence it ends with is number coal+1
+ if(ev[i].c)coal++;
+ IV.push({i,lo,hi,dt:hi-lo,k,c:ev[i].c,pairs:k*(k-1)/2,j:j+1})}
+const EP=[1,2].map(j=>{const v=IV.filter(x=>x.j==j);return{j,a:v.reduce((s,x)=>s+x.c,0),R:v.reduce((s,x)=>s+x.pairs*x.dt,0),Q:v.reduce((s,x)=>s*(x.c?x.pairs:1),1),from:v[0].i,to:v[v.length-1].i}});
+for(const e of EP){e.mle=e.R/e.a;e.pa=ALPHA+e.a;e.pb=BETA+e.R;e.mean=e.pb/(e.pa-1)}
+const b2=EP[0].mean*(ALPHA-1),sm={pa:ALPHA+EP[1].a,pb:b2+EP[1].R};sm.mean=sm.pb/(sm.pa-1);
+const th=j=>`θ<sub>${j}</sub>`;
+function factor(x){if(x.pairs==0)return '1';const ex=`e<sup>−${f(x.pairs*x.dt)}/θ${sub(x.j)}</sup>`;return (x.c?`${x.pairs}/θ<sub>${x.j}</sub> · `:'')+ex}
+// ---- steps
+const iv=i=>IV[i-1];
+const S=[
+ {t:'Дерево и события',fill:0,hl:[],d:`n = ${n} таксонов взяты в r = ${r} момента: a, b в 0; c, d в 0,5; e в 1,2. Квадраты — семплирование, кружки — слияния. Событий n + r − 1 = ${ev.length}: t<sub>0</sub> … t<sub>${ev.length-1}</sub>, интервалов между ними ${IV.length}. Эпох m = ${m}, по A = (${A.join(', ')}) слияния: граница проходит через второе слияние, в t<sub>${EP[0].to}</sub> = ${f(iv(EP[0].to).hi)}.`},
+ {t:'Интервал 1: слияние',fill:1,ms:900,hl:[1],d:`От t<sub>0</sub> = 0 до t<sub>1</sub> = ${f(iv(1).hi)} живут линии a и b: k<sub>1</sub> = ${iv(1).k}, одна пара, λ = 1/θ<sub>1</sub>. Интервал кончился слиянием (I<sub>c</sub> = 1), поэтому множитель — плотность: λe<sup>−λΔt</sup> = ${factor(iv(1))}.`},
+ {t:'Интервал 2: семплирование',fill:2,ms:900,hl:[2],d:`После слияния осталась одна линия: k<sub>2</sub> = ${iv(2).k}, пар нет, λ = 0. Интервал кончился добавлением c и d (I<sub>c</sub> = 0): слияния не было, вероятность e<sup>−0·Δt</sup> = 1.`},
+ {t:'Интервал 3: эпоха 1 закрыта',fill:3,ms:900,hl:[3],d:`Линий k<sub>3</sub> = ${iv(3).k} (ab, c, d), пар ${iv(3).pairs}, λ = ${iv(3).pairs}/θ<sub>1</sub>. Слияние c и d в t<sub>3</sub> = ${f(iv(3).hi)} — второе, оно закрывает эпоху 1. Множитель ${factor(iv(3))}.`},
+ {t:'Интервалы 4–6: эпоха 2',fill:6,ms:600,hl:[4,5,6],d:`То же правило с θ<sub>2</sub>: семплирование e (k = ${iv(4).k}, множитель без 1/θ), слияние cd с e (k = ${iv(5).k}) и корень (k = ${iv(6).k}). Внутри эпохи множители перемножаются: генеалогия марковская, моменты семплирования заданы.`},
+ {t:'Статистики эпох',fill:6,hl:[],stats:1,d:`Произведение по эпохе — (1/θ<sub>j</sub>)<sup>a<sub>j</sub></sup> · e<sup>−R<sub>j</sub>/θ<sub>j</sub></sup> · Q<sub>j</sub>: a<sub>j</sub> считает слияния, R<sub>j</sub> = Σ(пары × Δt) складывает показатели, Q<sub>j</sub> собирает числа пар у слияний. Максимум по θ<sub>j</sub> — в R<sub>j</sub>/a<sub>j</sub>.`},
+ {t:'Апостериорные и сглаживание',fill:6,hl:[],stats:2,d:`Априор InvGamma(${ALPHA}, ${BETA}): форма прибавляет a<sub>j</sub>, масштаб — R<sub>j</sub>. Сглаживание: β<sub>2</sub> = μ<sub>1</sub>(α − 1) = ${f(EP[0].mean)} · ${ALPHA-1} = ${f(b2)}, априор эпохи 2 центрирован на оценке эпохи 1.`}];
+// ---- drawing
+const XS={a:48,b:88,c:140,d:180,e:228};XS.ab=(XS.a+XS.b)/2;XS.cd=(XS.c+XS.d)/2;XS.cde=(XS.cd+XS.e)/2;XS.R=(XS.ab+XS.cde)/2;
+const W=314,H=236,Yt=t=>H-22-t*72,X0=30,X1=250;
+const ECOL=j=>j==1?'var(--chart-2)':'var(--chart-1)';
+let k=0,fill=0,cur=-1,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+function tree(){
+ const hl=cur>=0?[cur+1]:S[k].hl;let o='';
+ // epoch bands
+ for(const e of EP){const lo=iv(e.from).lo,hi=iv(e.to).hi;
+  o+=`<rect x="${X0}" y="${Yt(hi)}" width="${X1-X0}" height="${Yt(lo)-Yt(hi)}" fill="color-mix(in srgb,${ECOL(e.j)} 8%,transparent)"/>`;
+  o+=`<text x="${X1+4}" y="${(Yt(lo)+Yt(hi))/2+4}" style="font-size:11px;fill:${ECOL(e.j)}">эпоха ${e.j}</text>`}
+ for(const i of hl){const x=iv(i);o+=`<rect x="${X0}" y="${Yt(x.hi)}" width="${X1-X0}" height="${Yt(x.lo)-Yt(x.hi)}" fill="color-mix(in srgb,var(--warning) 22%,transparent)"/>`}
+ o+=`<line x1="${X0}" y1="${Yt(iv(EP[0].to).hi)}" x2="${X1}" y2="${Yt(iv(EP[0].to).hi)}" stroke="var(--muted-foreground)" stroke-dasharray="4 3"/>`;
+ // branches; parts inside highlighted intervals are thick
+ for(const x in N){const p=N[x][1];if(!p)continue;const t0=N[x][0],t1=N[p][0];
+  o+=`<path d="M${XS[x]} ${Yt(t0)}V${Yt(t1)}H${XS[p]}" fill="none" stroke="var(--muted-foreground)" stroke-width="1.5"/>`;
+  for(const i of hl){const v=iv(i),lo=Math.max(t0,v.lo),hi=Math.min(t1,v.hi);
+   if(t0<=v.lo&&t1>=v.hi)o+=`<line x1="${XS[x]}" y1="${Yt(lo)}" x2="${XS[x]}" y2="${Yt(hi)}" stroke="var(--warning)" stroke-width="3.4"/>`}}
+ // event ticks on the axis
+ o+=`<line class="ax" x1="${X0}" y1="${Yt(0)}" x2="${X0}" y2="${Yt(2.75)}"/>`;
+ ev.forEach((e,i)=>{o+=`<line class="ax" x1="${X0-3}" y1="${Yt(e.t)}" x2="${X1}" y2="${Yt(e.t)}" stroke-dasharray="1 3"/><text class="tk" x="${X0-4}" y="${Yt(e.t)+3}" text-anchor="end">${f(e.t)}</text>`});
+ o+=`<text class="tk" x="${X0}" y="${Yt(2.75)-4}" text-anchor="middle">t ↑</text>`;
+ for(const x of INT)o+=`<circle cx="${XS[x]}" cy="${Yt(N[x][0])}" r="4" fill="var(--card)" stroke="var(--foreground)" stroke-width="1.4"/>`;
+ for(const x of LEAF)o+=`<rect x="${XS[x]-4}" y="${Yt(N[x][0])-4}" width="8" height="8" fill="var(--foreground)"/><text x="${XS[x]+7}" y="${Yt(N[x][0])+13}" style="font-size:12px;fill:var(--foreground)">${x}</text>`;
+ return `<svg width="${W}" height="${H}">${o}</svg>`}
+function table(){
+ let o=`<table class="t"><tr><th>i</th><th>Δt<sub>i</sub></th><th>k<sub>i</sub></th><th>I<sub>c</sub></th><th>пары</th><th>множитель</th><th></th></tr>`;
+ IV.forEach((x,r)=>{const on=r<fill,isCur=r==cur||(cur<0&&S[k].hl.length==1&&S[k].hl[0]==x.i);
+  o+=`<tr class="e${x.j}${isCur?' cur':''}"><td class="${on?'v':'e'}">${x.i}</td>`+(on?`<td class="v">${f(x.dt)}</td><td class="v">${x.k}</td><td class="v">${x.c}</td><td class="v">${x.pairs}</td><td class="v fx">${factor(x)}</td>`:'<td class="e"></td>'.repeat(4)+'<td class="e fx"></td>')+
+   `<td class="ep">${x.i==EP[x.j-1].from?'эпоха '+x.j:''}</td></tr>`});
+ return o+'</table>'}
+function res(){
+ const s=S[k].stats;if(!s)return '';
+ if(s==1)return EP.map(e=>`<div class="r"><span class="k">эпоха ${e.j}</span><span>a = ${e.a}, R = ${f(e.R)}, Q = ${f(e.Q)}; R/a = <b>${f(e.mle)}</b></span></div>`).join('');
+ return EP.map(e=>`<div class="r"><span class="k">эпоха ${e.j}</span><span>InvGamma(${e.pa}; ${f(e.pb)}), среднее <b>${f(e.mean)}</b></span></div>`).join('')+
+  `<div class="r"><span class="k">сглаж. 2</span><span>InvGamma(${sm.pa}; ${f(sm.pb)}), среднее <b>${f(sm.mean)}</b></span></div>`}
+function draw(){
+ $('tree').innerHTML=tree();$('tab').innerHTML=table();$('res').innerHTML=res();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;cur=-1;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ if(fwd&&s.ms&&s.fill>fill){window.stepperBusy=true;
+  const t=timer=setInterval(()=>{cur=fill;fill++;draw();if(fill>=s.fill){clearInterval(t);setTimeout(()=>{if(timer===t){cur=-1;draw();window.stepperBusy=false}},s.ms)}},s.ms);
+  draw();return}
+ fill=s.fill;draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0,rmax=0;for(k=0;k<S.length;k++){fill=S[k].fill;draw();hmax=Math.max(hmax,$('steps').offsetHeight);rmax=Math.max(rmax,$('res').offsetHeight)}
+k=0;fill=S[0].fill;$('steps').style.minHeight=hmax+'px';$('res').style.minHeight=rmax+'px';draw();
+</script>
