@@ -1,0 +1,158 @@
+<!-- Static plots of the chapter; the figure is chosen by data-mode on the iframe.
+     Every number is computed here from the data below, never typed by hand. -->
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);color:var(--foreground)}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 6px}
+.note{font-size:12px;line-height:1.5;color:var(--muted-foreground);margin-top:2px}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+.lg{display:flex;flex-direction:column;gap:3px;margin:8px 0;font:12px var(--font-mono)}
+.sw{display:inline-block;width:14px;height:3px;vertical-align:3px;margin-right:6px}
+.sb{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin-right:6px;border-radius:2px}
+.mono{font-family:var(--font-mono)}
+.ok{color:var(--success)}.bad{color:var(--destructive)}
+table.wt{border-collapse:collapse;font-size:12px;margin-top:6px}
+table.wt td,table.wt th{padding:2px 8px 2px 0;text-align:left;font-weight:400;color:var(--muted-foreground)}
+table.wt th{color:var(--subtle-foreground);font-size:11px}
+table.wt td.n{font-family:var(--font-mono);color:var(--foreground);text-align:right}
+</style>
+<div class="w" id="fig"></div>
+<script>
+const mode=(window.frameElement&&window.frameElement.dataset.mode)||'shapes';
+const $=id=>document.getElementById(id);
+// ---------- maths ----------
+function lgam(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)}
+const lB=(a,b)=>lgam(a)+lgam(b)-lgam(a+b);
+const beta=(t,a,b)=>t<=0||t>=1?((t<=0&&a==1)?b:(t>=1&&b==1)?a:0):Math.exp((a-1)*Math.log(t)+(b-1)*Math.log(1-t)-lB(a,b));
+const lC=(n,k)=>lgam(n+1)-lgam(k+1)-lgam(n-k+1);
+const binom=(k,n,p)=>Math.exp(lC(n,k)+k*Math.log(p)+(n-k)*Math.log(1-p));
+const betabin=(k,n,a,b)=>Math.exp(lC(n,k)+lB(a+k,b+n-k)-lB(a,b));
+const f=(x,d=2)=>x.toFixed(d).replace('.',',');
+const C=i=>`var(--chart-${i})`;
+// ---------- drawing ----------
+function frame(W,H,o){ // o: {x0,x1,y0,y1,L,B,T,R,xt,yt,xl}
+ const L=o.L??34,R=o.R??(o.xl&&o.xl.length<=2?16:8),T=o.T??8,B=o.B??(o.xl&&o.xl.length>2?36:24);
+ const X=x=>L+(W-L-R)*(x-o.x0)/(o.x1-o.x0),Y=y=>T+(H-T-B)*(1-(y-o.y0)/(o.y1-o.y0));
+ let s=`<line class="ax" x1="${L}" y1="${Y(o.y0)}" x2="${W-R}" y2="${Y(o.y0)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(o.y0)}"/>`;
+ (o.xt||[]).forEach(v=>s+=`<text x="${X(v)}" y="${Y(o.y0)+14}" text-anchor="middle">${String(v).replace('.',',')}</text>`);
+ (o.yt||[]).forEach(v=>s+=`<text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${String(v).replace('.',',')}</text>`);
+ if(o.xl)s+=o.xl.length>2?`<text x="${W-R}" y="${H-3}" text-anchor="end" fill="var(--subtle-foreground)">${o.xl}</text>`:`<text x="${X(o.x1)+4}" y="${Y(o.y0)+4}" fill="var(--subtle-foreground)">${o.xl}</text>`;
+ return {X,Y,s,L,R,T,B,W,H,clip:`<clipPath id="c${W}${H}${L}"><rect x="${L}" y="${T-2}" width="${W-L-R}" height="${H-T-B+2}"/></clipPath>`,cid:`c${W}${H}${L}`};
+}
+function path(F,fn,x0,x1,n=240){let d='';for(let i=0;i<=n;i++){const x=x0+(x1-x0)*i/n;d+=(i?'L':'M')+F.X(x).toFixed(1)+' '+F.Y(fn(x)).toFixed(1)}return d}
+const svg=(F,inner)=>`<svg width="${F.W}" height="${F.H}" viewBox="0 0 ${F.W} ${F.H}"><defs>${F.clip}</defs>${F.s}${inner}</svg>`;
+
+// ---------- Fig 3.1: Beta shapes ----------
+if(mode==='shapes'){
+ const P=[[1,1],[2,2],[3,2],[19,39]];
+ let h='<div class="row">';
+ P.forEach(([a,b])=>{
+  const F=frame(150,112,{x0:0,x1:1,y0:0,y1:6.5,xt:[0,0.5,1],yt:mode?[0,3,6]:[],L:22});
+  const m=a/(a+b),v=a*b/((a+b)**2*(a+b+1));
+  h+=`<div><div class="ttl">Beta(${a}, ${b})</div>${svg(F,`<g clip-path="url(#${F.cid})"><path d="${path(F,t=>Math.min(beta(t,a,b),7),0.0005,0.9995)}" fill="none" stroke="${C(2)}" stroke-width="2"/></g><line x1="${F.X(m)}" y1="${F.T}" x2="${F.X(m)}" y2="${F.Y(0)}" stroke="var(--warning)" stroke-dasharray="3 3"/>`)}
+  <div class="note mono">E θ = ${f(m,3)}<br>Var θ = ${f(v,4)}</div></div>`;
+ });
+ $('fig').innerHTML=h+'</div>';
+}
+
+// ---------- grouped bars helper ----------
+function bars(F,series,K,hl){ // series: [{p:[...],col}], hl: {k:label}
+ const n=series.length,bw=(F.X(1)-F.X(0))*0.8/n;let s='';
+ for(let k=0;k<=K;k++){
+  if(hl&&hl[k]!==undefined)s+=`<rect x="${F.X(k-0.5)+1}" y="${F.T}" width="${F.X(1)-F.X(0)-2}" height="${F.Y(0)-F.T}" fill="var(--warning)" opacity=".13"/>`;
+  series.forEach((S,i)=>{const x=F.X(k)-bw*n/2+i*bw;s+=`<rect x="${x.toFixed(1)}" y="${F.Y(S.p[k]).toFixed(1)}" width="${(bw-1).toFixed(1)}" height="${(F.Y(0)-F.Y(S.p[k])).toFixed(1)}" fill="${S.col}"/>`});
+ }
+ return s;
+}
+
+// ---------- Fig 5.1: posterior predictive vs plug-in ----------
+if(mode==='predictive'){
+ const a=5,b=9,m=10,q=a/(a+b),K=m;
+ const pp=[...Array(K+1)].map((_,k)=>betabin(k,m,a,b)),pl=[...Array(K+1)].map((_,k)=>binom(k,m,q));
+ const vB=m*q*(1-q),vP=vB*(a+b+m)/(a+b+1);
+ const F=frame(380,210,{x0:-0.6,x1:K+0.6,y0:0,y1:0.3,xt:[0,2,4,6,8,10],yt:[0,0.1,0.2,0.3],xl:'число «голов» в следующих 10 бросках'});
+ const tail=(p,from)=>p.slice(from).reduce((x,y)=>x+y,0);
+ $('fig').innerHTML=`<div class="g"><div>${svg(F,bars(F,[{p:pp,col:C(1)},{p:pl,col:'var(--subtle-foreground)'}],K))}</div>
+ <div class="side"><div class="lg"><span><i class="sb" style="background:${C(1)}"></i>прогноз: усреднение по θ | D</span><span><i class="sb" style="background:var(--subtle-foreground)"></i>подстановка θ = E(θ | D) = ${f(q,3)}</span></div>
+ <b>Среднее одинаково:</b> ${f(m*q,2)} «головы».<br>
+ <b>Дисперсия разная:</b> ${f(vP,2)} против ${f(vB,2)}.<br>
+ Ноль «голов»: ${f(pp[0],3)} против ${f(pl[0],3)}; шесть и больше: ${f(tail(pp,6),3)} против ${f(tail(pl,6),3)}.<br>
+ Прогноз шире, потому что θ после 10 бросков ещё не известна точно.</div></div>`;
+}
+
+// ---------- Fig 6.1: evidence of two models over all data sets ----------
+if(mode==='evidence'){
+ const n=10,K=n;
+ const e1=[...Array(K+1)].map((_,k)=>binom(k,n,0.5)),e2=[...Array(K+1)].map((_,k)=>betabin(k,n,1,1));
+ const F=frame(380,210,{x0:-0.6,x1:K+0.6,y0:0,y1:0.26,xt:[0,2,4,6,8,10],yt:[0,0.1,0.2],xl:'nₕ — «головы» в 10 бросках'});
+ const obs=3,alt=1,r=k=>e1[k]/e2[k];
+ const lab=(k,t)=>`<text x="${F.X(k)}" y="${F.T+10}" text-anchor="middle" fill="var(--warning)" font-weight="600">${t}</text>`;
+ $('fig').innerHTML=`<div class="g"><div>${svg(F,bars(F,[{p:e1,col:C(3)},{p:e2,col:C(5)}],K,{[obs]:1,[alt]:1})+lab(obs,'D')+lab(alt,'D*'))}</div>
+ <div class="side"><div class="lg"><span><i class="sb" style="background:${C(3)}"></i>ξ = 1: θ = 1/2 ровно</span><span><i class="sb" style="background:${C(5)}"></i>ξ = 2: θ ~ Beta(1, 1)</span></div>
+ Столбики модели — её <b>evidence</b> P(D | ξ) для каждого возможного исхода; у каждой модели они в сумме дают 1.<br>
+ <b>D</b>: nₕ = ${obs}. Отношение ${f(e1[obs],3)} / ${f(e2[obs],3)} = ${f(r(obs),2)}, BF₁,₂ = ln ${f(r(obs),2)} = ${f(Math.log(r(obs)),2)}: данные слегка за ξ = 1.<br>
+ <b>D*</b>: nₕ = ${alt}. Отношение ${f(r(alt),3)}, BF₁,₂ = ${f(Math.log(r(alt)),2)}: за ξ = 2.</div></div>`;
+}
+
+// ---------- Fig 8.1: influence of the prior ----------
+if(mode==='strength'){
+ const est=(ah,a,n)=>(ah+n/5)/(a+n); // n_H = 0.25 n_T, i.e. n_H = n/5
+ const S=[1,2,5,10,20,50],R=[0.6,0.5,0.4,0.3,0.1,0.02],s0=10;
+ const cols=[1,2,3,4,5,6].map(C);
+ function panel(title,list,fn,lab,y1){
+  const F=frame(300,200,{x0:0,x1:100,y0:0,y1,xt:[0,20,40,60,80,100],yt:y1>0.55?[0,0.2,0.4,0.6]:[0,0.2,0.4],xl:'n'});
+  let s=`<line x1="${F.X(0)}" y1="${F.Y(0.2)}" x2="${F.X(100)}" y2="${F.Y(0.2)}" stroke="var(--foreground)" stroke-dasharray="4 3" opacity=".6"/>`;
+  list.forEach((v,i)=>s+=`<path d="${path(F,n=>fn(v,n),0,100,200)}" fill="none" stroke="${cols[i]}" stroke-width="2"/>`);
+  return `<div><div class="ttl">${title}</div>${svg(F,`<g clip-path="url(#${F.cid})">${s}</g>`)}<div class="lg">${list.map((v,i)=>`<span><i class="sw" style="background:${cols[i]}"></i>${lab(v)}</span>`).join('')}</div></div>`;
+ }
+ $('fig').innerHTML=`<div class="row">`+
+  panel('Разная сила α, отношение 1 : 1',S,(s,n)=>est(s/2,s,n),s=>`α = ${s}: αₕ = αₜ = ${f(s/2,1).replace(',0','')}`,0.55)+
+  panel(`Сила α = ${s0}, разное αₕ/α`,R,(r,n)=>est(r*s0,s0,n),r=>`αₕ/α = ${f(r,2)}: αₕ = ${f(r*s0,1).replace(',0','')}`,0.65)+'</div>';
+}
+
+// ---------- Fig 8.2: one long series, MLE vs Bayes ----------
+if(mode==='sequence'){
+ const D='1000100010'+'0001001010001000000100100100110100101101',x=[...D].map(Number),N=x.length; // first 10 = running example D_10
+ const A=[0.5,1,5,10],cols=[C(4),C(1),C(5),C(2)];
+ const F=frame(430,225,{x0:1,x1:N,y0:0,y1:1,xt:[1,10,20,30,40,50],yt:[0,0.25,0.5,0.75,1],xl:'N — номер броска'});
+ let cum=[],h=0;x.forEach(v=>{h+=v;cum.push(h)});
+ const line=(fn,col,w,dash='')=>{let d='';for(let i=0;i<N;i++)d+=(i?'L':'M')+F.X(i+1).toFixed(1)+' '+F.Y(fn(cum[i],i+1)).toFixed(1);return `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''}/>`};
+ let s=`<line x1="${F.X(1)}" y1="${F.Y(0.3)}" x2="${F.X(N)}" y2="${F.Y(0.3)}" stroke="var(--foreground)" stroke-dasharray="4 3" opacity=".5"/>`;
+ s+=line((k,n)=>k/n,'var(--foreground)',1.6);
+ A.forEach((a,i)=>s+=line((k,n)=>(a+k)/(2*a+n),cols[i],2));
+ // toss strip
+ const sy=F.H+6;let st='';x.forEach((v,i)=>st+=`<rect x="${(F.X(i+1)-3.5).toFixed(1)}" y="${v?2:9}" width="7" height="${v?14:7}" rx="1.5" fill="${v?'var(--foreground)':'var(--border)'}"/>`);
+ const ar=a=>f(a,1).replace(',0','');
+ $('fig').innerHTML=`<div class="g"><div>${svg(F,s)}<svg width="${F.W}" height="20">${st}</svg><div class="note" style="margin-left:${F.L}px">высокий штрих — «голова», низкий — «хвост»</div></div>
+ <div class="side" style="min-width:190px"><div class="lg"><span><i class="sw" style="background:var(--foreground)"></i>МП-оценка nₕ/N</span>${A.map((a,i)=>`<span><i class="sw" style="background:${cols[i]}"></i>Beta(${ar(a)}; ${ar(a)})</span>`).join('')}</div>
+ Первые 10 бросков — D₁₀, остальные 40 сгенерированы при θ = 0,3 (пунктир).<br>
+ После N = ${N}: МП ${f(cum[N-1]/N,2)}, Beta(10; 10) даёт ${f((10+cum[N-1])/(20+N),2)}.</div></div>`;
+}
+
+// ---------- Fig 9.1: mixture prior ----------
+if(mode==='mixture'){
+ const w=[0.4,0.4,0.2],P=[[1,20],[20,1],[2,2]],nh=3,nt=7,names=['Y = 1: грузик на хвосте','Y = 2: грузик на голове','Y = 3: обычная'];
+ const le=P.map(([a,b])=>lB(a+nh,b+nt)-lB(a,b)),ev=le.map(Math.exp); // evidence of each component
+ const z=w.reduce((s,wi,i)=>s+wi*ev[i],0),wp=w.map((wi,i)=>wi*ev[i]/z);
+ const Q=P.map(([a,b])=>[a+nh,b+nt]);
+ const cols=[C(2),C(4),C(3)];
+ function panel(title,W8,PP){
+  const F=frame(300,190,{x0:0,x1:1,y0:0,y1:8,xt:[0,0.25,0.5,0.75,1],yt:[0,4,8],xl:'θ'});
+  const mix=t=>W8.reduce((s,wi,i)=>s+wi*beta(t,...PP[i]),0);
+  let s='';PP.forEach((p,i)=>s+=`<path d="${path(F,t=>Math.min(W8[i]*beta(t,...p),9),0.0005,0.9995,400)}" fill="none" stroke="${cols[i]}" stroke-width="1.3" stroke-dasharray="4 3"/>`);
+  s+=`<path d="${path(F,t=>Math.min(mix(t),9),0.0005,0.9995,400)}" fill="none" stroke="${C(1)}" stroke-width="2.4"/>`;
+  return `<div><div class="ttl">${title}</div>${svg(F,`<g clip-path="url(#${F.cid})">${s}</g>`)}</div>`;
+ }
+ const mean=W8=>W8.reduce((s,wi,i)=>s+wi*Q[i][0]/(Q[i][0]+Q[i][1]),0);
+ $('fig').innerHTML=`<div class="row">${panel('Априорное p(θ)',w,P)}${panel('Апостериорное p(θ | D₁₀)',wp,Q)}</div>
+ <table class="wt"><tr><th></th><th>компонента до</th><th>вес до</th><th>P(D | Y)</th><th>компонента после</th><th>вес после</th></tr>
+ ${P.map((p,i)=>`<tr><td><i class="sw" style="background:${cols[i]}"></i>${names[i]}</td><td class="mono">Beta(${p})</td><td class="n">${f(w[i],2)}</td><td class="n">${ev[i].toExponential(2).replace('.',',').replace('e-','·10⁻').replace(/⁻(\d+)/,(m,d)=>'⁻'+[...d].map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[c]).join(''))}</td><td class="mono">Beta(${Q[i]})</td><td class="n">${f(wp[i],4)}</td></tr>`).join('')}</table>
+ <div class="note">Жирная — смесь, пунктир — слагаемые wᵢ·Beta(θ | ·). Высокие края обрезаны на 8. Прогноз «головы» после D₁₀: ${f(mean(wp),3)}.</div>`;
+}
+</script>

@@ -1,0 +1,50 @@
+<!-- Fig 7.1: Dirichlet prior and posterior on the simplex of three shares (θ1, θ2, θ3).
+     Data: 10 cases with counts (7, 2, 1), the multinomial example of the distributions case. -->
+<meta charset="utf-8">
+<style>
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start;font-family:var(--font-sans)}
+.side{border-left:2px solid var(--border);padding-left:14px;font-size:13px;line-height:1.55;color:var(--muted-foreground)}
+.side b{color:var(--foreground)}
+.ttl{font-size:14px;font-weight:600;color:var(--foreground);margin:0 0 4px}
+.row{display:flex;gap:16px}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+.mono{font-family:var(--font-mono)}
+</style>
+<div class="g"><div class="row" id="fig"></div><div class="side" id="side"></div></div>
+<script>
+function lgam(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)}
+const f=(x,d=2)=>x.toFixed(d).replace('.',',');
+const dir=(th,a)=>Math.exp(lgam(a.reduce((s,v)=>s+v,0))-a.reduce((s,v)=>s+lgam(v),0)+a.reduce((s,v,i)=>s+(v-1)*Math.log(th[i]),0));
+const A=[1,1,1],cnt=[7,2,1],Ap=A.map((a,i)=>a+cnt[i]),S=Ap.reduce((s,v)=>s+v,0),n=cnt.reduce((s,v)=>s+v,0);
+const mean=Ap.map(a=>a/S),mle=cnt.map(c=>c/n);
+const W=210,H=196,V=[[14,178],[196,178],[105,20]]; // vertices: θ1 (лёгкие), θ2 (средние), θ3 (тяжёлые)
+const pt=th=>[0,1].map(d=>th[0]*V[0][d]+th[1]*V[1][d]+th[2]*V[2][d]);
+const N=40;
+function cells(a,vmax){ // small triangles of the barycentric grid, shaded by density at the centroid
+ let s='';
+ for(let i=0;i<N;i++)for(let j=0;j<N-i;j++){
+  const tri=[[i,j],[i+1,j],[i,j+1]],tri2=[[i+1,j],[i+1,j+1],[i,j+1]];
+  for(const T of (i+j<N-1?[tri,tri2]:[tri])){
+   const th=T.map(([p,q])=>[p/N,q/N,1-(p+q)/N]),c=[0,1,2].map(d=>(th[0][d]+th[1][d]+th[2][d])/3);
+   const v=Math.min(1,dir(c,a)/vmax),P=th.map(pt).map(p=>p.map(x=>x.toFixed(1)).join(',')).join(' ');
+   s+=`<polygon points="${P}" fill="var(--chart-1)" fill-opacity="${(v*0.92).toFixed(3)}" stroke="var(--chart-1)" stroke-opacity="${(v*0.92).toFixed(3)}" stroke-width=".3"/>`;
+  }}
+ return s;
+}
+let vmax=0;for(let i=1;i<N;i++)for(let j=1;j<N-i;j++)vmax=Math.max(vmax,dir([i/N,j/N,1-(i+j)/N],Ap));
+function tri(title,a,marks){
+ let s=cells(a,vmax)+`<polygon points="${V.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--border)"/>`;
+ s+=`<text x="${V[0][0]}" y="${V[0][1]+14}" text-anchor="start">θ₁ = 1</text><text x="${V[1][0]}" y="${V[1][1]+14}" text-anchor="end">θ₂ = 1</text><text x="${V[2][0]+8}" y="${V[2][1]+4}">θ₃ = 1</text>`;
+ if(marks){const m=pt(mean),q=pt(mle);
+  s+=`<circle cx="${m[0]}" cy="${m[1]}" r="4" fill="var(--background)" stroke="var(--foreground)" stroke-width="2"/>`;
+  s+=`<path d="M${q[0]-4} ${q[1]-4}L${q[0]+4} ${q[1]+4}M${q[0]-4} ${q[1]+4}L${q[0]+4} ${q[1]-4}" stroke="var(--foreground)" stroke-width="2"/>`;}
+ return `<div><div class="ttl">${title}</div><svg width="${W}" height="${H}">${s}</svg></div>`;
+}
+document.getElementById('fig').innerHTML=tri(`Dir(${A.join(', ')})`,A,false)+tri(`Dir(${Ap.join(', ')})`,Ap,true);
+document.getElementById('side').innerHTML=`Точка треугольника — набор долей (θ₁, θ₂, θ₃) с суммой 1: лёгкие, средние, тяжёлые случаи. Цвет — плотность (одна шкала на оба треугольника).<br>
+<b>До данных</b> Dir(${A.join(', ')}): плотность равна ${f(dir([1/3,1/3,1/3],A),0)} всюду — все наборы долей равноправны.<br>
+<b>Данные</b>: ${n} случаев, счётчики (${cnt.join(', ')}).<br>
+<b>После</b>: Dir(${A.map((a,i)=>a+'+'+cnt[i]).join(', ')}) = Dir(${Ap.join(', ')}).<br>
+○ апостериорное среднее (${Ap.map(a=>a+'/'+S).join(', ')}) ≈ (${mean.map(x=>f(x)).join('; ')})<br>
+✕ МП-оценка (${mle.map(x=>f(x,1)).join('; ')})`;
+</script>

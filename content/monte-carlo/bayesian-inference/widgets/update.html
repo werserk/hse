@@ -1,0 +1,95 @@
+<!-- Fig 2.1: prior × likelihood = unnormalised posterior; its area is the evidence; dividing gives the posterior.
+     Running example: thumbtack, prior B(θ|2,2), data D10 with 3 heads and 7 tails. All numbers computed here. -->
+<meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+svg [data-s]{transition:opacity .8s ease}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+.key{display:inline-block;width:14px;height:3px;vertical-align:3px;margin-right:4px}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><svg id="fig" width="400" height="236" viewBox="0 0 400 236"></svg><div id="steps"></div></div>
+</div>
+<script>
+function lgam(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)}
+const lB=(a,b)=>lgam(a)+lgam(b)-lgam(a+b);
+const beta=(t,a,b)=>Math.exp((a-1)*Math.log(t)+(b-1)*Math.log(1-t)-lB(a,b));
+const f=(x,d=2)=>x.toFixed(d).replace('.',',');
+const sci=x=>{const e=Math.floor(Math.log10(x));return f(x/10**e,1)+'·10'+String(e).replace('-','⁻').replace(/\d/g,c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[c])};
+const ah=2,at=2,nh=3,nt=7;
+const prior=t=>beta(t,ah,at),lik=t=>t**nh*(1-t)**nt;
+const ev=Math.exp(lB(ah+nh,at+nt)-lB(ah,at));            // P(D|ξ) = B(5,9)/B(2,2)
+const mle=nh/(nh+nt),cL=2/lik(mle);                        // likelihood drawn with max = 2 (its own scale)
+const post=t=>beta(t,ah+nh,at+nt),pm=(ah+nh)/(ah+at+nh+nt);
+const W=400,H=236,L=30,Rr=8,T=10,Bt=26,Y1=3.4;
+const X=x=>L+(W-L-Rr)*x,Y=y=>T+(H-T-Bt)*(1-y/Y1);
+const path=fn=>{let d='';for(let i=1;i<300;i++){const x=i/300;d+=(i>1?'L':'M')+X(x).toFixed(1)+' '+Y(fn(x)).toFixed(1)}return d};
+const S=[
+ {t:'Априорное p(θ | ξ)',d:`До данных: B(θ | ${ah}, ${at}), кнопка «скорее около 1/2», но допустимо любое θ. Это плотность, площадь под ней 1.`},
+ {t:'Правдоподобие p(D | θ, ξ)',d:`Данные D₁₀: ${nh} «головы», ${nt} «хвостов». Правдоподобие θ³(1−θ)⁷ — вероятность этих данных при каждом θ. Это не плотность по θ, масштаб по вертикали свой; максимум в θ = ${f(mle,1)} (МП-оценка).`},
+ {t:'Произведение и его площадь',d:`Числитель формулы Байеса — произведение двух кривых в каждой точке θ (тот же масштаб, что у правдоподобия). Площадь под ним пропорциональна краевому правдоподобию P(D | ξ) = ∫ p(D | θ, ξ) p(θ | ξ) dθ; в истинном масштабе P(D | ξ) ≈ ${sci(ev)}.`},
+ {t:'Делим на P(D | ξ)',d:`После деления площадь становится 1: это апостериорное B(θ | ${ah+nh}, ${at+nt}). Оно лежит между априорным (центр 0,5) и правдоподобием (0,3); среднее ${ah+nh}/${ah+at+nh+nt} ≈ ${f(pm,3)}.`}];
+let k=0,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+function fig(){
+ let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-Rr}" y2="${Y(0)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(0)}"/>`;
+ [0,0.25,0.5,0.75,1].forEach(v=>s+=`<text x="${X(v)}" y="${Y(0)+15}" text-anchor="middle">${String(v).replace('.',',')}</text>`);
+ [0,1,2,3].forEach(v=>s+=`<text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${v}</text>`);
+ s+=`<text x="${W-Rr}" y="${H-1}" text-anchor="end" fill="var(--subtle-foreground)">θ</text>`;
+ const prod=t=>cL*lik(t)*prior(t);
+ const o=(i,dimAt)=>k<i?0:(dimAt!==undefined&&k>=dimAt?.25:1);
+ s+=`<path data-s d="${path(prod)}L${X(1)} ${Y(0)}L${X(0)} ${Y(0)}Z" fill="var(--chart-1)" opacity="${k<2?0:k>=3?.08:.22}"/>`;
+ s+=`<path data-s d="${path(prod)}" fill="none" stroke="var(--chart-1)" stroke-width="1.5" stroke-dasharray="2 2" opacity="${o(2,3)}"/>`;
+ s+=`<path data-s d="${path(t=>cL*lik(t))}" fill="none" stroke="var(--chart-4)" stroke-width="2" stroke-dasharray="5 3" opacity="${o(1,3)}"/>`;
+ s+=`<line data-s x1="${X(mle)}" y1="${Y(2)}" x2="${X(mle)}" y2="${Y(0)}" stroke="var(--chart-4)" stroke-dasharray="2 3" opacity="${o(1,3)}"/>`;
+ s+=`<path d="${path(prior)}" fill="none" stroke="var(--chart-2)" stroke-width="2.2"/>`;
+ s+=`<text data-s x="${X(0.62)}" y="${Y(0.78)}" fill="var(--chart-2)" opacity="1">априорное</text>`;
+ s+=`<text data-s x="${X(mle)-6}" y="${Y(2)-6}" text-anchor="end" fill="var(--chart-4)" opacity="${k==1||k==2?1:0}">правдоподобие</text>`;
+ s+=`<text data-s x="${X(0.33)}" y="${Y(0.45)}" text-anchor="middle" fill="var(--chart-1)" opacity="${k==2?1:0}">площадь ∝ P(D | ξ)</text>`;
+ s+=`<path data-s d="${path(post)}" fill="none" stroke="var(--chart-1)" stroke-width="2.6" opacity="${o(3)}"/>`;
+ s+=`<line data-s x1="${X(pm)}" y1="${Y(post(pm))}" x2="${X(pm)}" y2="${Y(0)}" stroke="var(--chart-1)" stroke-dasharray="3 3" opacity="${o(3)}"/>`;
+ s+=`<text data-s x="${X(pm)+10}" y="${Y(3.05)}" fill="var(--chart-1)" opacity="${o(3)}">апостериорное</text>`;
+ return s;
+}
+function draw(){
+ $('fig').innerHTML=fig();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearTimeout(timer);i=Math.max(0,Math.min(S.length-1,i));const fwd=i==k+1;
+ if(fwd){ // fade the new curves in: draw the old state, then switch opacities so the transition runs
+  draw();k=i;const old=$('fig');
+  window.stepperBusy=true;
+  requestAnimationFrame(()=>{const nf=fig();const t=new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${nf}</svg>`,'image/svg+xml');
+   const nodes=[...t.documentElement.children],cur=[...old.children];
+   if(nodes.length===cur.length)nodes.forEach((n,j)=>{const op=n.getAttribute('opacity');if(op!==null)cur[j].setAttribute('opacity',op)});else old.innerHTML=nf;
+   $('steps').innerHTML=S.map((s,j)=>`<div class="txt ${j==k?'on':j<k?'done':''}" data-i="${j}"><span class="n">${j+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+   $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+   timer=setTimeout(()=>{window.stepperBusy=false},900)});
+  return;
+ }
+ k=i;window.stepperBusy=false;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

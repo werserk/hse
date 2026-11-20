@@ -1,0 +1,94 @@
+<!-- Fig 4.1: updating B(θ|αh,αt) one toss at a time; the result equals the one-shot update with the counts.
+     Running example D10 = H T T T H T T T H T, prior B(θ|2,2). -->
+<meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+.r{display:flex;align-items:center;gap:10px;margin:3px 0}
+.l{width:22px;text-align:right;font:12px var(--font-mono);color:var(--muted-foreground)}
+.s{display:flex;gap:3px;font-family:var(--font-mono);font-size:13px}
+.s span{box-sizing:border-box;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.idx span{height:14px;font-size:10px;color:var(--subtle-foreground)}
+.x span{border:1px solid var(--border);color:var(--subtle-foreground)}
+.x span.u{background:var(--foreground);border-color:var(--foreground);color:var(--background);font-weight:600}
+.x span.u.t{background:color-mix(in srgb,var(--foreground) 22%,transparent);color:var(--foreground);border-color:transparent}
+.x span.cur{outline:2px solid var(--brand);outline-offset:1px}
+.cnt{font:13px var(--font-mono);color:var(--foreground);margin:8px 0 2px 32px}
+.cnt b{color:var(--chart-1)}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .ax{stroke:var(--border)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><div id="fig"></div><div id="steps"></div></div>
+</div>
+<script>
+function lgam(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const q of c)s+=q/++y;return -t+Math.log(2.5066282746310005*s/x)}
+const beta=(t,a,b)=>Math.exp((a-1)*Math.log(t)+(b-1)*Math.log(1-t)-(lgam(a)+lgam(b)-lgam(a+b)));
+const f=(x,d=2)=>x.toFixed(d).replace('.',',');
+const sup=n=>String(n).replace(/\d/g,c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[c]);
+const D=[1,0,0,0,1,0,0,0,1,0],P=D.length,A0=[2,2];
+const ab=m=>{const h=D.slice(0,m).reduce((s,v)=>s+v,0);return [A0[0]+h,A0[1]+m-h]}; // counts after m tosses
+const fin=ab(P),nh=fin[0]-A0[0],nt=fin[1]-A0[1];
+const S=[
+ {t:'Априорное',fill:0,d:`B(θ | ${A0[0]}, ${A0[1]}): до бросков. Параметры αₕ, αₜ — счётчики, которые будут копить «головы» и «хвосты».`},
+ {t:'Бросок 1: H',fill:1,ms:900,d:`Правдоподобие одного броска H равно θ. Умножаем: θ · θ${sup(A0[0]-1)}(1−θ)${sup(A0[1]-1)} = θ${sup(A0[0])}(1−θ)${sup(A0[1]-1)}, то есть B(θ | ${ab(1).join(', ')}). Масса сдвинулась вправо.`},
+ {t:'Бросок 2: T',fill:2,ms:900,d:`Правдоподобие T равно 1 − θ: растёт показатель у (1−θ), получаем B(θ | ${ab(2).join(', ')}). Апостериорное после броска 1 сработало как априорное для броска 2.`},
+ {t:'Бросок 3: T',fill:3,ms:900,d:`Ещё один «хвост»: B(θ | ${ab(3).join(', ')}). Каждый бросок прибавляет 1 к одному счётчику, а кривая сужается: сумма αₕ + αₜ растёт.`},
+ {t:'Броски 4–10',fill:P,ms:380,d:`Тем же правилом. Итог: B(θ | ${fin.join(', ')}), среднее ${fin[0]}/${fin[0]+fin[1]} ≈ ${f(fin[0]/(fin[0]+fin[1]),3)}.`},
+ {t:'Весь D₁₀ сразу',fill:P,batch:1,d:`Одно умножение на θ${sup(nh)}(1−θ)${sup(nt)} даёт B(θ | ${A0[0]}+${nh}, ${A0[1]}+${nt}) — ту же кривую (пунктир). Порядок бросков не важен: нужны только nₕ = ${nh} и nₜ = ${nt}.`}];
+let k=0,fill=0,cur=-1,timer=null;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+const W=340,H=170,L=26,R=16,T=8,B=22,Y1=4;
+const X=x=>L+(W-L-R)*x,Y=y=>T+(H-T-B)*(1-y/Y1);
+const path=(a,b)=>{let d='';for(let i=1;i<240;i++){const x=i/240;d+=(i>1?'L':'M')+X(x).toFixed(1)+' '+Y(Math.min(beta(x,a,b),Y1+.2)).toFixed(1)}return d};
+function plot(){
+ let s=`<line class="ax" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${Y(0)}"/>`;
+ [0,0.5,1].forEach(v=>s+=`<text x="${X(v)}" y="${Y(0)+14}" text-anchor="middle">${String(v).replace('.',',')}</text>`);
+ [0,2,4].forEach(v=>s+=`<text x="${L-5}" y="${Y(v)+4}" text-anchor="end">${v}</text>`);
+ s+=`<text x="${X(1)+9}" y="${Y(0)+4}" fill="var(--subtle-foreground)">θ</text>`;
+ for(let m=0;m<fill;m++)s+=`<path d="${path(...ab(m))}" fill="none" stroke="${m==0?'var(--chart-2)':'var(--subtle-foreground)'}" stroke-width="${m==0?1.8:1}" opacity="${m==0?.8:.45}"/>`;
+ s+=`<path d="${path(...ab(fill))}" fill="none" stroke="${fill?'var(--chart-1)':'var(--chart-2)'}" stroke-width="2.6"/>`;
+ if(S[k].batch)s+=`<path d="${path(A0[0]+nh,A0[1]+nt)}" fill="none" stroke="var(--background)" stroke-width="1.6" stroke-dasharray="5 5"/>`;
+ return `<svg width="${W}" height="${H}">${s}</svg>`;
+}
+function fig(){
+ const [a,b]=ab(fill);
+ return `<div class="r"><div class="l"></div><div class="s idx">${D.map((_,j)=>`<span>${j+1}</span>`).join('')}</div></div>`+
+  `<div class="r"><div class="l">D</div><div class="s x">${D.map((v,j)=>`<span class="${j<fill?'u':''} ${v?'':'t'} ${j==cur?'cur':''}">${v?'H':'T'}</span>`).join('')}</div></div>`+
+  `<div class="cnt">B(θ | <b>${a}</b>, <b>${b}</b>)&nbsp;&nbsp; αₕ = ${A0[0]} + ${a-A0[0]},&nbsp; αₜ = ${A0[1]} + ${b-A0[1]}</div>`+plot();
+}
+function draw(){
+ $('fig').innerHTML=fig();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){
+ clearInterval(timer);window.stepperBusy=false;cur=-1;i=Math.max(0,Math.min(S.length-1,i));
+ const fwd=i==k+1,s=S[i];k=i;
+ if(fwd&&s.ms&&s.fill>fill){
+  window.stepperBusy=true;
+  const t=timer=setInterval(()=>{cur=fill;fill++;draw();if(fill>=s.fill){clearInterval(t);setTimeout(()=>{if(timer===t){cur=-1;draw();window.stepperBusy=false}},s.ms)}},s.ms);
+  draw();return;
+ }
+ fill=s.fill;draw();
+}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>

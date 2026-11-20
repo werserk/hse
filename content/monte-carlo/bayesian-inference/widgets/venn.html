@@ -1,0 +1,82 @@
+<!-- Fig 1.1: conditioning as restricting and renormalising. Region probabilities are the lecture's example;
+     every conditional probability is computed below. -->
+<meta charset="utf-8">
+<style>
+.w{font-family:var(--font-sans)}
+.top{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.top button{font:13px var(--font-sans);height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--foreground);cursor:pointer}
+.top button:disabled{opacity:.35;cursor:default}
+.top span{font-size:12px;color:var(--muted-foreground);margin-left:6px}
+.g{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:start}
+svg text{font-family:var(--font-sans);font-size:11px;fill:var(--muted-foreground)}
+svg .v{font-family:var(--font-mono);font-size:11px;fill:var(--foreground)}
+svg .rl{font-family:var(--font-mono);font-size:12px;fill:var(--muted-foreground)}
+.txt{padding:9px 6px 9px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--subtle-foreground);cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:8px}
+.txt:first-child{border-top:0;padding-top:0}
+.txt .n{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px}
+.txt b{display:block;color:inherit}
+.txt .d{display:none}
+.txt.done{color:var(--muted-foreground)}
+.txt.on{color:var(--foreground)}
+.txt.on .d{display:block}
+.txt.on .n{background:var(--brand);border-color:var(--brand);color:var(--background)}
+.txt.on b{color:var(--brand)}
+</style>
+<div class="w">
+<div class="top"><button id="prev">◀ назад</button><button id="next">дальше ▶</button><span id="cnt"></span></div>
+<div class="g"><svg id="fig" width="440" height="300" viewBox="0 0 440 300"></svg><div id="steps"></div></div>
+</div>
+<script>
+// regions of Ω (lecture's picture): inside A: A∩B1, A∖(B1∪B2), A∩B2; outside A: B2∖A, B3, rest
+const R=[{p:.10,A:1,B:1,lab:'B₁'},{p:.30,A:1,B:0,lab:''},{p:.12,A:1,B:2,lab:''},{p:.04,A:0,B:2,lab:''},{p:.10,A:0,B:3,lab:'B₃'},{p:.34,A:0,B:0,lab:''}];
+const sum=ix=>ix.reduce((s,i)=>s+R[i].p,0);
+const f=(x,d=2)=>x.toFixed(d).replace('.',',');
+const inA=[0,1,2],inB1=[0],inB2=[2,3];
+const PA=sum(inA),PB2=sum(inB2),PB1=sum(inB1);
+const C=[{name:'B₂',ix:inB2,y:170},{name:'B₁',ix:inB1,y:215},{name:'A',ix:inA,y:260}];
+const S=[
+ {t:'Пространство Ω',show:0,d:`Ширина куска — его вероятность, всего 1. A — три левых куска, B₁ лежит внутри A, B₂ задевает A, B₃ вне A. P(A) = ${f(R[0].p)} + ${f(R[1].p)} + ${f(R[2].p)} = ${f(PA)}.`},
+ {t:'Условие B₂',show:1,d:`Знаем, что случилось B₂: остаются два куска (${f(R[2].p)} и ${f(R[3].p)}), делим их на P(B₂) = ${f(PB2)}. P(A | B₂) = ${f(R[2].p)} / ${f(PB2)} = ${f(R[2].p/PB2)}.`},
+ {t:'Условие B₁',show:2,d:`B₁ целиком внутри A, поэтому P(A | B₁) = ${f(R[0].p)} / ${f(PB1)} = ${f(R[0].p/PB1,0)}.`},
+ {t:'Обратный вопрос: P(B₁ | A)',show:3,d:`Теперь условие — A: делим три куска A на P(A) = ${f(PA)}. P(B₁ | A) = ${f(R[0].p)} / ${f(PA)} ≈ ${f(R[0].p/PA)}. Это формула Байеса: P(A | B₁)·P(B₁) / P(A) = 1·${f(PB1)} / ${f(PA)}.`}];
+let k=0;window.stepperBusy=false;
+const $=id=>document.getElementById(id);
+const X0=46,WB=380;
+function fill(r){return r.A?'color-mix(in srgb,var(--chart-1) 28%,transparent)':'var(--muted)'}
+function bar(ix,y,h,tot,dim){ // draw regions ix rescaled so that they fill the bar
+ let x=X0,s='';
+ ix.forEach(i=>{const w=WB*R[i].p/tot;
+  s+=`<rect x="${x+.5}" y="${y}" width="${w-1}" height="${h}" fill="${fill(R[i])}" stroke="var(--border)" opacity="${dim&&!dim.includes(i)?.3:1}"/>`;
+  if(R[i].lab)s+=`<text x="${x+w/2}" y="${y+14}" text-anchor="middle" font-size="10">${R[i].lab}</text>`;
+  s+=`<text class="v" x="${x+w/2}" y="${w<34?y+h+13:y+h-6}" text-anchor="middle" opacity="${dim&&!dim.includes(i)?.3:1}">${f(R[i].p/tot)}</text>`; // a narrow piece gets its value above the bar
+  x+=w});
+ return s;
+}
+function brace(i0,i1,y,lab,up){ // bracket over regions i0..i1 of the Ω bar
+ const xs=R.slice(0,i0).reduce((s,r)=>s+r.p,0),xe=R.slice(0,i1+1).reduce((s,r)=>s+r.p,0);
+ const a=X0+WB*xs+2,b=X0+WB*xe-2,d=up?6:-6;
+ return `<path d="M${a} ${y+d}V${y}H${b}V${y+d}" fill="none" stroke="var(--foreground)"/><text x="${(a+b)/2}" y="${up?y-4:y+13}" text-anchor="middle" fill="var(--foreground)">${lab}</text>`;
+}
+function fig(){
+ const st=S[k];let s=`<text class="rl" x="${X0-8}" y="${62}" text-anchor="end">Ω</text>`;
+ const dim=st.show?C[st.show-1].ix:null;
+ s+=brace(0,2,24,'A',true)+bar([0,1,2,3,4,5],38,40,1,dim)+brace(2,3,100,'B₂',false);
+ s+=`<text x="${X0}" y="${140}" fill="var(--subtle-foreground)" font-size="10">условные вероятности: те же куски, разделённые на вероятность условия</text>`;
+ C.forEach((c,j)=>{
+  s+=`<text class="rl" x="${X0-8}" y="${c.y+20}" text-anchor="end">| ${c.name}</text>`;
+  if(j<st.show)s+=bar(c.ix,c.y,30,sum(c.ix),null);
+  else s+=`<rect x="${X0+.5}" y="${c.y}" width="${WB-1}" height="30" fill="none" stroke="var(--border)" stroke-dasharray="4 3"/>`;
+ });
+ return s;
+}
+function draw(){
+ $('fig').innerHTML=fig();
+ $('steps').innerHTML=S.map((s,i)=>`<div class="txt ${i==k?'on':i<k?'done':''}" data-i="${i}"><span class="n">${i+1}</span><span><b>${s.t}</b><span class="d">${s.d}</span></span></div>`).join('');
+ $('prev').disabled=k==0;$('next').disabled=k==S.length-1;$('cnt').textContent=`шаг ${k+1} из ${S.length}`;
+}
+function go(i){k=Math.max(0,Math.min(S.length-1,i));draw()}
+$('prev').onclick=()=>go(k-1);$('next').onclick=()=>go(k+1);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)go(+t.dataset.i)});
+let hmax=0;for(k=0;k<S.length;k++){draw();hmax=Math.max(hmax,$('steps').offsetHeight)}
+k=0;$('steps').style.minHeight=hmax+'px';draw();
+</script>
